@@ -1,0 +1,8 @@
+{
+  "name": "Remix SonaWave - Trình Tạo Video Sóng Âm \u0026 Lyrics",
+  "description": "Tạo video sóng âm âm nhạc chuyên nghiệp với lời bài hát SRT/LRC, hiệu ứng visualizer đa dạng, tùy biến nền và xuất video chất lượng cao cho TikTok, Shorts, Instagram.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
