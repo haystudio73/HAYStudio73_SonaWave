@@ -34,6 +34,8 @@ export class VisualizerRenderer {
   private particles: Particle[] = [];
   private bgImage: HTMLImageElement | null = null;
   private bgImageSrc = '';
+  private bgVideo: HTMLVideoElement | null = null;
+  private bgVideoSrc = '';
   private coverImage: HTMLImageElement | null = null;
   private coverImageSrc = '';
 
@@ -43,6 +45,10 @@ export class VisualizerRenderer {
   private radialPeaks: number[] = [];
   private radialVelocities: number[] = [];
 
+  // Smooth Fade-In State (Only show visualizer wave 0.8s after user presses Play)
+  private playStartTime = 0;
+  private visualizerOpacity = 0;
+
   constructor() {
     this.initParticles(60);
   }
@@ -50,12 +56,53 @@ export class VisualizerRenderer {
   public setBackgroundImage(url: string) {
     if (this.bgImageSrc === url && this.bgImage) return;
     this.bgImageSrc = url;
+    if (!url) {
+      this.bgImage = null;
+      return;
+    }
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = url;
     img.onload = () => {
       this.bgImage = img;
     };
+  }
+
+  public setBackgroundVideo(url: string) {
+    if (this.bgVideoSrc === url && this.bgVideo) return;
+    this.bgVideoSrc = url;
+    if (!url) {
+      if (this.bgVideo) {
+        this.bgVideo.pause();
+        this.bgVideo.src = '';
+        this.bgVideo = null;
+      }
+      return;
+    }
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
+    video.src = url;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.autoplay = true;
+    video.onloadeddata = () => {
+      video.play().catch(() => {});
+    };
+    this.bgVideo = video;
+  }
+
+  public syncVideoPlayback(isPlaying: boolean, currentTime?: number) {
+    if (!this.bgVideo) return;
+    if (isPlaying) {
+      if (this.bgVideo.paused) {
+        this.bgVideo.play().catch(() => {});
+      }
+    } else {
+      if (!this.bgVideo.paused) {
+        this.bgVideo.pause();
+      }
+    }
   }
 
   public setCoverImage(url: string) {
@@ -120,7 +167,7 @@ export class VisualizerRenderer {
     ctx.save();
     ctx.clearRect(0, 0, width, height);
 
-    // 1. Render Background
+    // 1. Render Background (Image / Video / Gradient)
     this.renderBackground(ctx, width, height, background, beatIntensity, isPlaying);
 
     // 2. Render Particles Overlay
@@ -138,30 +185,92 @@ export class VisualizerRenderer {
       this.renderTextBoxes(ctx, width, height, textBoxes, beatIntensity);
     }
 
-    // 5. Render Waveform / Audio Visualizer
-    this.renderVisualizer(
-      ctx,
-      width,
-      height,
-      visualizer,
-      freqData,
-      timeData,
-      bassIntensity,
-      trebleIntensity,
-      beatIntensity,
-      currentTime
-    );
+    // 5. Calculate Visualizer 0.8s Fade-In on Play
+    if (isPlaying) {
+      if (this.playStartTime === 0) {
+        this.playStartTime = performance.now();
+      }
+      const elapsedPlaySeconds = (performance.now() - this.playStartTime) / 1000;
+      if (elapsedPlaySeconds < 0.8) {
+        this.visualizerOpacity = 0;
+      } else {
+        // Smooth 0.5s ease-in to 1.0
+        this.visualizerOpacity = Math.min(1, (elapsedPlaySeconds - 0.8) / 0.5);
+      }
+    } else {
+      this.playStartTime = 0;
+      this.visualizerOpacity = Math.max(0, this.visualizerOpacity - 0.08);
+    }
+
+    // 5. Render Waveform / Audio Visualizer (Only when opacity > 0)
+    if (this.visualizerOpacity > 0.005) {
+      ctx.save();
+      ctx.globalAlpha = this.visualizerOpacity;
+      this.renderVisualizer(
+        ctx,
+        width,
+        height,
+        visualizer,
+        freqData,
+        timeData,
+        bassIntensity,
+        trebleIntensity,
+        beatIntensity,
+        currentTime
+      );
+      ctx.restore();
+    }
 
     // 6. Render Synchronized Lyrics
     if (lyrics.enabled && lyricsData.length > 0) {
       this.renderLyrics(ctx, width, height, lyrics, lyricsData, currentTime, beatIntensity);
     }
 
+    // 7. Permanent Copyright Watermark: 🔥 Visualizer by HAY Studio73
+    this.renderCopyrightWatermark(ctx, width, height);
+
     ctx.restore();
   }
 
   /**
-   * Background renderer
+   * Permanent Copyright Watermark (Non-removable bottom branding)
+   */
+  private renderCopyrightWatermark(ctx: CanvasContext2D, width: number, height: number) {
+    ctx.save();
+    const text = '🔥 Visualizer by HAY Studio73 ';
+    const fontSize = Math.max(12, Math.min(18, Math.round(width * 0.016)));
+    const posY = height - Math.max(22, Math.round(height * 0.024));
+    const centerX = width / 2;
+
+    ctx.font = `600 ${fontSize}px 'Outfit', 'Be Vietnam Pro', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const metrics = ctx.measureText(text);
+    const textW = metrics.width;
+    const pillW = textW + 28;
+    const pillH = fontSize * 1.85;
+
+    // Elegant frosted dark pill backdrop
+    ctx.beginPath();
+    ctx.roundRect(centerX - pillW / 2, posY - pillH / 2, pillW, pillH, pillH / 2);
+    ctx.fillStyle = 'rgba(8, 12, 24, 0.72)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Soft glowing text
+    ctx.shadowColor = 'rgba(255, 110, 60, 0.55)';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(text, centerX, posY);
+
+    ctx.restore();
+  }
+
+  /**
+   * Background renderer (Supports Images, MP4 Videos, Gradients, Colors)
    */
   private renderBackground(
     ctx: CanvasContext2D,
@@ -182,7 +291,30 @@ export class VisualizerRenderer {
     ctx.scale(zoom, zoom);
     ctx.translate(-centerX, -centerY);
 
-    if (bg.type === 'preset' || bg.type === 'upload') {
+    // A. Video Background
+    if ((bg.isVideo || bg.type === 'video') && this.bgVideo && this.bgVideo.readyState >= 2) {
+      ctx.filter = `blur(${bg.blur}px) brightness(${bg.brightness}%) contrast(${bg.contrast}%)`;
+      
+      const vid = this.bgVideo;
+      const vidW = vid.videoWidth || 1920;
+      const vidH = vid.videoHeight || 1080;
+      const vidAspect = vidW / vidH;
+      const canvasAspect = width / height;
+      let sx = 0, sy = 0, sw = vidW, sh = vidH;
+
+      if (vidAspect > canvasAspect) {
+        sw = vidH * canvasAspect;
+        sx = (vidW - sw) / 2;
+      } else {
+        sh = vidW / canvasAspect;
+        sy = (vidH - sh) / 2;
+      }
+
+      const bleed = bg.blur * 2;
+      ctx.drawImage(vid, sx, sy, sw, sh, -bleed, -bleed, width + bleed * 2, height + bleed * 2);
+      ctx.filter = 'none';
+
+    } else if (bg.type === 'preset' || bg.type === 'upload') {
       if (this.bgImage && this.bgImage.complete && this.bgImage.naturalWidth > 0) {
         ctx.filter = `blur(${bg.blur}px) brightness(${bg.brightness}%) contrast(${bg.contrast}%)`;
         
@@ -261,8 +393,8 @@ export class VisualizerRenderer {
     }
 
     ctx.save();
-    const speedMult = isPlaying ? config.speed : 0.1;
-    const beatKick = config.reactiveToBeat ? beatIntensity * 2.5 : 0;
+    const speedMult = isPlaying ? config.speed : 0.35 * config.speed;
+    const beatKick = isPlaying && config.reactiveToBeat ? beatIntensity * 2.5 : 0;
     const centerX = width / 2;
     const centerY = height / 2;
 
@@ -277,65 +409,77 @@ export class VisualizerRenderer {
     }
 
     for (const p of this.particles) {
-      if (isPlaying) {
-        if (config.type === 'rain') {
-          p.y += (p.speed || 8) * speedMult + beatKick * 4;
-          if (p.y > height) {
-            p.y = -10;
-            p.x = Math.random() * width;
-          }
-        } else if (config.type === 'stars') {
-          p.alpha = p.baseAlpha + Math.sin(Date.now() * 0.003 + p.x) * 0.25 + beatKick * 0.3;
-          p.x += p.vx * speedMult;
-          p.y += p.vy * speedMult;
-        } else if (config.type === 'sound-sparks') {
-          p.y -= (2 + Math.random() * 3) * speedMult + beatKick * 3;
-          p.x += Math.sin(Date.now() * 0.005 + p.y * 0.05) * 1.5;
-          if (p.y < 0) {
-            p.y = height + 10;
-            p.x = Math.random() * width;
-          }
-        } else if (config.type === 'rainbow-bubbles' || config.type === 'bubbles') {
-          // Organic floating soap bubbles with horizontal sine wobble
-          p.wobble = (p.wobble || 0) + (p.wobbleSpeed || 0.03);
-          p.y -= (p.speed * 0.4 + 1.2) * speedMult + beatKick * 1.8;
-          p.x += Math.sin(p.wobble) * 1.2 + p.vx * speedMult * 0.5;
-          p.hue = (p.hue + 0.6) % 360;
+      if (config.type === 'rain') {
+        p.y += (p.speed || 8) * speedMult + beatKick * 4;
+        if (p.y > height) {
+          p.y = -10;
+          p.x = Math.random() * width;
+        }
+      } else if (config.type === 'stars') {
+        p.alpha = p.baseAlpha + Math.sin(Date.now() * 0.003 + p.x) * 0.25 + beatKick * 0.3;
+        p.x += p.vx * speedMult;
+        p.y += p.vy * speedMult;
+      } else if (config.type === 'sound-sparks') {
+        // Dynamic Fire Embers & Rising Sparks with heat turbulence
+        p.wobble = (p.wobble || 0) + (p.wobbleSpeed || 0.04);
+        p.y -= (p.speed * 0.65 + 2.2) * speedMult + beatKick * 5.5;
+        p.x += Math.sin(p.wobble) * (1.8 + beatKick * 2.5) + p.vx * speedMult;
+        p.alpha = Math.max(0.25, Math.min(1.0, p.baseAlpha + Math.sin(Date.now() * 0.008 + p.x) * 0.35 + beatKick * 0.4));
 
-          if (p.y < -60) {
-            p.y = height + 40;
-            p.x = Math.random() * width;
-            p.hue = Math.random() * 360;
-          }
-        } else if (config.type === 'hyperspace') {
-          // 3D Hyperspace Warp Drive Acceleration
-          if (p.z === undefined) {
-            p.z = Math.random() * 1000 + 10;
-            p.pz = p.z;
-          }
+        if (p.y < -40 || p.x < -60 || p.x > width + 60) {
+          p.y = height + Math.random() * 40 + 10;
+          p.x = Math.random() * width;
+          p.size = Math.random() * 3.5 + 1.5;
+          p.speed = Math.random() * 4 + 3;
+          p.hue = Math.random() * 45 + 10; // 10 (red) to 55 (bright gold)
+          p.baseAlpha = Math.random() * 0.4 + 0.6;
+        }
+      } else if (config.type === 'rainbow-bubbles' || config.type === 'bubbles') {
+        // Organic floating soap bubbles with horizontal sine wobble
+        p.wobble = (p.wobble || 0) + (p.wobbleSpeed || 0.03);
+        p.y -= (p.speed * 0.4 + 1.2) * speedMult + beatKick * 1.8;
+        p.x += Math.sin(p.wobble) * 1.2 + p.vx * speedMult * 0.5;
+        p.hue = (p.hue + 0.6) % 360;
+
+        if (p.y < -60) {
+          p.y = height + 40;
+          p.x = Math.random() * width;
+          p.hue = Math.random() * 360;
+        }
+      } else if (config.type === 'hyperspace') {
+        // 3D Hyperspace Warp Drive Acceleration
+        if (p.z === undefined) {
+          p.z = Math.random() * 1000 + 10;
           p.pz = p.z;
-          // Sonic acceleration with huge warp jump on beat drop
-          const warpStep = (16 * speedMult + 4) * (1 + (config.reactiveToBeat ? beatKick * 3.2 : 0));
-          p.z -= warpStep;
-
-          if (p.z <= 2) {
-            p.z = 1000;
-            p.pz = 1000;
-            p.x = (Math.random() - 0.5) * width * 1.8;
-            p.y = (Math.random() - 0.5) * height * 1.8;
-            p.hue = Math.random() * 360;
-          }
-        } else {
-          p.x += p.vx * speedMult + (config.reactiveToBeat ? (Math.random() - 0.5) * beatKick : 0);
-          p.y += p.vy * speedMult - beatKick * 0.5;
         }
+        p.pz = p.z;
+        // Sonic acceleration with huge warp jump on beat drop
+        const warpStep = (16 * speedMult + 4) * (1 + (config.reactiveToBeat ? beatKick * 3.2 : 0));
+        p.z -= warpStep;
 
-        if (config.type !== 'hyperspace' && config.type !== 'rainbow-bubbles' && config.type !== 'bubbles') {
-          if (p.x < 0) p.x = width;
-          if (p.x > width) p.x = 0;
-          if (p.y < 0) p.y = height;
-          if (p.y > height) p.y = 0;
+        if (p.z <= 2) {
+          p.z = 1000;
+          p.pz = 1000;
+          p.x = (Math.random() - 0.5) * width * 1.8;
+          p.y = (Math.random() - 0.5) * height * 1.8;
+          p.hue = Math.random() * 360;
         }
+      } else {
+        p.x += p.vx * speedMult + (config.reactiveToBeat ? (Math.random() - 0.5) * beatKick : 0);
+        p.y += p.vy * speedMult - beatKick * 0.5;
+      }
+
+      if (
+        config.type !== 'hyperspace' &&
+        config.type !== 'rainbow-bubbles' &&
+        config.type !== 'bubbles' &&
+        config.type !== 'sound-sparks' &&
+        config.type !== 'rain'
+      ) {
+        if (p.x < 0) p.x = width;
+        if (p.x > width) p.x = 0;
+        if (p.y < 0) p.y = height;
+        if (p.y > height) p.y = 0;
       }
 
       // --- RENDERING PARTICLE STYLES ---
@@ -454,6 +598,66 @@ export class VisualizerRenderer {
         ctx.arc(screenX, screenY, headRadius, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
+      } else if (config.type === 'sound-sparks') {
+        // --- 3. FIERY EMBERS & SPARKS (Tia lửa bốc cháy phát sáng) ---
+        ctx.save();
+        ctx.translate(p.x, p.y);
+
+        const sparkSize = Math.max(2, p.size * (1 + (config.reactiveToBeat ? beatKick * 0.45 : 0)));
+        const sparkHue = p.hue; // 10 (crimson red) to 55 (bright gold)
+        const sparkAlpha = Math.min(1, Math.max(0.3, p.alpha + (config.reactiveToBeat ? beatKick * 0.35 : 0)));
+
+        // A. Radiant Fire Heat Halo
+        const glowRadius = Math.max(10, sparkSize * 4.5 + (config.reactiveToBeat ? beatKick * 8 : 0));
+        const flareGrad = ctx.createRadialGradient(0, 0, sparkSize * 0.3, 0, 0, glowRadius);
+        flareGrad.addColorStop(0, `hsla(${sparkHue}, 100%, 65%, ${sparkAlpha * 0.85})`);
+        flareGrad.addColorStop(0.35, `hsla(${Math.max(0, sparkHue - 15)}, 100%, 50%, ${sparkAlpha * 0.5})`);
+        flareGrad.addColorStop(0.75, `hsla(0, 95%, 45%, ${sparkAlpha * 0.15})`);
+        flareGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        ctx.beginPath();
+        ctx.arc(0, 0, glowRadius, 0, Math.PI * 2);
+        ctx.fillStyle = flareGrad;
+        ctx.fill();
+
+        // B. Upward Motion Spark Tail Streak
+        const tailLength = Math.max(10, ((p.speed || 4) * 3.0 + 8) * (1 + (config.reactiveToBeat ? beatKick * 0.8 : 0)));
+        const trailGrad = ctx.createLinearGradient(0, tailLength, 0, 0);
+        trailGrad.addColorStop(0, 'rgba(239, 68, 68, 0)');
+        trailGrad.addColorStop(0.4, `hsla(${sparkHue}, 100%, 50%, ${sparkAlpha * 0.6})`);
+        trailGrad.addColorStop(1, '#ffffff');
+
+        ctx.beginPath();
+        ctx.moveTo(-sparkSize * 0.45, 0);
+        ctx.lineTo(0, tailLength);
+        ctx.lineTo(sparkSize * 0.45, 0);
+        ctx.closePath();
+        ctx.fillStyle = trailGrad;
+        ctx.fill();
+
+        // C. Blazing White-Hot Core
+        ctx.beginPath();
+        ctx.arc(0, 0, sparkSize * 0.8, 0, Math.PI * 2);
+        ctx.fillStyle = '#fffbeb';
+        ctx.shadowColor = `hsla(${sparkHue}, 100%, 60%, 1)`;
+        ctx.shadowBlur = 12;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // D. Crackling Hot Spark Cross Starlet on Beat Drop
+        if (config.reactiveToBeat && beatKick > 0.35) {
+          const starR = sparkSize * 1.8;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(-starR, 0);
+          ctx.lineTo(starR, 0);
+          ctx.moveTo(0, -starR);
+          ctx.lineTo(0, starR);
+          ctx.stroke();
+        }
+
+        ctx.restore();
       } else {
         ctx.beginPath();
         const radius = Math.max(1, p.size * (1 + beatKick * 0.5));
@@ -1435,6 +1639,272 @@ export class VisualizerRenderer {
         break;
       }
 
+      // 17. 3D Neon DNA Double Helix with Frequency Ladder Rungs
+      case 'dna-helix': {
+        const points = 42;
+        const helixW = Math.min(width * 0.9, 720) * v.scale;
+        const startX = centerX - helixW / 2;
+        const step = helixW / (points - 1);
+        const baseAmp = 65 * amp * v.scale;
+        const cycleSpeed = currentTime * 3.5;
+
+        // Draw ladder rungs first (behind strands)
+        for (let i = 0; i < points; i += 2) {
+          const dataIdx = Math.min(dataLength - 1, Math.floor((i / points) * (dataLength * 0.7)));
+          const rawVal = freqData[dataIdx] || 0;
+          const rungAmp = baseAmp * (0.4 + (rawVal / 255) * 0.85);
+
+          const angle = cycleSpeed + (i / points) * Math.PI * 4;
+          const y1 = posY + Math.sin(angle) * rungAmp;
+          const y2 = posY + Math.sin(angle + Math.PI) * rungAmp;
+          const x = startX + i * step;
+
+          const zDepth = Math.cos(angle);
+          const rungAlpha = 0.35 + (zDepth + 1) * 0.3;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(x, y1);
+          ctx.lineTo(x, y2);
+          ctx.strokeStyle = strokeOrFillStyle;
+          ctx.lineWidth = Math.max(1.5, 2.5 * v.scale);
+          ctx.globalAlpha = rungAlpha;
+          ctx.stroke();
+
+          // Glowing rung nodes / base pairs
+          const nodeR = Math.max(2.5, (3 + (rawVal / 255) * 4) * v.scale);
+          ctx.beginPath();
+          ctx.arc(x, y1, nodeR, 0, Math.PI * 2);
+          ctx.arc(x, y2, nodeR, 0, Math.PI * 2);
+          ctx.fillStyle = strokeOrFillStyle;
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Draw 2 continuous ribbon strands
+        for (let strand = 0; strand < 2; strand++) {
+          const phaseOffset = strand * Math.PI;
+          ctx.beginPath();
+          ctx.lineWidth = (v.lineThickness || 3) + 1;
+          ctx.strokeStyle = strokeOrFillStyle;
+
+          for (let i = 0; i < points; i++) {
+            const dataIdx = Math.min(dataLength - 1, Math.floor((i / points) * (dataLength * 0.7)));
+            const rawVal = freqData[dataIdx] || 0;
+            const strandAmp = baseAmp * (0.4 + (rawVal / 255) * 0.85);
+
+            const angle = cycleSpeed + (i / points) * Math.PI * 4 + phaseOffset;
+            const x = startX + i * step;
+            const y = posY + Math.sin(angle) * strandAmp;
+
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+        break;
+      }
+
+      // 18. Infinite 3D Concentric Portal Tunnel
+      case 'tunnel-vortex': {
+        const ringCount = 12;
+        const maxRadius = Math.min(width, height) * 0.42 * v.scale;
+        const spinAngle = currentTime * 0.8;
+        const polygonSides = 8; // Octagon portal
+
+        for (let r = 0; r < ringCount; r++) {
+          // Perspective progression
+          const progress = (r / ringCount + (currentTime * 0.35) % (1 / ringCount));
+          const ringR = Math.pow(progress, 1.6) * maxRadius;
+          if (ringR < 5) continue;
+
+          const dataIdx = Math.min(dataLength - 1, Math.floor((r / ringCount) * (dataLength * 0.65)));
+          const rawVal = freqData[dataIdx] || 0;
+          const pulseR = ringR * (1 + (rawVal / 255) * 0.35 * amp + beatIntensity * 0.15);
+          const ringAlpha = Math.sin(progress * Math.PI) * 0.85;
+
+          ctx.save();
+          ctx.globalAlpha = ringAlpha;
+          ctx.lineWidth = Math.max(1.5, (1 + progress * 3) * (v.lineThickness || 2) * 0.7);
+          ctx.strokeStyle = strokeOrFillStyle;
+          ctx.beginPath();
+
+          for (let s = 0; s <= polygonSides; s++) {
+            const angle = spinAngle * (r % 2 === 0 ? 1 : -1) + (s / polygonSides) * Math.PI * 2;
+            const vx = centerX + Math.cos(angle) * pulseR;
+            const vy = posY + Math.sin(angle) * (pulseR * 0.75); // slight perspective tilt
+
+            if (s === 0) ctx.moveTo(vx, vy);
+            else ctx.lineTo(vx, vy);
+          }
+          ctx.closePath();
+          ctx.stroke();
+          ctx.restore();
+        }
+        break;
+      }
+
+      // 19. Stage EDM Concert Scanning Laser Beams
+      case 'laser-beams': {
+        const beamCount = 14;
+        const baseOriginY = Math.min(height, posY + 220 * v.scale);
+        const sweepSpeed = currentTime * 2.2;
+
+        for (let i = 0; i < beamCount; i++) {
+          const dataIdx = Math.min(dataLength - 1, Math.floor((i / beamCount) * (dataLength * 0.75)));
+          const rawVal = freqData[dataIdx] || 0;
+          const laserPower = (rawVal / 255) * amp;
+
+          const normIndex = (i - beamCount / 2) / (beamCount / 2);
+          const sweepAngle = Math.sin(sweepSpeed + i * 0.45) * 0.38 + normIndex * 0.65;
+          const laserLength = Math.max(width, height) * (1.1 + beatIntensity * 0.3);
+
+          const targetX = centerX + Math.sin(sweepAngle) * laserLength;
+          const targetY = baseOriginY - Math.cos(sweepAngle) * laserLength;
+
+          // A. Outer soft bloom beam
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(centerX, baseOriginY);
+          ctx.lineTo(targetX, targetY);
+          ctx.strokeStyle = strokeOrFillStyle;
+          ctx.lineWidth = Math.max(4, (6 + laserPower * 16) * v.scale);
+          ctx.globalAlpha = 0.25 + laserPower * 0.45;
+          ctx.stroke();
+
+          // B. Inner intense white-hot core
+          ctx.beginPath();
+          ctx.moveTo(centerX, baseOriginY);
+          ctx.lineTo(targetX, targetY);
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = Math.max(1.5, (1.8 + laserPower * 3.5) * v.scale);
+          ctx.globalAlpha = 0.8 + laserPower * 0.2;
+          ctx.stroke();
+          ctx.restore();
+
+          // Laser floor emitter flare
+          ctx.save();
+          const flareR = Math.max(6, (8 + laserPower * 18 + beatIntensity * 12) * v.scale);
+          const flareGrad = ctx.createRadialGradient(centerX, baseOriginY, 1, centerX, baseOriginY, flareR);
+          flareGrad.addColorStop(0, '#ffffff');
+          flareGrad.addColorStop(0.4, v.primaryColor);
+          flareGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = flareGrad;
+          ctx.beginPath();
+          ctx.arc(centerX, baseOriginY, flareR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        break;
+      }
+
+      // 20. Multi-Point Pulsating Starburst Nova Core
+      case 'starburst-core': {
+        const rayCount = 48;
+        const innerR = Math.min(width, height) * 0.08 * v.scale;
+        const maxRayLen = Math.min(width, height) * 0.28 * v.scale;
+        const rotOffset = currentTime * 0.6;
+
+        // Pulsing core orb
+        const corePulse = innerR * (1 + beatIntensity * 0.35 + (freqData[2] || 0) / 255 * 0.25);
+        ctx.save();
+        const coreGrad = ctx.createRadialGradient(centerX, posY, 2, centerX, posY, corePulse * 1.5);
+        coreGrad.addColorStop(0, '#ffffff');
+        coreGrad.addColorStop(0.5, v.primaryColor);
+        coreGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = coreGrad;
+        ctx.beginPath();
+        ctx.arc(centerX, posY, corePulse * 1.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Radiating rays
+        for (let i = 0; i < rayCount; i++) {
+          const angle = rotOffset + (i / rayCount) * Math.PI * 2;
+          const mirrorIdx = i < rayCount / 2 ? i : rayCount - i;
+          const dataIdx = Math.min(dataLength - 1, Math.floor((mirrorIdx / (rayCount / 2)) * (dataLength * 0.7)));
+          const rawVal = freqData[dataIdx] || 0;
+          const rayLen = innerR + (rawVal / 255) * maxRayLen * amp;
+
+          const x1 = centerX + Math.cos(angle) * innerR;
+          const y1 = posY + Math.sin(angle) * innerR;
+          const x2 = centerX + Math.cos(angle) * rayLen;
+          const y2 = posY + Math.sin(angle) * rayLen;
+
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.strokeStyle = strokeOrFillStyle;
+          ctx.lineWidth = Math.max(1.8, (2.5 * v.scale));
+          ctx.stroke();
+
+          // Diamond spark cap at end
+          const sparkSize = Math.max(2, (2.5 + (rawVal / 255) * 4) * v.scale);
+          ctx.beginPath();
+          ctx.arc(x2, y2, sparkSize, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+        }
+        break;
+      }
+
+      // 21. Multi-Tiered Floating Digital EQ Cascade Blocks
+      case 'audio-equalizer-grid': {
+        const columns = Math.min(barCount, 36);
+        const rows = 12;
+        const totalW = columns * (v.barWidth + v.barGap + 2) - (v.barGap + 2);
+        const startX = centerX - totalW / 2;
+        const colW = Math.max(4, v.barWidth);
+        const blockH = Math.max(3, 7 * v.scale);
+        const blockGap = Math.max(1.5, 2.5 * v.scale);
+
+        for (let c = 0; c < columns; c++) {
+          const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(c / columns, 1.25) * (dataLength * 0.75)));
+          const rawVal = freqData[dataIndex] || 0;
+          const activeRows = Math.round((rawVal / 255) * rows * amp);
+
+          const colX = startX + c * (colW + v.barGap + 2);
+
+          for (let r = 0; r < rows; r++) {
+            const blockY = posY - r * (blockH + blockGap);
+            const isActive = r < activeRows;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(colX, blockY, colW, blockH, 2);
+
+            if (isActive) {
+              const rowProgress = r / rows;
+              if (rowProgress > 0.8) {
+                ctx.fillStyle = '#f43f5e'; // Red high peak
+              } else if (rowProgress > 0.55) {
+                ctx.fillStyle = '#fbbf24'; // Amber mid
+              } else {
+                ctx.fillStyle = strokeOrFillStyle;
+              }
+              ctx.globalAlpha = 0.95;
+            } else {
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+              ctx.globalAlpha = 0.35;
+            }
+            ctx.fill();
+            ctx.restore();
+          }
+
+          // Top floating cap LED
+          if (activeRows > 0) {
+            const peakY = posY - activeRows * (blockH + blockGap) - 2;
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = v.primaryColor;
+            ctx.shadowBlur = 8;
+            ctx.fillRect(colX, peakY, colW, 2.5);
+            ctx.restore();
+          }
+        }
+        break;
+      }
+
       default:
         break;
     }
@@ -1443,7 +1913,7 @@ export class VisualizerRenderer {
   }
 
   /**
-   * Synchronized Lyrics Renderer
+   * Synchronized Lyrics Renderer (Supports Karaoke Mode Progressive Text Sweeping)
    */
   private renderLyrics(
     ctx: CanvasContext2D,
@@ -1475,47 +1945,96 @@ export class VisualizerRenderer {
     if (lyrics.style === 'karaoke') {
       const popScale = 1 + (beatIntensity * 0.05);
 
+      // Previous Line (faded above)
       if (info.prevLine) {
-        ctx.font = `500 ${baseFontSize * 0.75}px '${fontFam}', sans-serif`;
-        ctx.fillStyle = lyrics.color;
+        ctx.font = `500 ${baseFontSize * 0.72}px '${fontFam}', sans-serif`;
+        ctx.fillStyle = lyrics.color || 'rgba(255, 255, 255, 0.4)';
         ctx.textAlign = lyrics.alignment;
-        ctx.fillText(formatText(info.prevLine.text), centerX, posY - baseFontSize * 1.8, width * 0.88);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(formatText(info.prevLine.text), centerX, posY - baseFontSize * 2.1, width * 0.88);
       }
 
+      // Active Karaoke Line (Word-by-Word Progressive Fill Highlight + Bouncing Star Cursor)
       if (info.activeLine) {
+        const fullText = formatText(info.activeLine.text);
+        const progress = Math.max(0, Math.min(1, info.lineProgress || 0));
+
         ctx.save();
         ctx.translate(centerX, posY);
         ctx.scale(popScale, popScale);
         ctx.translate(-centerX, -posY);
 
+        ctx.font = `bold ${baseFontSize}px '${fontFam}', sans-serif`;
+        const textMetrics = ctx.measureText(fullText);
+        const textW = textMetrics.width;
+
+        // Background Pill Container
         if (lyrics.showBackgroundPill) {
-          ctx.font = `bold ${baseFontSize}px '${fontFam}', sans-serif`;
-          const textMetrics = ctx.measureText(formatText(info.activeLine.text));
-          const pillW = Math.min(width * 0.92, textMetrics.width + 36);
-          const pillH = baseFontSize * 1.8;
+          const pillW = Math.min(width * 0.94, textW + 44);
+          const pillH = baseFontSize * 2.0;
           ctx.beginPath();
           ctx.roundRect(centerX - pillW / 2, posY - pillH / 2, pillW, pillH, pillH / 2);
-          ctx.fillStyle = lyrics.pillColor || 'rgba(0,0,0,0.5)';
+          ctx.fillStyle = lyrics.pillColor || 'rgba(10, 14, 28, 0.65)';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+          ctx.shadowBlur = 14;
           ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
         }
 
-        ctx.font = `bold ${baseFontSize}px '${fontFam}', sans-serif`;
         ctx.textAlign = lyrics.alignment;
         ctx.textBaseline = 'middle';
 
-        ctx.shadowColor = lyrics.glowColor || '#ec4899';
-        ctx.shadowBlur = lyrics.glowIntensity + beatIntensity * 10;
-        ctx.fillStyle = lyrics.activeColor || '#ffffff';
-        ctx.fillText(formatText(info.activeLine.text), centerX, posY, width * 0.88);
+        // 1. Inactive Base Text Layer (Dimmed white/grey)
+        ctx.fillStyle = lyrics.color || 'rgba(255, 255, 255, 0.4)';
+        ctx.fillText(fullText, centerX, posY, width * 0.88);
+
+        // 2. Active Karaoke Sweeping Fill Layer with Precise Horizontal Clipping
+        let textLeft = centerX - textW / 2;
+        if (lyrics.alignment === 'left') textLeft = centerX - (width * 0.44);
+        if (lyrics.alignment === 'right') textLeft = centerX + (width * 0.44) - textW;
+
+        const fillWidth = textW * progress;
+
+        if (fillWidth > 0.5) {
+          ctx.save();
+          // Clip to the currently sung portion
+          ctx.beginPath();
+          ctx.rect(textLeft - 4, posY - baseFontSize * 1.5, fillWidth + 4, baseFontSize * 3);
+          ctx.clip();
+
+          ctx.shadowColor = lyrics.glowColor || '#ec4899';
+          ctx.shadowBlur = lyrics.glowIntensity + beatIntensity * 12;
+          ctx.fillStyle = lyrics.activeColor || '#ffffff';
+          ctx.fillText(fullText, centerX, posY, width * 0.88);
+          ctx.restore();
+
+          // 3. Bouncing Karaoke Star Indicator ✨ on current singing word
+          const cursorX = textLeft + fillWidth;
+          const bounce = Math.abs(Math.sin(progress * Math.PI * 10)) * (8 + beatIntensity * 6);
+          const cursorY = posY - baseFontSize * 0.7 - bounce;
+
+          ctx.save();
+          ctx.font = `${Math.round(baseFontSize * 0.65)}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.shadowColor = '#facc15';
+          ctx.shadowBlur = 10;
+          ctx.fillText('✨', cursorX, cursorY);
+          ctx.restore();
+        }
+
         ctx.restore();
       }
 
+      // Next Line Preview (faded below)
       if (info.nextLine) {
-        ctx.font = `500 ${baseFontSize * 0.75}px '${fontFam}', sans-serif`;
-        ctx.fillStyle = lyrics.color;
+        ctx.font = `500 ${baseFontSize * 0.72}px '${fontFam}', sans-serif`;
+        ctx.fillStyle = lyrics.color || 'rgba(255, 255, 255, 0.4)';
         ctx.textAlign = lyrics.alignment;
         ctx.textBaseline = 'middle';
-        ctx.fillText(formatText(info.nextLine.text), centerX, posY + baseFontSize * 1.8, width * 0.88);
+        ctx.fillText(formatText(info.nextLine.text), centerX, posY + baseFontSize * 2.1, width * 0.88);
       }
 
     } else if (lyrics.style === 'subtitle-bar') {

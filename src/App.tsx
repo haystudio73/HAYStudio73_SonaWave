@@ -220,12 +220,23 @@ export function App() {
     };
   }, []);
 
-  // Update renderer when background image or cover changes
+  // Update renderer when background image, video, or cover changes
   useEffect(() => {
     if (rendererRef.current) {
-      rendererRef.current.setBackgroundImage(background.url);
+      if (background.isVideo || background.type === 'video') {
+        rendererRef.current.setBackgroundVideo(background.videoUrl || background.url);
+      } else {
+        rendererRef.current.setBackgroundVideo('');
+        rendererRef.current.setBackgroundImage(background.url);
+      }
     }
-  }, [background.url]);
+  }, [background.url, background.videoUrl, background.isVideo, background.type]);
+
+  useEffect(() => {
+    if (rendererRef.current) {
+      rendererRef.current.syncVideoPlayback(isPlaying);
+    }
+  }, [isPlaying]);
 
   useEffect(() => {
     if (rendererRef.current) {

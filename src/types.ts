@@ -16,7 +16,12 @@ export type VisualizerType =
   | 'vinyl-visual'           // Spinning record with sonic aura
   | 'minimal-pulse'          // Clean audiophile line with frequency dots
   | 'flame-spectrum'         // Hot plasma gradient spikes
-  | 'blob-morph';            // Organic beat-reactive blob
+  | 'blob-morph'             // Organic beat-reactive blob
+  | 'dna-helix'              // 3D Neon DNA double helix with frequency rungs
+  | 'tunnel-vortex'          // Infinite 3D concentric portal tunnel
+  | 'laser-beams'            // Stage EDM concert scanning laser beams
+  | 'starburst-core'         // Multi-point pulsating starburst nova
+  | 'audio-equalizer-grid';   // Multi-tiered floating digital EQ cascade blocks
 
 export type VisualizerColorMode = 'solid' | 'gradient2' | 'gradient3' | 'rainbow' | 'neon-glow';
 
@@ -79,11 +84,13 @@ export interface LyricsConfig {
   pillBlur: number;
 }
 
-export type BackgroundType = 'preset' | 'upload' | 'gradient' | 'solid';
+export type BackgroundType = 'preset' | 'upload' | 'video' | 'gradient' | 'solid';
 
 export interface BackgroundConfig {
   type: BackgroundType;
   url: string;
+  isVideo?: boolean;
+  videoUrl?: string;
   color1: string;
   color2: string;
   gradientAngle: number;

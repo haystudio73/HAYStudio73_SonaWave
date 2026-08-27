@@ -12,7 +12,9 @@ import {
   Maximize,
   CircleDot,
   Zap,
-  Flame
+  Flame,
+  Video,
+  Film
 } from 'lucide-react';
 
 interface BackgroundTabProps {
@@ -33,11 +35,11 @@ const CATEGORIES = [
 
 const PARTICLE_TYPES: { id: ParticleType; nameVi: string; icon: React.ComponentType<{ className?: string }>; badge?: string }[] = [
   { id: 'none', nameVi: 'Tắt hạt', icon: Eye },
+  { id: 'sound-sparks', nameVi: 'Tia lửa bốc (Sparks)', icon: Flame, badge: 'Rực Rỡ' },
   { id: 'rainbow-bubbles', nameVi: 'Bong bóng cầu vồng', icon: CircleDot, badge: 'Mới & Đẹp' },
   { id: 'hyperspace', nameVi: 'Tăng tốc Hyperspace', icon: Zap, badge: 'Mới 3D' },
   { id: 'dust', nameVi: 'Bụi lofi trôi', icon: Sparkles },
   { id: 'stars', nameVi: 'Sao lấp lánh', icon: Sparkles },
-  { id: 'sound-sparks', nameVi: 'Tia lửa bốc', icon: Flame },
   { id: 'rain', nameVi: 'Mưa đêm rơi', icon: CloudRain },
 ];
 
@@ -48,7 +50,8 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
   onParticlesChange,
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const updateBg = (partial: Partial<BackgroundConfig>) => {
     onBackgroundChange({ ...background, ...partial });
@@ -65,7 +68,21 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
     const url = URL.createObjectURL(file);
     updateBg({
       type: 'upload',
+      isVideo: false,
       url,
+    });
+  };
+
+  const handleCustomVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const url = URL.createObjectURL(file);
+    updateBg({
+      type: 'video',
+      isVideo: true,
+      url,
+      videoUrl: url,
     });
   };
 
@@ -76,28 +93,63 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
 
   return (
     <div className="space-y-6 text-neutral-200">
-      {/* 1. Background Source Selection (Preset, Custom Upload, Gradient) */}
+      {/* 1. Background Source Selection (Preset, Custom Image / Video Upload) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
-            Hình Nền (Background Source)
+            Hình / Video Nền (Background Source)
           </label>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition-all cursor-pointer"
-          >
-            <Upload className="w-3 h-3" />
-            <span>Tải ảnh của bạn</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => imageInputRef.current?.click()}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition-all cursor-pointer"
+              title="Tải ảnh PNG/JPG từ máy tính"
+            >
+              <Upload className="w-3 h-3" />
+              <span>Tải Ảnh</span>
+            </button>
+            <button
+              onClick={() => videoInputRef.current?.click()}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-semibold transition-all cursor-pointer shadow-sm"
+              title="Tải video MP4 làm nền chuyển động"
+            >
+              <Video className="w-3 h-3 text-rose-400" />
+              <span>Tải Video MP4</span>
+            </button>
+          </div>
         </div>
 
         <input
-          ref={fileInputRef}
+          ref={imageInputRef}
           type="file"
           accept="image/*"
           className="hidden"
           onChange={handleCustomImageUpload}
         />
+
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/mp4,video/*,.mp4,.mov,.webm"
+          className="hidden"
+          onChange={handleCustomVideoUpload}
+        />
+
+        {/* Video Mode Active Notice */}
+        {background.isVideo && (
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-200 text-xs">
+            <div className="flex items-center gap-2">
+              <Film className="w-4 h-4 text-rose-400 animate-pulse" />
+              <span className="font-semibold">Đang phát nền Video MP4 động</span>
+            </div>
+            <button
+              onClick={() => updateBg({ type: 'preset', isVideo: false, url: BACKGROUND_PRESETS[0].url })}
+              className="px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-[11px] font-medium text-rose-300 transition-all cursor-pointer"
+            >
+              Trở về Preset Ảnh
+            </button>
+          </div>
+        )}
 
         {/* Category Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
@@ -116,14 +168,14 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
           ))}
         </div>
 
-        {/* Preset Gallery Grid */}
+        {/* Preset Gallery Grid (From Pexels) */}
         <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1 bg-neutral-900/40 border border-neutral-800/80 rounded-2xl custom-scrollbar">
           {filteredPresets.map((preset) => {
-            const isSelected = background.url === preset.url;
+            const isSelected = !background.isVideo && background.url === preset.url;
             return (
               <button
                 key={preset.id}
-                onClick={() => updateBg({ type: 'preset', url: preset.url })}
+                onClick={() => updateBg({ type: 'preset', isVideo: false, url: preset.url })}
                 className={`relative aspect-video rounded-xl overflow-hidden border transition-all group cursor-pointer ${
                   isSelected
                     ? 'border-cyan-400 ring-2 ring-cyan-500/50 scale-[0.98]'

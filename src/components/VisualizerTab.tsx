@@ -14,7 +14,12 @@ import {
   Zap,
   Waves,
   RefreshCw,
-  Gauge
+  Gauge,
+  Dna,
+  Orbit,
+  Sun,
+  Grid3X3,
+  Compass
 } from 'lucide-react';
 
 interface VisualizerTabProps {
@@ -66,6 +71,46 @@ const VISUALIZER_TYPES: TypeOption[] = [
     icon: Disc,
     description: 'Tia xoay tròn 360° với hạt đỉnh bắn ra theo nhịp bass',
     badge: 'Mới',
+  },
+  {
+    type: 'dna-helix',
+    label: 'DNA Neon Helix',
+    labelVi: 'Chuỗi Xoắn Kép DNA 3D',
+    icon: Dna,
+    description: 'Hai dải xoắn kép đan xen kèm bậc thang tần số phát sáng 3D',
+    badge: 'Mới Siêu Đẹp',
+  },
+  {
+    type: 'tunnel-vortex',
+    label: 'Vortex Portal 3D',
+    labelVi: 'Đường Hầm Không Gian 3D',
+    icon: Orbit,
+    description: 'Cổng đa giác xoay vô cực chuyển động theo dải tần âm trầm',
+    badge: 'Mới 3D',
+  },
+  {
+    type: 'laser-beams',
+    label: 'EDM Concert Lasers',
+    labelVi: 'Tia Laser Sân Khấu EDM',
+    icon: Zap,
+    description: 'Dàn chùm tia laser quét góc rộng bùng nổ theo nhịp kick',
+    badge: 'Mới Sôi Động',
+  },
+  {
+    type: 'starburst-core',
+    label: 'Starburst Nova Core',
+    labelVi: 'Lõi Siêu Tân Tinh Tỏa Sáng',
+    icon: Sun,
+    description: 'Vụ nổ hạt sao đa giác 360° với tâm phát quang hạt năng lượng',
+    badge: 'Mới Vũ Trụ',
+  },
+  {
+    type: 'audio-equalizer-grid',
+    label: 'Cyber EQ Matrix Grid',
+    labelVi: 'Ma Trận EQ Khối Nổi',
+    icon: Grid3X3,
+    description: 'Lưới tầng bậc LED đa sắc màu xếp chồng phản ứng cực nhạy',
+    badge: 'Mới Pro',
   },
   {
     type: 'bars-mirrored',
