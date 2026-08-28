@@ -3,6 +3,8 @@ import {
   BackgroundConfig,
   LyricsConfig,
   ParticleConfig,
+  ParticleShape,
+  TextBoxLayerOrder,
   TrackMetadata,
   LyricLine,
   TextBoxItem,
@@ -48,6 +50,12 @@ export class VisualizerRenderer {
   // Smooth Fade-In State (Only show visualizer wave 0.8s after user presses Play)
   private playStartTime = 0;
   private visualizerOpacity = 0;
+
+  // Background Beat & Bass Zoom State
+  private currentBgZoom = 1.0;
+  private lastBgZoomTime = 0;
+  private bgShakeX = 0;
+  private bgShakeY = 0;
 
   constructor() {
     this.initParticles(60);
@@ -167,25 +175,37 @@ export class VisualizerRenderer {
     ctx.save();
     ctx.clearRect(0, 0, width, height);
 
+    // Helper function to render text boxes assigned to a specific layer slot
+    const renderTextBoxesForLayer = (layer: TextBoxLayerOrder) => {
+      const filtered = textBoxes.filter((b) => (b.layerOrder || 'front-all') === layer);
+      if (filtered.length > 0) {
+        this.renderTextBoxes(ctx, width, height, filtered, beatIntensity);
+      }
+    };
+
     // 1. Render Background (Image / Video / Gradient)
-    this.renderBackground(ctx, width, height, background, beatIntensity, isPlaying);
+    this.renderBackground(ctx, width, height, background, bassIntensity, beatIntensity, isPlaying);
+
+    // 1.5 Render Text Boxes: 'back-all' (Phía sau cùng - ngay trên background)
+    renderTextBoxesForLayer('back-all');
 
     // 2. Render Particles Overlay
     if (particlesConfig.enabled) {
       this.renderParticles(ctx, width, height, particlesConfig, bassIntensity, trebleIntensity, beatIntensity, isPlaying);
     }
 
+    // 2.5 Render Text Boxes: 'behind-track' (Phía sau Đĩa nhạc / Thẻ bài hát)
+    renderTextBoxesForLayer('behind-track');
+
     // 3. Render Track Cover / Badge (if enabled)
     if (track.showTrackCard && track.cardStyle !== 'hidden') {
       this.renderTrackCard(ctx, width, height, track, bassIntensity, beatIntensity, isPlaying);
     }
 
-    // 4. Render Custom Text Boxes
-    if (textBoxes && textBoxes.length > 0) {
-      this.renderTextBoxes(ctx, width, height, textBoxes, beatIntensity);
-    }
+    // 3.5 Render Text Boxes: 'behind-visualizer' (Phía sau Sóng âm)
+    renderTextBoxesForLayer('behind-visualizer');
 
-    // 5. Calculate Visualizer 0.8s Fade-In on Play
+    // 4. Calculate Visualizer 0.8s Fade-In on Play
     if (isPlaying) {
       if (this.playStartTime === 0) {
         this.playStartTime = performance.now();
@@ -221,10 +241,16 @@ export class VisualizerRenderer {
       ctx.restore();
     }
 
+    // 5.5 Render Text Boxes: 'behind-lyrics' (Phía sau Lời bài hát)
+    renderTextBoxesForLayer('behind-lyrics');
+
     // 6. Render Synchronized Lyrics
     if (lyrics.enabled && lyricsData.length > 0) {
       this.renderLyrics(ctx, width, height, lyrics, lyricsData, currentTime, beatIntensity);
     }
+
+    // 6.5 Render Text Boxes: 'front-all' (Phía trước tất cả - Trên cùng)
+    renderTextBoxesForLayer('front-all');
 
     // 7. Permanent Copyright Watermark: 🔥 Visualizer by HAY Studio73
     this.renderCopyrightWatermark(ctx, width, height);
@@ -270,22 +296,96 @@ export class VisualizerRenderer {
   }
 
   /**
-   * Background renderer (Supports Images, MP4 Videos, Gradients, Colors)
+   * Background renderer (Supports Images, MP4 Videos, Gradients, Colors, Dynamic Beat & Bass Zoom)
    */
   private renderBackground(
     ctx: CanvasContext2D,
     width: number,
     height: number,
     bg: BackgroundConfig,
+    bassIntensity: number,
     beatIntensity: number,
     isPlaying: boolean
   ) {
     ctx.save();
 
-    // Beat zoom effect
-    const zoom = bg.beatZoom && isPlaying ? 1 + beatIntensity * 0.03 : 1;
-    const centerX = width / 2;
-    const centerY = height / 2;
+    // 1. Dynamic Beat & Bass Zoom Calculation
+    let zoom = 1.0;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (bg.beatZoom && isPlaying) {
+      const now = performance.now();
+      const dt = this.lastBgZoomTime > 0 ? Math.min(0.1, (now - this.lastBgZoomTime) / 1000) : 0.016;
+      this.lastBgZoomTime = now;
+
+      // Select audio trigger source: Bass (Sub kick), Beat (Tempo/Snare/Transient), or Hybrid (Combined)
+      const trigger = bg.zoomTrigger || 'bass';
+      let signal = 0;
+      if (trigger === 'bass') {
+        signal = bassIntensity;
+      } else if (trigger === 'beat') {
+        signal = beatIntensity;
+      } else {
+        // Hybrid: merges kick punch with rhythm beats
+        signal = Math.max(bassIntensity * 1.05, beatIntensity * 0.95);
+      }
+      signal = Math.min(1.0, Math.max(0, signal));
+
+      const maxIntensity = bg.zoomIntensity !== undefined ? bg.zoomIntensity : 0.05;
+      const speedMultiplier = bg.zoomSpeed !== undefined ? bg.zoomSpeed : 1.0;
+      const style = bg.zoomStyle || 'pulse';
+      const invert = bg.zoomInvert || false;
+      const direction = invert ? -1 : 1;
+
+      let targetZoom = 1.0;
+
+      if (style === 'smooth') {
+        // Smooth cinematic zoom that expands fluidly with harmonic rhythm
+        targetZoom = 1.0 + direction * (signal * maxIntensity * 1.25);
+      } else if (style === 'shake') {
+        // High-energy EDM shake & punchy zoom
+        targetZoom = 1.0 + direction * (signal * maxIntensity * 1.4);
+        if (signal > 0.25) {
+          const shakeFactor = (signal - 0.25) * maxIntensity * 35 * speedMultiplier;
+          this.bgShakeX = (Math.random() - 0.5) * shakeFactor;
+          this.bgShakeY = (Math.random() - 0.5) * shakeFactor;
+        } else {
+          this.bgShakeX *= 0.65;
+          this.bgShakeY *= 0.65;
+        }
+        offsetX = this.bgShakeX;
+        offsetY = this.bgShakeY;
+      } else if (style === 'breathe') {
+        // Ambient organic breathing cycle modulated by low frequencies
+        const breatheWave = (Math.sin(now * 0.0018 * speedMultiplier) * 0.5 + 0.5) * 0.45;
+        targetZoom = 1.0 + direction * ((breatheWave + signal * 0.55) * maxIntensity);
+      } else {
+        // Default 'pulse': punchy beat bounce
+        targetZoom = 1.0 + direction * (signal * maxIntensity * 1.5);
+      }
+
+      // Smooth attack & decay lerp parameterized by speedMultiplier (Slow: 0.4x -> Fast/Instant: 3.0x)
+      const attackLerp = Math.min(1.0, dt * 24 * speedMultiplier);
+      const decayLerp = Math.min(1.0, dt * 9 * speedMultiplier);
+
+      if (targetZoom > this.currentBgZoom) {
+        this.currentBgZoom += (targetZoom - this.currentBgZoom) * attackLerp;
+      } else {
+        this.currentBgZoom += (targetZoom - this.currentBgZoom) * decayLerp;
+      }
+
+      zoom = Math.max(0.85, Math.min(1.35, this.currentBgZoom));
+    } else {
+      this.currentBgZoom = 1.0;
+      this.lastBgZoomTime = 0;
+      this.bgShakeX = 0;
+      this.bgShakeY = 0;
+      zoom = 1.0;
+    }
+
+    const centerX = width / 2 + offsetX;
+    const centerY = height / 2 + offsetY;
 
     ctx.translate(centerX, centerY);
     ctx.scale(zoom, zoom);
@@ -370,6 +470,127 @@ export class VisualizerRenderer {
       vGrad.addColorStop(1, `rgba(0, 0, 0, ${bg.vignette / 100})`);
       ctx.fillStyle = vGrad;
       ctx.fillRect(0, 0, width, height);
+    }
+
+    // Glitch Effect in Background
+    if (bg.glitchEffect) {
+      this.applyBackgroundGlitch(ctx, width, height, bg, bassIntensity, beatIntensity, isPlaying);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Background Glitch & Chromatic Aberration Renderer
+   */
+  private applyBackgroundGlitch(
+    ctx: CanvasContext2D,
+    width: number,
+    height: number,
+    bg: BackgroundConfig,
+    bassIntensity: number,
+    beatIntensity: number,
+    isPlaying: boolean
+  ) {
+    if (!bg.glitchEffect) return;
+
+    const trigger = bg.glitchTrigger || 'bass';
+    let shouldGlitch = false;
+    let basePower = bg.glitchIntensity !== undefined ? bg.glitchIntensity : 0.45;
+
+    if (trigger === 'continuous') {
+      shouldGlitch = true;
+    } else if (trigger === 'bass') {
+      if (isPlaying && bassIntensity > 0.22) {
+        shouldGlitch = true;
+        basePower *= (0.7 + bassIntensity * 1.6);
+      } else if (!isPlaying) {
+        shouldGlitch = true;
+        basePower *= 0.35;
+      }
+    } else if (trigger === 'beat') {
+      if (isPlaying && beatIntensity > 0.2) {
+        shouldGlitch = true;
+        basePower *= (0.7 + beatIntensity * 1.6);
+      } else if (!isPlaying) {
+        shouldGlitch = true;
+        basePower *= 0.35;
+      }
+    } else if (trigger === 'random') {
+      if (Math.random() < (isPlaying ? 0.35 : 0.15)) {
+        shouldGlitch = true;
+        basePower *= (0.8 + Math.random() * 0.8);
+      }
+    }
+
+    if (!shouldGlitch || basePower <= 0.01) return;
+
+    ctx.save();
+    const style = bg.glitchStyle || 'rgb-shift';
+    const colorSplit = bg.glitchColorSplit !== false;
+    const numSlices = Math.min(18, Math.floor(4 + basePower * 14));
+
+    // 1. Horizontal Slices Displacement
+    for (let i = 0; i < numSlices; i++) {
+      const sliceY = Math.random() * height;
+      const sliceH = Math.min(height - sliceY, Math.random() * (16 + basePower * 50) + 4);
+      const maxShift = 12 + basePower * 60;
+      const shiftX = (Math.random() - 0.5) * maxShift;
+
+      try {
+        ctx.drawImage(
+          ctx.canvas,
+          0, sliceY, width, sliceH,
+          shiftX, sliceY, width, sliceH
+        );
+      } catch {
+        // Fallback for canvas tainted edge cases
+      }
+
+      // 2. RGB Chromatic Aberration Split (Cyan & Red tints)
+      if (colorSplit && Math.random() < 0.8) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        
+        // Red channel offset
+        ctx.fillStyle = `rgba(255, 30, 80, ${Math.min(0.35, 0.12 * basePower)})`;
+        ctx.fillRect(shiftX - 5 * basePower, sliceY, width, sliceH);
+
+        // Cyan / Blue channel offset
+        ctx.fillStyle = `rgba(0, 235, 255, ${Math.min(0.35, 0.12 * basePower)})`;
+        ctx.fillRect(shiftX + 5 * basePower, sliceY, width, sliceH);
+        ctx.restore();
+      }
+    }
+
+    // 3. Style-specific artifact overlays
+    if (style === 'vhs-tape') {
+      const vhsBars = Math.floor(2 + basePower * 5);
+      for (let b = 0; b < vhsBars; b++) {
+        const barY = Math.random() * height;
+        const barH = Math.random() * 10 + 2;
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.4, 0.08 + Math.random() * 0.22 * basePower)})`;
+        ctx.fillRect(0, barY, width, barH);
+      }
+    } else if (style === 'cyber-digital') {
+      const blockCount = Math.floor(3 + basePower * 8);
+      for (let k = 0; k < blockCount; k++) {
+        const bx = Math.random() * width;
+        const by = Math.random() * height;
+        const bw = Math.random() * (width * 0.15) + 15;
+        const bh = Math.random() * 20 + 4;
+        ctx.fillStyle = Math.random() > 0.5 
+          ? `rgba(6, 182, 212, ${0.25 * basePower})` 
+          : `rgba(244, 63, 94, ${0.25 * basePower})`;
+        ctx.fillRect(bx, by, bw, bh);
+      }
+    } else if (style === 'slice-displacement') {
+      // Extra high-contrast tearing lines
+      for (let s = 0; s < 4; s++) {
+        const lineY = Math.random() * height;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.fillRect(0, lineY, width, 1.5);
+      }
     }
 
     ctx.restore();
@@ -659,19 +880,148 @@ export class VisualizerRenderer {
 
         ctx.restore();
       } else {
-        ctx.beginPath();
-        const radius = Math.max(1, p.size * (1 + beatKick * 0.5));
-        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = config.color || 'rgba(255,255,255,0.6)';
-        ctx.globalAlpha = Math.min(1, Math.max(0.1, p.alpha + (config.reactiveToBeat ? beatKick * 0.3 : 0)));
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = config.color;
-        ctx.fill();
+        // --- 4. CUSTOM SHAPED PARTICLES (Circle, Square, Star, Heart, Diamond, Ring) ---
+        ctx.save();
+        ctx.translate(p.x, p.y);
+
+        const sizeScale = config.sizeScale !== undefined ? config.sizeScale : 1.0;
+        const radius = Math.max(1.5, p.size * sizeScale * (1 + (config.reactiveToBeat ? beatKick * 0.45 : 0)));
+        const shape: ParticleShape = config.shape || (config.type === 'stars' ? 'star' : 'circle');
+        const colorMode = config.colorMode || 'custom';
+
+        // Compute particle dynamic color based on colorMode and bass intensity
+        let particleColor = config.color || '#ffffff';
+        const isBassFlash = config.bassReactiveColor && beatKick > 0.15;
+        const flashBoost = config.bassFlashBoost || 1.5;
+
+        if (colorMode === 'rainbow') {
+          const shiftHue = (p.hue + (config.bassReactiveColor ? bassIntensity * 240 : 0)) % 360;
+          const lightness = isBassFlash ? Math.min(95, 70 + beatKick * 20) : 70;
+          particleColor = `hsl(${shiftHue}, 100%, ${lightness}%)`;
+        } else if (colorMode === 'fire') {
+          const fireHue = Math.max(8, Math.min(55, 15 + (p.hue % 35) + (isBassFlash ? 15 : 0)));
+          const lightness = isBassFlash ? Math.min(98, 65 + beatKick * 30) : 55;
+          particleColor = `hsl(${fireHue}, 100%, ${lightness}%)`;
+        } else if (colorMode === 'neon-pulse') {
+          const isMagenta = (Math.sin(Date.now() * 0.003 + p.x * 0.01) + (isBassFlash ? 0.8 : 0)) > 0;
+          particleColor = isMagenta ? (isBassFlash ? '#f472b6' : '#ec4899') : (isBassFlash ? '#67e8f9' : '#06b6d4');
+        } else if (colorMode === 'audio-reactive') {
+          const reactiveHue = Math.floor((bassIntensity * 180 + trebleIntensity * 140 + p.hue) % 360);
+          const lightness = isBassFlash ? Math.min(95, 65 + beatKick * 25) : 60;
+          particleColor = `hsl(${reactiveHue}, 95%, ${lightness}%)`;
+        } else {
+          // Custom color
+          if (isBassFlash && config.secondaryColor) {
+            particleColor = config.secondaryColor;
+          } else {
+            particleColor = config.color || '#ffffff';
+          }
+        }
+
+        // Particle alpha calculation
+        const baseAlpha = p.alpha || p.baseAlpha || 0.6;
+        const dynamicAlpha = Math.min(
+          1.0,
+          Math.max(
+            0.15,
+            baseAlpha + (config.bassReactiveColor ? beatKick * flashBoost * 0.45 : (config.reactiveToBeat ? beatKick * 0.3 : 0))
+          )
+        );
+
+        ctx.globalAlpha = dynamicAlpha;
+
+        // Glow effect
+        const baseGlow = config.glowIntensity !== undefined ? config.glowIntensity : 10;
+        const glowBlur = baseGlow + (isBassFlash ? beatKick * flashBoost * 20 : 0);
+        if (glowBlur > 0) {
+          ctx.shadowBlur = glowBlur;
+          ctx.shadowColor = particleColor;
+        }
+
+        // Draw the exact geometric shape
+        this.drawParticleShape(ctx, radius, shape, particleColor);
+
         ctx.shadowBlur = 0;
+        ctx.restore();
       }
     }
 
     ctx.restore();
+  }
+
+  /**
+   * Helper to draw geometric particle shapes (Circle, Square, Star, Heart, Diamond, Ring)
+   */
+  private drawParticleShape(ctx: CanvasContext2D, radius: number, shape: ParticleShape, color: string) {
+    ctx.beginPath();
+    switch (shape) {
+      case 'square':
+        ctx.rect(-radius, -radius, radius * 2, radius * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        break;
+
+      case 'star': {
+        const spikes = 5;
+        const outerRadius = radius * 1.35;
+        const innerRadius = radius * 0.55;
+        let rot = (Math.PI / 2) * 3;
+        const step = Math.PI / spikes;
+        ctx.moveTo(0, -outerRadius);
+        for (let i = 0; i < spikes; i++) {
+          let x = Math.cos(rot) * outerRadius;
+          let y = Math.sin(rot) * outerRadius;
+          ctx.lineTo(x, y);
+          rot += step;
+          x = Math.cos(rot) * innerRadius;
+          y = Math.sin(rot) * innerRadius;
+          ctx.lineTo(x, y);
+          rot += step;
+        }
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        break;
+      }
+
+      case 'heart': {
+        const r = radius * 1.1;
+        ctx.moveTo(0, r * 0.65);
+        ctx.bezierCurveTo(-r * 1.25, -r * 0.25, -r * 1.25, -r * 1.1, 0, -r * 0.35);
+        ctx.bezierCurveTo(r * 1.25, -r * 1.1, r * 1.25, -r * 0.25, 0, r * 0.65);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        break;
+      }
+
+      case 'diamond': {
+        const r = radius * 1.25;
+        ctx.moveTo(0, -r);
+        ctx.lineTo(r * 0.85, 0);
+        ctx.lineTo(0, r);
+        ctx.lineTo(-r * 0.85, 0);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        break;
+      }
+
+      case 'ring': {
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(1.5, radius * 0.35);
+        ctx.stroke();
+        break;
+      }
+
+      case 'circle':
+      default:
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        break;
+    }
   }
 
   /**
@@ -1066,6 +1416,67 @@ export class VisualizerRenderer {
   }
 
   /**
+   * Multi-Pass Bloom and Aura Line Renderer for Waveform Strokes
+   */
+  private strokeBloomPath(
+    ctx: CanvasContext2D,
+    pathFn: () => void,
+    strokeStyle: string | CanvasGradient,
+    glowTint: string,
+    baseWidth: number,
+    effectiveGlow: number,
+    isBloomEnabled: boolean,
+    bloomScale: number
+  ) {
+    if (!isBloomEnabled || effectiveGlow <= 2) {
+      ctx.save();
+      ctx.shadowBlur = effectiveGlow;
+      ctx.shadowColor = glowTint;
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = baseWidth;
+      pathFn();
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    // 1. Broad Ambient Bloom Aura Pass
+    ctx.save();
+    ctx.shadowBlur = effectiveGlow * 2.2;
+    ctx.shadowColor = glowTint;
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = baseWidth * (2.2 + bloomScale * 0.8);
+    ctx.globalAlpha = Math.min(0.55, 0.2 + bloomScale * 0.2);
+    pathFn();
+    ctx.stroke();
+    ctx.restore();
+
+    // 2. Focused Neon Corona Pass
+    ctx.save();
+    ctx.shadowBlur = effectiveGlow * 0.9;
+    ctx.shadowColor = glowTint;
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = baseWidth * (1.1 + bloomScale * 0.2);
+    ctx.globalAlpha = 0.95;
+    pathFn();
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. White-Hot Intense Core Highlight Pass
+    if (effectiveGlow > 8) {
+      ctx.save();
+      ctx.shadowBlur = Math.min(10, effectiveGlow * 0.4);
+      ctx.shadowColor = '#ffffff';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1, baseWidth * 0.42);
+      ctx.globalAlpha = Math.min(0.85, 0.4 + bloomScale * 0.35);
+      pathFn();
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /**
    * Audio Visualizer Renderer
    */
   private renderVisualizer(
@@ -1122,8 +1533,15 @@ export class VisualizerRenderer {
       ? Math.max(beatIntensity, bpmPulse * 0.9) 
       : beatIntensity;
 
-    ctx.shadowBlur = v.glowIntensity + (v.dynamicBeatPulse ? dynamicPulse * 14 : 0);
-    ctx.shadowColor = v.primaryColor;
+    const baseGlow = v.glowIntensity !== undefined ? v.glowIntensity : 20;
+    const isBloomEnabled = v.bloomEffect !== false;
+    const bloomScale = isBloomEnabled ? (v.bloomIntensity !== undefined ? v.bloomIntensity / 50 : 1.3) : 0;
+    const pulseBoost = v.dynamicBeatPulse ? dynamicPulse * 16 : 0;
+    const effectiveGlow = Math.max(0, baseGlow * (0.5 + bloomScale * 0.6) + pulseBoost);
+    const glowTint = v.glowColor || v.primaryColor;
+
+    ctx.shadowBlur = effectiveGlow;
+    ctx.shadowColor = glowTint;
 
     const dataLength = freqData.length || 128;
     const barCount = Math.min(v.barCount, 96);
@@ -1232,10 +1650,6 @@ export class VisualizerRenderer {
         const startX = centerX - totalW / 2;
         const step = totalW / (points - 1);
 
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(startX, posY);
-
         const curvePoints: { x: number; y: number }[] = [];
 
         for (let i = 0; i < points; i++) {
@@ -1248,7 +1662,10 @@ export class VisualizerRenderer {
           curvePoints.push({ x, y });
         }
 
-        // Draw Spline
+        // Fill with gradient area
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(startX, posY);
         for (let i = 0; i < curvePoints.length - 1; i++) {
           const xc = (curvePoints[i].x + curvePoints[i + 1].x) / 2;
           const yc = (curvePoints[i].y + curvePoints[i + 1].y) / 2;
@@ -1257,40 +1674,49 @@ export class VisualizerRenderer {
         ctx.lineTo(startX + totalW, posY);
         ctx.closePath();
 
-        // Fill with gradient
         const fillGrad = ctx.createLinearGradient(0, posY - 140 * amp, 0, posY);
         fillGrad.addColorStop(0, v.primaryColor);
         fillGrad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = fillGrad;
-        ctx.globalAlpha = 0.65;
+        ctx.globalAlpha = 0.55;
         ctx.fill();
-        ctx.globalAlpha = 1.0;
+        ctx.restore();
 
-        // Glowing stroke line on top
-        ctx.beginPath();
-        ctx.moveTo(curvePoints[0].x, curvePoints[0].y);
-        for (let i = 0; i < curvePoints.length - 1; i++) {
-          const xc = (curvePoints[i].x + curvePoints[i + 1].x) / 2;
-          const yc = (curvePoints[i].y + curvePoints[i + 1].y) / 2;
-          ctx.quadraticCurveTo(curvePoints[i].x, curvePoints[i].y, xc, yc);
-        }
-        ctx.strokeStyle = strokeOrFillStyle;
-        ctx.lineWidth = v.lineThickness + 1.5;
-        ctx.stroke();
+        // Glowing Multi-Pass Bloom Line on top
+        const drawSpline = () => {
+          ctx.beginPath();
+          ctx.moveTo(curvePoints[0].x, curvePoints[0].y);
+          for (let i = 0; i < curvePoints.length - 1; i++) {
+            const xc = (curvePoints[i].x + curvePoints[i + 1].x) / 2;
+            const yc = (curvePoints[i].y + curvePoints[i + 1].y) / 2;
+            ctx.quadraticCurveTo(curvePoints[i].x, curvePoints[i].y, xc, yc);
+          }
+        };
+
+        this.strokeBloomPath(
+          ctx,
+          drawSpline,
+          strokeOrFillStyle,
+          glowTint,
+          v.lineThickness + 1.5,
+          effectiveGlow,
+          isBloomEnabled,
+          bloomScale
+        );
 
         // Glowing Peak Dots along curve
         for (let i = 0; i < curvePoints.length; i += 3) {
           if (posY - curvePoints[i].y > 10) {
+            ctx.save();
             ctx.beginPath();
-            ctx.arc(curvePoints[i].x, curvePoints[i].y, 3, 0, Math.PI * 2);
+            ctx.arc(curvePoints[i].x, curvePoints[i].y, 3.2, 0, Math.PI * 2);
             ctx.fillStyle = v.secondaryColor || '#ffffff';
-            ctx.shadowBlur = 12;
+            ctx.shadowBlur = effectiveGlow * 0.8 + 8;
             ctx.shadowColor = v.secondaryColor || v.primaryColor;
             ctx.fill();
+            ctx.restore();
           }
         }
-
-        ctx.restore();
         break;
       }
 
@@ -1417,29 +1843,38 @@ export class VisualizerRenderer {
         const totalPoints = 120;
         const angleStep = (Math.PI * 2) / totalPoints;
 
-        ctx.strokeStyle = strokeOrFillStyle;
-        ctx.lineWidth = v.lineThickness + 1;
-        ctx.beginPath();
+        const drawRing = () => {
+          ctx.beginPath();
+          for (let i = 0; i <= totalPoints; i++) {
+            const idx = i % totalPoints;
+            const mirrorIdx = idx < totalPoints / 2 ? idx : totalPoints - idx;
+            const dataIndex = Math.min(dataLength - 1, Math.floor((mirrorIdx / (totalPoints / 2)) * (dataLength * 0.65)));
+            const rawVal = freqData[dataIndex] || 0;
+            const waveR = radius + (rawVal / 255) * 60 * amp;
 
-        for (let i = 0; i <= totalPoints; i++) {
-          const idx = i % totalPoints;
-          const mirrorIdx = idx < totalPoints / 2 ? idx : totalPoints - idx;
-          const dataIndex = Math.min(dataLength - 1, Math.floor((mirrorIdx / (totalPoints / 2)) * (dataLength * 0.65)));
-          const rawVal = freqData[dataIndex] || 0;
-          const waveR = radius + (rawVal / 255) * 60 * amp;
+            const angle = idx * angleStep;
+            const x = centerX + Math.cos(angle) * waveR;
+            const y = posY + Math.sin(angle) * waveR;
 
-          const angle = idx * angleStep;
-          const x = centerX + Math.cos(angle) * waveR;
-          const y = posY + Math.sin(angle) * waveR;
-
-          if (i === 0) {
-            ctx.moveTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
           }
-        }
-        ctx.closePath();
-        ctx.stroke();
+          ctx.closePath();
+        };
+
+        this.strokeBloomPath(
+          ctx,
+          drawRing,
+          strokeOrFillStyle,
+          glowTint,
+          v.lineThickness + 1.2,
+          effectiveGlow,
+          isBloomEnabled,
+          bloomScale
+        );
         break;
       }
 
@@ -1535,24 +1970,32 @@ export class VisualizerRenderer {
         const points = 80;
         const step = width / (points - 1);
 
-        ctx.lineWidth = v.lineThickness + 1;
-        ctx.strokeStyle = strokeOrFillStyle;
-
         for (let r = 0; r < 2; r++) {
-          ctx.beginPath();
           const phase = r * Math.PI;
+          const drawRibbon = () => {
+            ctx.beginPath();
+            for (let i = 0; i < points; i++) {
+              const mirrorDist = 1 - Math.abs(i - points / 2) / (points / 2);
+              const dataIdx = Math.min(dataLength - 1, Math.floor(mirrorDist * (dataLength * 0.7)));
+              const rawVal = freqData[dataIdx] || 0;
+              const waveY = posY + Math.sin(currentTime * 4 + i * 0.15 + phase) * ((rawVal / 255) * 90 * amp + 15);
+              const x = i * step;
 
-          for (let i = 0; i < points; i++) {
-            const mirrorDist = 1 - Math.abs(i - points / 2) / (points / 2);
-            const dataIdx = Math.min(dataLength - 1, Math.floor(mirrorDist * (dataLength * 0.7)));
-            const rawVal = freqData[dataIdx] || 0;
-            const waveY = posY + Math.sin(currentTime * 4 + i * 0.15 + phase) * ((rawVal / 255) * 90 * amp + 15);
-            const x = i * step;
+              if (i === 0) ctx.moveTo(x, waveY);
+              else ctx.lineTo(x, waveY);
+            }
+          };
 
-            if (i === 0) ctx.moveTo(x, waveY);
-            else ctx.lineTo(x, waveY);
-          }
-          ctx.stroke();
+          this.strokeBloomPath(
+            ctx,
+            drawRibbon,
+            strokeOrFillStyle,
+            glowTint,
+            v.lineThickness + 1,
+            effectiveGlow,
+            isBloomEnabled,
+            bloomScale
+          );
         }
         break;
       }
@@ -1684,23 +2127,32 @@ export class VisualizerRenderer {
         // Draw 2 continuous ribbon strands
         for (let strand = 0; strand < 2; strand++) {
           const phaseOffset = strand * Math.PI;
-          ctx.beginPath();
-          ctx.lineWidth = (v.lineThickness || 3) + 1;
-          ctx.strokeStyle = strokeOrFillStyle;
+          const drawStrand = () => {
+            ctx.beginPath();
+            for (let i = 0; i < points; i++) {
+              const dataIdx = Math.min(dataLength - 1, Math.floor((i / points) * (dataLength * 0.7)));
+              const rawVal = freqData[dataIdx] || 0;
+              const strandAmp = baseAmp * (0.4 + (rawVal / 255) * 0.85);
 
-          for (let i = 0; i < points; i++) {
-            const dataIdx = Math.min(dataLength - 1, Math.floor((i / points) * (dataLength * 0.7)));
-            const rawVal = freqData[dataIdx] || 0;
-            const strandAmp = baseAmp * (0.4 + (rawVal / 255) * 0.85);
+              const angle = cycleSpeed + (i / points) * Math.PI * 4 + phaseOffset;
+              const x = startX + i * step;
+              const y = posY + Math.sin(angle) * strandAmp;
 
-            const angle = cycleSpeed + (i / points) * Math.PI * 4 + phaseOffset;
-            const x = startX + i * step;
-            const y = posY + Math.sin(angle) * strandAmp;
+              if (i === 0) ctx.moveTo(x, y);
+              else ctx.lineTo(x, y);
+            }
+          };
 
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          }
-          ctx.stroke();
+          this.strokeBloomPath(
+            ctx,
+            drawStrand,
+            strokeOrFillStyle,
+            glowTint,
+            (v.lineThickness || 3) + 1,
+            effectiveGlow,
+            isBloomEnabled,
+            bloomScale
+          );
         }
         break;
       }

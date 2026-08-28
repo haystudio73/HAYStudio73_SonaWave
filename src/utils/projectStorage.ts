@@ -118,6 +118,19 @@ export function deleteProject(id: string): boolean {
 }
 
 /**
+ * Clear all saved projects from localStorage
+ */
+export function clearAllProjects(): boolean {
+  try {
+    localStorage.removeItem(STORAGE_KEY_PROJECTS);
+    return true;
+  } catch (err) {
+    console.error('Failed to clear all projects:', err);
+    return false;
+  }
+}
+
+/**
  * Get a specific saved project
  */
 export function getProject(id: string): SavedProject | null {

@@ -485,20 +485,96 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           />
         </div>
 
-        {/* Glow Intensity */}
-        <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-neutral-400">Độ phát sáng Neon (Glow)</span>
-            <span className="text-rose-400 font-mono">{config.glowIntensity}px</span>
+        {/* 4. Glow & Multi-Pass Bloom Effects */}
+        <div className="p-3 bg-neutral-900/90 rounded-2xl border border-neutral-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-rose-400" />
+              <span className="text-xs font-bold text-neutral-200 uppercase tracking-wide">
+                Hiệu Ứng Phát Sáng & Bloom Neon
+              </span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={config.bloomEffect !== false}
+                onChange={(e) => update({ bloomEffect: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600"></div>
+            </label>
           </div>
-          <input
-            type="range"
-            min={0}
-            max={35}
-            value={config.glowIntensity}
-            onChange={(e) => update({ glowIntensity: parseInt(e.target.value) })}
-            className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
-          />
+
+          {/* Quick Glow Presets */}
+          <div className="grid grid-cols-4 gap-1.5 pt-1">
+            {[
+              { name: 'Tắt', glow: 0, bloom: 0, active: config.glowIntensity === 0 && config.bloomEffect === false },
+              { name: 'Nhẹ êm', glow: 12, bloom: 35, active: config.glowIntensity === 12 && config.bloomIntensity === 35 },
+              { name: 'Neon Sáng', glow: 24, bloom: 70, active: config.glowIntensity === 24 && config.bloomIntensity === 70 },
+              { name: 'Cyberpunk', glow: 40, bloom: 100, active: config.glowIntensity === 40 && config.bloomIntensity === 100 },
+            ].map((p, idx) => (
+              <button
+                key={idx}
+                onClick={() => update({ glowIntensity: p.glow, bloomIntensity: p.bloom, bloomEffect: p.glow > 0 })}
+                className={`py-1 px-1 rounded-lg text-[10px] font-medium border transition-all cursor-pointer truncate ${
+                  p.active
+                    ? 'bg-rose-500/20 border-rose-500 text-rose-300 font-semibold'
+                    : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
+                }`}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Glow Intensity Slider */}
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-neutral-400">Độ phát quang viền (Glow Blur)</span>
+              <span className="text-rose-400 font-mono">{config.glowIntensity}px</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={50}
+              value={config.glowIntensity}
+              onChange={(e) => update({ glowIntensity: parseInt(e.target.value) })}
+              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+            />
+          </div>
+
+          {/* Bloom Aura Intensity Slider */}
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-neutral-400">Độ bung tỏa ánh hào quang (Bloom Aura)</span>
+              <span className="text-rose-400 font-mono">{config.bloomIntensity !== undefined ? config.bloomIntensity : 65}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={config.bloomIntensity !== undefined ? config.bloomIntensity : 65}
+              onChange={(e) => update({ bloomIntensity: parseInt(e.target.value) })}
+              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+            />
+          </div>
+
+          {/* Line Thickness for Waveforms */}
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-neutral-400">Độ dày nét vẽ sóng âm (Line Thickness)</span>
+              <span className="text-rose-400 font-mono">{config.lineThickness || 3}px</span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={8}
+              step={0.5}
+              value={config.lineThickness || 3}
+              onChange={(e) => update({ lineThickness: parseFloat(e.target.value) })}
+              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+            />
+          </div>
         </div>
 
         {/* Bar Count & Width */}

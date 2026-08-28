@@ -35,7 +35,10 @@ export interface VisualizerConfig {
   barWidth: number;
   barGap: number;
   barRoundness: number;
-  glowIntensity: number; // 0 to 40
+  glowIntensity: number; // 0 to 50
+  bloomEffect?: boolean;  // Multi-pass neon bloom / aura effect for waveform lines & bars
+  bloomIntensity?: number; // 0 to 100 (%)
+  glowColor?: string;     // Custom glow / bloom tint or auto
   amplitude: number;     // 0.2 to 3.0
   smoothing: number;     // 0.5 to 0.95
   mirror: boolean;
@@ -86,6 +89,12 @@ export interface LyricsConfig {
 
 export type BackgroundType = 'preset' | 'upload' | 'video' | 'gradient' | 'solid';
 
+export type BackgroundZoomTrigger = 'bass' | 'beat' | 'hybrid';
+export type BackgroundZoomStyle = 'pulse' | 'smooth' | 'shake' | 'breathe';
+
+export type BackgroundGlitchTrigger = 'beat' | 'bass' | 'continuous' | 'random';
+export type BackgroundGlitchStyle = 'rgb-shift' | 'slice-displacement' | 'vhs-tape' | 'cyber-digital';
+
 export interface BackgroundConfig {
   type: BackgroundType;
   url: string;
@@ -98,7 +107,17 @@ export interface BackgroundConfig {
   brightness: number;   // 0 to 200% (default 85%)
   contrast: number;     // 50 to 150%
   vignette: number;     // 0 to 100%
-  beatZoom: boolean;    // Zooms in slightly on bass kick
+  beatZoom: boolean;    // Zooms in slightly on bass kick / music beat
+  zoomTrigger?: BackgroundZoomTrigger; // 'bass' | 'beat' | 'hybrid'
+  zoomIntensity?: number; // 0.01 to 0.15 (1% to 15% zoom, default 0.05)
+  zoomSpeed?: number;     // 0.4 to 3.0 (Slow 0.4x to Fast/Instant 3.0x, default 1.0)
+  zoomStyle?: BackgroundZoomStyle; // 'pulse' | 'smooth' | 'shake' | 'breathe'
+  zoomInvert?: boolean;   // Zoom Out instead of Zoom In on beat
+  glitchEffect?: boolean; // Hiệu ứng nhiễu sóng giật hình Glitch
+  glitchIntensity?: number; // 0.1 to 1.0 (default 0.4)
+  glitchTrigger?: BackgroundGlitchTrigger; // 'bass' | 'beat' | 'continuous' | 'random'
+  glitchStyle?: BackgroundGlitchStyle; // 'rgb-shift' | 'slice-displacement' | 'vhs-tape' | 'cyber-digital'
+  glitchColorSplit?: boolean; // Tách sắc sai RGB Chromatic Aberration
   filmGrain: boolean;
 }
 
@@ -113,13 +132,23 @@ export type ParticleType =
   | 'audio-rings' 
   | 'sound-sparks';
 
+export type ParticleShape = 'circle' | 'square' | 'star' | 'heart' | 'diamond' | 'ring';
+export type ParticleColorMode = 'custom' | 'rainbow' | 'fire' | 'neon-pulse' | 'audio-reactive';
+
 export interface ParticleConfig {
   enabled: boolean;
   type: ParticleType;
   count: number;
   speed: number;
   color: string;
+  secondaryColor?: string;
+  shape?: ParticleShape;
+  colorMode?: ParticleColorMode;
+  glowIntensity?: number; // 0 to 30
+  sizeScale?: number;     // 0.5 to 3.0
   reactiveToBeat: boolean;
+  bassReactiveColor?: boolean; // Dynamically link particle color to bass intensity & flash brighter on beat drops
+  bassFlashBoost?: number;    // 0.5 to 2.5 multiplier
 }
 
 export type CardStyle = 'vinyl' | 'glass-card' | 'circular-badge' | 'minimal-tag' | 'hidden';
@@ -149,6 +178,13 @@ export interface TrackMetadata {
   boxOpacity: number;
 }
 
+export type TextBoxLayerOrder = 
+  | 'back-all'            // Behind everything (right above background)
+  | 'behind-track'        // Behind Track Card / Album Vinyl
+  | 'behind-visualizer'   // Behind Visualizer Wave Synth
+  | 'behind-lyrics'       // Behind Lyrics text
+  | 'front-all';          // In front of everything (topmost)
+
 export interface TextBoxItem {
   id: string;
   text: string;
@@ -171,6 +207,7 @@ export interface TextBoxItem {
   wrapText?: boolean;     // Enable auto-wrapping long lines
   maxWidth?: number;      // Max width in % of stage (20 to 95, default 80)
   lineHeight?: number;    // Line height multiplier (1.1 to 2.0, default 1.35)
+  layerOrder?: TextBoxLayerOrder; // Order layer: back/front of Wave, Lyrics, Title, etc.
 }
 
 export interface ExportSettings {

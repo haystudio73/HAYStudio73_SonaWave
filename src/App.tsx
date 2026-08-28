@@ -845,62 +845,67 @@ export function App() {
           <div className="flex items-center border-b border-neutral-800/90 bg-neutral-900/50 p-1.5 gap-1 shrink-0 overflow-x-auto custom-scrollbar">
             <button
               onClick={() => setActiveTab('visualizer')}
+              title="Hiệu ứng Sóng Âm"
               className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'visualizer'
                   ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
                   : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
               }`}
             >
-              <BarChart2 className="w-3.5 h-3.5" />
-              <span>Sóng Âm</span>
+              <BarChart2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">Sóng Âm</span>
             </button>
 
             <button
               onClick={() => setActiveTab('lyrics')}
+              title="Lời Nhạc Karaoke & Hiệu ứng Chữ"
               className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'lyrics'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
                   : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
               }`}
             >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Lời Nhạc</span>
+              <FileText className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">Lời Nhạc</span>
             </button>
 
             <button
               onClick={() => setActiveTab('background')}
+              title="Hình Nền & Hiệu ứng Hạt/Glitch"
               className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'background'
                   ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20'
                   : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
               }`}
             >
-              <ImageIcon className="w-3.5 h-3.5" />
-              <span>Hình Nền</span>
+              <ImageIcon className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">Hình Nền</span>
             </button>
 
             <button
               onClick={() => setActiveTab('track')}
+              title="Thông tin Bài Hát & Đĩa Than"
               className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'track'
                   ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
                   : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
               }`}
             >
-              <Disc className="w-3.5 h-3.5" />
-              <span>Bài Hát</span>
+              <Disc className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">Bài Hát</span>
             </button>
 
             <button
               onClick={() => setActiveTab('textboxes')}
+              title="Văn Bản & Watermark"
               className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'textboxes'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                   : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
               }`}
             >
-              <Type className="w-3.5 h-3.5" />
-              <span>Văn Bản</span>
+              <Type className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">Văn Bản</span>
             </button>
           </div>
 

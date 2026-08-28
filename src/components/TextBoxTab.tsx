@@ -1,5 +1,5 @@
 import React from 'react';
-import { TextBoxItem } from '../types';
+import { TextBoxItem, TextBoxLayerOrder } from '../types';
 import { AVAILABLE_FONTS } from '../utils/presets';
 import { 
   Plus, 
@@ -15,13 +15,52 @@ import {
   CaseUpper,
   Layers,
   Palette,
-  WrapText
+  WrapText,
+  ArrowUp,
+  ArrowDown,
+  Disc,
+  Activity,
+  Music2,
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface TextBoxTabProps {
   textBoxes: TextBoxItem[];
   onChange: (textBoxes: TextBoxItem[]) => void;
 }
+
+const LAYER_OPTIONS: { id: TextBoxLayerOrder; nameVi: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { 
+    id: 'front-all', 
+    nameVi: 'Trước tất cả (Trên cùng)', 
+    desc: 'Hiển thị trên cùng đè lên sóng âm, đĩa nhạc và lời bài hát',
+    icon: Sparkles 
+  },
+  { 
+    id: 'behind-lyrics', 
+    nameVi: 'Sau Lời bài hát', 
+    desc: 'Hiển thị sau Lời bài hát nhưng trước Sóng âm',
+    icon: Music2 
+  },
+  { 
+    id: 'behind-visualizer', 
+    nameVi: 'Sau Sóng âm (Waveform)', 
+    desc: 'Hiển thị sau Sóng âm thanh nhưng trước Đĩa nhạc',
+    icon: Activity 
+  },
+  { 
+    id: 'behind-track', 
+    nameVi: 'Sau Đĩa nhạc / Thẻ bài hát', 
+    desc: 'Hiển thị sau Đĩa xoay Vinyl & Card tiêu đề',
+    icon: Disc 
+  },
+  { 
+    id: 'back-all', 
+    nameVi: 'Sau cùng (Gần hình nền)', 
+    desc: 'Nằm sát nền phía dưới tất cả các hiệu ứng & hạt',
+    icon: ImageIcon 
+  },
+];
 
 export const TextBoxTab: React.FC<TextBoxTabProps> = ({
   textBoxes,
@@ -56,6 +95,7 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
       wrapText: true,
       maxWidth: 80,
       lineHeight: 1.35,
+      layerOrder: 'front-all',
     };
     const updated = [...textBoxes, newBox];
     onChange(updated);
@@ -84,6 +124,16 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
     const updated = [...textBoxes, newBox];
     onChange(updated);
     setSelectedId(newBox.id);
+  };
+
+  const handleMoveOrder = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= textBoxes.length) return;
+    const items = [...textBoxes];
+    const temp = items[index];
+    items[index] = items[targetIndex];
+    items[targetIndex] = temp;
+    onChange(items);
   };
 
   return (
@@ -131,22 +181,35 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
         </div>
       )}
 
-      {/* Text Box Tabs Selector */}
+      {/* Text Box Tabs Selector with Reordering */}
       {textBoxes.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
-          {textBoxes.map((box, idx) => (
-            <button
-              key={box.id}
-              onClick={() => setSelectedId(box.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
-                activeBox?.id === box.id
-                  ? 'bg-rose-600 text-white shadow-sm'
-                  : 'bg-neutral-900/80 border border-neutral-800 text-neutral-400 hover:text-neutral-200'
-              }`}
-            >
-              <span>Văn bản #{idx + 1}</span>
-            </button>
-          ))}
+          {textBoxes.map((box, idx) => {
+            const isSelected = activeBox?.id === box.id;
+            const currentLayer = LAYER_OPTIONS.find((l) => l.id === (box.layerOrder || 'front-all'));
+            return (
+              <div key={box.id} className="flex items-center gap-0.5 flex-shrink-0">
+                <button
+                  onClick={() => setSelectedId(box.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                    isSelected
+                      ? 'bg-rose-600 text-white shadow-sm'
+                      : 'bg-neutral-900/80 border border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                  }`}
+                >
+                  <span>#{idx + 1}</span>
+                  <span className="max-w-[90px] truncate text-[11px] font-normal opacity-90">
+                    {box.text ? box.text.slice(0, 14) : 'Trống'}
+                  </span>
+                  {currentLayer && (
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-black/30 text-rose-200 border border-white/10">
+                      {currentLayer.nameVi.split(' ')[0]}
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -158,6 +221,27 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs text-neutral-400 font-medium">Nội dung chữ</span>
               <div className="flex items-center gap-1">
+                {/* Reorder Buttons */}
+                {textBoxes.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => handleMoveOrder(textBoxes.findIndex((b) => b.id === activeBox.id), 'up')}
+                      disabled={textBoxes.findIndex((b) => b.id === activeBox.id) === 0}
+                      title="Di chuyển lên trước"
+                      className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleMoveOrder(textBoxes.findIndex((b) => b.id === activeBox.id), 'down')}
+                      disabled={textBoxes.findIndex((b) => b.id === activeBox.id) === textBoxes.length - 1}
+                      title="Di chuyển xuống sau"
+                      className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => handleDuplicateBox(activeBox)}
                   title="Nhân bản hộp chữ này"
@@ -182,6 +266,55 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
               placeholder="Nhập nội dung hiển thị (hỗ trợ nhiều dòng)..."
               className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 resize-y font-medium"
             />
+          </div>
+
+          {/* Layer Order Management (Thứ tự lớp hiển thị đè trước/sau) */}
+          <div className="space-y-2 p-3 rounded-xl bg-neutral-900/70 border border-rose-500/30">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-bold text-neutral-200 uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-rose-400" />
+                Thứ Tự Lớp (Layer Order)
+              </label>
+              <span className="text-[10px] text-rose-400 font-medium">
+                Trước / Sau Sóng âm, Lời, Đĩa nhạc
+              </span>
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              {LAYER_OPTIONS.map((layer) => {
+                const Icon = layer.icon;
+                const currentLayer = activeBox.layerOrder || 'front-all';
+                const isSelected = currentLayer === layer.id;
+                return (
+                  <button
+                    key={layer.id}
+                    onClick={() => handleUpdateBox(activeBox.id, { layerOrder: layer.id })}
+                    className={`w-full p-2 rounded-xl border text-left transition-all flex items-start gap-2.5 cursor-pointer ${
+                      isSelected
+                        ? 'bg-rose-500/20 border-rose-500 text-white shadow-sm ring-1 ring-rose-500/40'
+                        : 'bg-neutral-900/60 border-neutral-800/80 text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${isSelected ? 'text-rose-400' : 'text-neutral-500'}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-semibold block ${isSelected ? 'text-rose-200' : 'text-neutral-300'}`}>
+                          {layer.nameVi}
+                        </span>
+                        {isSelected && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-500 text-white">
+                            Đang chọn
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-neutral-400 block leading-tight mt-0.5">
+                        {layer.desc}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Font Selector */}

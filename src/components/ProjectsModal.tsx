@@ -14,10 +14,12 @@ import {
   getSavedProjects,
   saveProject,
   deleteProject,
+  clearAllProjects,
   exportProjectAsJSON,
   importProjectFromJSON,
   getAutoSave,
   hasAutoSave,
+  clearAutoSave,
 } from '../utils/projectStorage';
 import {
   X,
@@ -30,6 +32,7 @@ import {
   Music,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Smartphone,
   Square,
   Tv,
@@ -71,6 +74,11 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [autoSaveData, setAutoSaveData] = useState<SavedProject | null>(null);
 
+  // In-app confirmation dialog states (no window.confirm which fails in iframes)
+  const [confirmDeleteProject, setConfirmDeleteProject] = useState<{ id: string; name: string } | null>(null);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [confirmResetDefaults, setConfirmResetDefaults] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Reload projects list on open
@@ -81,6 +89,9 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
       setAutoSaveData(getAutoSave());
       setProjectName(currentConfig.track.title || 'Dự án SonaWave mới');
       setNotification(null);
+      setConfirmDeleteProject(null);
+      setConfirmClearAll(false);
+      setConfirmResetDefaults(false);
     }
   }, [isOpen, currentConfig.track.title]);
 
@@ -124,14 +135,34 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
     }, 600);
   };
 
-  // Handle Delete Project
-  const handleDelete = (id: string, name: string) => {
-    if (window.confirm(`Bạn có chắc muốn xóa dự án "${name}" khỏi bộ nhớ trình duyệt?`)) {
-      deleteProject(id);
-      setProjects(getSavedProjects());
+  // Handle Delete Single Project (Confirmed)
+  const executeDeleteProject = (id: string, name: string) => {
+    const success = deleteProject(id);
+    if (success) {
+      const updated = getSavedProjects();
+      setProjects(updated);
       if (selectedProjectId === id) setSelectedProjectId(null);
-      showNotification('success', `Đã xóa dự án "${name}".`);
+      setConfirmDeleteProject(null);
+      showNotification('success', `Đã xóa vĩnh viễn dự án "${name}".`);
+    } else {
+      showNotification('error', `Không thể xóa dự án "${name}".`);
     }
+  };
+
+  // Handle Clear All Projects (Confirmed)
+  const executeClearAll = () => {
+    clearAllProjects();
+    setProjects([]);
+    setSelectedProjectId(null);
+    setConfirmClearAll(false);
+    showNotification('success', 'Đã xóa toàn bộ danh sách dự án lưu trong trình duyệt.');
+  };
+
+  // Handle Clear AutoSave
+  const handleClearAutoSave = () => {
+    clearAutoSave();
+    setAutoSaveData(null);
+    showNotification('success', 'Đã xóa phiên làm việc tự động lưu.');
   };
 
   // Handle Import JSON
@@ -198,6 +229,104 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* In-app Confirmation Dialog Overlay */}
+        {confirmDeleteProject && (
+          <div className="p-3.5 bg-rose-950/80 border border-rose-600/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in shadow-lg shadow-rose-950/50">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+              <div>
+                <span className="text-xs font-bold text-white block">
+                  Xác nhận xóa dự án "{confirmDeleteProject.name}"?
+                </span>
+                <span className="text-[11px] text-rose-300">
+                  Dữ liệu dự án này sẽ bị xóa vĩnh viễn khỏi Local Storage của trình duyệt.
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <button
+                onClick={() => setConfirmDeleteProject(null)}
+                className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-all cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={() => executeDeleteProject(confirmDeleteProject.id, confirmDeleteProject.name)}
+                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all cursor-pointer shadow-md shadow-rose-900/40 active:scale-95 flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Xóa Vĩnh Viễn</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {confirmClearAll && (
+          <div className="p-3.5 bg-rose-950/80 border border-rose-600/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in shadow-lg shadow-rose-950/50">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+              <div>
+                <span className="text-xs font-bold text-white block">
+                  Xóa tất cả {projects.length} dự án đã lưu?
+                </span>
+                <span className="text-[11px] text-rose-300">
+                  Tất cả các bản lưu trong Local Storage sẽ bị dọn dẹp sạch sẽ.
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <button
+                onClick={() => setConfirmClearAll(false)}
+                className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-all cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={executeClearAll}
+                className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all cursor-pointer shadow-md shadow-rose-900/40 active:scale-95 flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Xóa Tất Cả</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {confirmResetDefaults && (
+          <div className="p-3.5 bg-amber-950/70 border border-amber-600/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in shadow-lg shadow-amber-950/40">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+              <div>
+                <span className="text-xs font-bold text-white block">
+                  Đặt lại toàn bộ về dự án mặc định ban đầu?
+                </span>
+                <span className="text-[11px] text-amber-200/80">
+                  Mọi cài đặt chưa lưu sẽ được làm mới về cấu hình gốc của SonaWave.
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <button
+                onClick={() => setConfirmResetDefaults(false)}
+                className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium transition-all cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmResetDefaults(false);
+                  onResetToDefaults();
+                  onClose();
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Đặt Lại Ngay</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Notification Toast */}
         {notification && (
@@ -278,20 +407,29 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
         {/* 2. Auto-save recovery banner if available */}
         {autoSaveData && (
           <div className="flex items-center justify-between bg-purple-950/40 border border-purple-800/60 rounded-xl px-3.5 py-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <Sparkles className="w-4 h-4 text-purple-400 shrink-0 animate-pulse" />
-              <div className="text-xs">
+              <div className="text-xs truncate">
                 <span className="text-purple-200 font-semibold">Phiên làm việc tự động gần nhất: </span>
                 <span className="text-neutral-300">{autoSaveData.track.title}</span>
                 <span className="text-[10px] text-neutral-400 ml-2">({formatDate(autoSaveData.updatedAt)})</span>
               </div>
             </div>
-            <button
-              onClick={() => handleLoad(autoSaveData)}
-              className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold cursor-pointer transition-all"
-            >
-              Khôi phục
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => handleLoad(autoSaveData)}
+                className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold cursor-pointer transition-all"
+              >
+                Khôi phục
+              </button>
+              <button
+                onClick={handleClearAutoSave}
+                title="Xóa phiên tự động lưu này"
+                className="p-1.5 rounded-lg bg-neutral-800 hover:bg-rose-900/60 text-neutral-400 hover:text-rose-300 transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         )}
 
@@ -309,18 +447,27 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
               />
             </div>
 
-            <button
-              onClick={() => {
-                if (window.confirm('Tạo dự án mới sẽ đặt lại mọi tùy chỉnh về mặc định. Tiếp tục?')) {
-                  onResetToDefaults();
-                  onClose();
-                }
-              }}
-              className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Dự án mới (Mặc định)</span>
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {projects.length > 0 && (
+                <button
+                  onClick={() => setConfirmClearAll(true)}
+                  title="Xóa tất cả dự án trong Local Storage"
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-800 hover:bg-rose-950/60 border border-neutral-700/60 hover:border-rose-700/60 text-neutral-400 hover:text-rose-300 text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Xóa tất cả</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => setConfirmResetDefaults(true)}
+                className="px-3 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Dự án mới (Mặc định)</span>
+                <span className="sm:hidden">Mặc định</span>
+              </button>
+            </div>
           </div>
 
           {/* Projects Scrollable List */}
@@ -416,7 +563,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                     </button>
 
                     <button
-                      onClick={() => handleDelete(p.id, p.name)}
+                      onClick={() => setConfirmDeleteProject({ id: p.id, name: p.name })}
                       title="Xóa dự án"
                       className="p-1.5 rounded-xl bg-neutral-800 hover:bg-rose-900/60 text-neutral-400 hover:text-rose-300 transition-all cursor-pointer"
                     >

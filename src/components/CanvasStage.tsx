@@ -226,18 +226,6 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
             className="w-full h-full object-contain block bg-neutral-950"
           />
 
-          {/* Beat Pulse Indicator at top right */}
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 pointer-events-none">
-            <Activity
-              className={`w-3.5 h-3.5 transition-transform duration-75 ${
-                isPlaying && beatIntensity > 0.4 ? 'text-rose-400 scale-125' : 'text-neutral-400'
-              }`}
-            />
-            <span className="text-[10px] font-mono text-neutral-300">
-              {isPlaying ? `${Math.round(beatIntensity * 100)}% BEAT` : 'PAUSED'}
-            </span>
-          </div>
-
           {/* Quick Fullscreen Button in top left corner of canvas */}
           <button
             onClick={toggleFullscreen}
