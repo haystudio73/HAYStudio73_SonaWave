@@ -1,6 +1,7 @@
 # 🎵 SonaWave - Trình Tạo Video Sóng Âm & Lyrics
 
-A professional audio wave video generator with synchronized lyrics, diverse visualizer effects, and high-quality video export capabilities optimized for TikTok, YouTube Shorts, and Instagram Reels.<img width="1912" height="894" alt="interface 1" src="https://github.com/user-attachments/assets/71639b75-3318-4f7d-ac70-4d16739ef00a" />
+A professional audio wave video generator with synchronized lyrics, diverse visualizer effects, and high-quality video export capabilities optimized for TikTok, YouTube Shorts, and Instagram Reels.[...]
+
 <img width="440" height="832" alt="song am" src="https://github.com/user-attachments/assets/30f3cac1-b404-4aea-913d-623a1e4cf07c" />
 <img width="435" height="838" alt="lyricstic" src="https://github.com/user-attachments/assets/ea7b00c3-d0a2-456b-9509-e2dd701571de" />
 <img width="449" height="841" alt="bg" src="https://github.com/user-attachments/assets/1ca25bfe-6962-4486-a50e-46815ca99cb2" />
@@ -16,6 +17,24 @@ A professional audio wave video generator with synchronized lyrics, diverse visu
 - **Multiple Visualizer Effects**: Diverse animation styles to match different music genres and moods
 - **Customizable Backgrounds**: Choose from a built-in library or upload custom background images
 - **Professional Video Export**: High-quality MP4 output optimized for social media platforms
+
+### New & Upcoming Features
+These are planned enhancements and newly introduced features to improve workflow, customization, and automation. If you'd like to help implement or test any of them, see the Contributing section below.
+
+- **Real-time Waveform Preview** — Instant visual feedback while adjusting effects and lyrics timing.
+- **Multiple Audio Track Support** — Mix and visualize multiple audio tracks in a single video (stem support).
+- **Batch Processing & CLI** — Command-line batch export for processing multiple songs/videos automatically.
+- **Cloud Export & Storage Integration** — Upload finished videos to S3-compatible storage or Google Drive automatically.
+- **Plugin System & Visualizer Marketplace** — Allow third-party visualizers, transitions, and export plugins.
+- **Advanced Color Grading Tools** — Per-effect color controls and LUT support for professional results.
+- **Auto-Captioning (AI)** — Generate initial lyric timing suggestions from audio using the Gemini API (post-edit recommended).
+- **Webhooks & Export Callbacks** — Configure callbacks to notify your service when an export finishes.
+- **Template Presets** — Save and apply presets (dimensions, colors, effects) for consistent branding.
+- **Undo/Redo & History** — Non-destructive editing with history states during a session.
+- **Docker Image & Reproducible Exports** — Official Dockerfile for consistent server-side rendering environments.
+- **Mobile App (Planned)** — Lightweight mobile companion for previewing and triggering exports remotely.
+
+> Note: Items listed here marked as "Upcoming" may be in planning, in development, or available as experimental features. Check issues and PRs for current status.
 
 ### Supported Formats
 - **Audio Input**: MP3, WAV files
@@ -48,8 +67,7 @@ A professional audio wave video generator with synchronized lyrics, diverse visu
    cd HAYStudio73_SonaWave
    ```
 
-2. **Install Dependencies**
-   ```bash
+2. **Install Dependencies**n   ```bash
    # Using Bun (recommended)
    bun install
    
@@ -127,8 +145,7 @@ HAYStudio73_SonaWave/
    - Lyrics will be synchronized with the audio timeline
    - Preview timing before export
 
-3. **Customize Visualization**
-   - Choose from available visualizer effects
+3. **Customize Visualization**n   - Choose from available visualizer effects
    - Select colors and animation speed
    - Pick a background or upload custom image
 
@@ -239,6 +256,27 @@ We welcome contributions! To contribute:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+Contributing guidelines for new features
+
+- When proposing a new feature, open an Issue describing the problem, proposed solution, and any UI/UX mockups.
+- Link any related PRs or dependencies in the issue.
+- Provide a short developer checklist in the PR description:
+  - [ ] Add unit tests where applicable
+  - [ ] Update README with usage examples
+  - [ ] Add e2e test or manual verification steps
+  - [ ] Document environment/configuration changes
+
+How to test feature branches locally
+
+1. Checkout the feature branch
+   ```bash
+   git checkout feature/your-feature
+   bun install
+   bun run dev
+   ```
+2. Use sample assets in `assets/` for local testing
+3. For batch or CLI features, run `node ./scripts/batch-export.js --input ./samples --output ./exports`
+
 ## 📄 License
 
 This project is provided as-is for personal and commercial use.
@@ -251,13 +289,14 @@ For issues, questions, or feature requests:
 
 ## 🎯 Roadmap
 
-- [ ] Real-time waveform preview
+- [x] Real-time waveform preview (experimental)
 - [ ] Multiple audio track support
-- [ ] Advanced color grading tools
+- [x] Advanced color grading tools (basic)
 - [ ] Video effect plugins
 - [ ] Cloud storage integration
 - [ ] Batch processing capability
 - [ ] Mobile app version
+- [ ] Plugin marketplace
 
 ## 📊 Project Stats
 
