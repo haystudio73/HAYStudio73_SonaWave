@@ -6,11 +6,15 @@ import {
   Film, 
   CheckCircle2, 
   AlertCircle, 
+  AlertTriangle,
+  ShieldAlert,
   Sliders, 
   Sparkles, 
   RotateCcw,
   RefreshCw,
-  Play 
+  Play,
+  Monitor,
+  Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { formatTime } from '../utils/lyricsParser';
@@ -52,6 +56,27 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [fullSong, setFullSong] = useState(true);
   const [rangeDuration, setRangeDuration] = useState<number>(30); // 15, 30, 60
   const [startTime, setStartTime] = useState<number>(0);
+  const [showWarningConfirm, setShowWarningConfirm] = useState<boolean>(false);
+
+  // Keep screen awake using Screen Wake Lock API during export
+  useEffect(() => {
+    let wakeLockSentinel: any = null;
+    if (isExporting && 'wakeLock' in navigator) {
+      (navigator as any).wakeLock
+        ?.request('screen')
+        .then((lock: any) => {
+          wakeLockSentinel = lock;
+        })
+        .catch(() => {
+          // Wake lock request failed or unsupported - non-fatal
+        });
+    }
+    return () => {
+      if (wakeLockSentinel) {
+        wakeLockSentinel.release().catch(() => {});
+      }
+    };
+  }, [isExporting]);
 
   // Trigger celebratory confetti when export completes
   useEffect(() => {
@@ -83,6 +108,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const handleStart = () => {
+    setShowWarningConfirm(true);
+  };
+
+  const handleConfirmAndRender = () => {
+    setShowWarningConfirm(false);
     const settings = getEffectiveSettings();
     onStartExport(settings);
   };
@@ -132,7 +162,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
           </div>
 
-          {!isExporting && (
+          {!isExporting && !showWarningConfirm && (
             <button
               onClick={onClose}
               className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white transition-all cursor-pointer"
@@ -142,9 +172,71 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           )}
         </div>
 
-        {/* 1. Export in progress State */}
-        {isExporting ? (
-          <div className="py-8 flex flex-col items-center justify-center text-center gap-4">
+        {/* 0. Warning Confirmation Step when clicking "Bắt Đầu Xuất Video HD" */}
+        {showWarningConfirm ? (
+          <div className="py-2 space-y-4 animate-fade-in">
+            {/* Warning Alert Banner */}
+            <div className="p-4 bg-rose-950/70 border-2 border-rose-500/80 rounded-2xl space-y-2.5 shadow-lg shadow-rose-950/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                  <ShieldAlert className="w-5 h-5 text-rose-400 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wide">
+                    Lưu Ý Quan Trọng Khi Đang Xuất Video
+                  </h4>
+                  <span className="text-[11px] text-rose-300 font-medium">
+                    Yêu cầu giữ ứng dụng hoạt động liên tục
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-xs text-neutral-200 leading-relaxed bg-neutral-950/80 p-3 rounded-xl border border-rose-800/40 space-y-1.5">
+                <p className="font-semibold text-rose-300 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>TUYỆT ĐỐI KHÔNG chuyển sang ứng dụng khác hoặc tab khác!</span>
+                </p>
+                <p className="text-neutral-300 text-[11px]">
+                  Trong quá trình ghi hình (render), trình duyệt cần xử lý khung hình thời gian thực trên Canvas. Nếu bạn <strong>chuyển sang ứng dụng khác, khóa màn hình hoặc đổi tab</strong>, trình duyệt sẽ tự động giảm hiệu năng/tạm dừng luồng vẽ, dẫn đến <strong>video bị giật lag, đứt đoạn nhạc hoặc lỗi file thành phẩm</strong>.
+                </p>
+              </div>
+            </div>
+
+            {/* Checklist items */}
+            <div className="space-y-1.5 px-1">
+              <div className="flex items-center gap-2 text-xs text-neutral-300">
+                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>Giữ màn hình thiết bị luôn bật trong suốt thời gian render</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-neutral-300">
+                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>Không thu nhỏ (minimize) hoặc đóng cửa sổ trình duyệt</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-2 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowWarningConfirm(false)}
+                className="flex-1 py-3 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-semibold text-xs transition-all cursor-pointer"
+              >
+                Quay Lại Cài Đặt
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmAndRender}
+                className="flex-2 py-3 px-4 rounded-xl bg-gradient-to-r from-rose-500 via-purple-600 to-cyan-500 hover:opacity-95 text-white font-bold text-xs shadow-xl shadow-rose-500/30 transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Tôi Đã Hiểu • Bắt Đầu Render</span>
+              </button>
+            </div>
+          </div>
+        ) : isExporting ? (
+          /* 1. Export in progress State */
+          <div className="py-6 flex flex-col items-center justify-center text-center gap-4">
             {/* Animated Circular Progress Indicator */}
             <div className="relative w-32 h-32 flex items-center justify-center">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -187,9 +279,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </p>
             </div>
 
+            {/* Prominent in-progress warning banner */}
+            <div className="w-full p-3 bg-rose-950/60 border border-rose-600/70 rounded-2xl flex items-center gap-2.5 text-left">
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 animate-bounce" />
+              <div className="text-[11px] leading-snug">
+                <span className="text-white font-bold block">
+                  Vui lòng KHÔNG chuyển ứng dụng hoặc đổi tab!
+                </span>
+                <span className="text-rose-200/90">
+                  Giữ nguyên màn hình này cho đến khi kết xuất 100% để tránh video bị lỗi.
+                </span>
+              </div>
+            </div>
+
             <button
               onClick={onCancelExport}
-              className="px-4 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-xs text-neutral-300 transition-all mt-2 cursor-pointer"
+              className="px-4 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-xs text-neutral-300 transition-all mt-1 cursor-pointer"
             >
               Hủy kết xuất
             </button>
@@ -391,8 +496,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               )}
             </div>
 
+            {/* Screen retention notice */}
+            <div className="p-2.5 bg-neutral-950 rounded-xl border border-neutral-800 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-neutral-400 leading-tight">
+                <strong>Lưu ý:</strong> Vui lòng giữ màn hình sáng và không chuyển tab / ứng dụng khác trong khi video đang render.
+              </p>
+            </div>
+
             {/* Start Export Button */}
-            <div className="pt-2">
+            <div className="pt-1">
               <button
                 onClick={handleStart}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-rose-500 via-purple-600 to-cyan-500 hover:opacity-95 text-white font-bold text-sm shadow-xl shadow-rose-500/25 transition-all cursor-pointer active:scale-[0.99]"
