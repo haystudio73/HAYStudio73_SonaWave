@@ -1,13 +1,6 @@
 # 🎵 SonaWave - Trình Tạo Video Sóng Âm & Lyrics
 
-A professional audio wave video generator with synchronized lyrics, diverse visualizer effects, and high-quality video export capabilities optimized for TikTok, YouTube Shorts, and Instagram Reels.[...]
-
-<img width="440" height="832" alt="song am" src="https://github.com/user-attachments/assets/30f3cac1-b404-4aea-913d-623a1e4cf07c" />
-<img width="435" height="838" alt="lyricstic" src="https://github.com/user-attachments/assets/ea7b00c3-d0a2-456b-9509-e2dd701571de" />
-<img width="449" height="841" alt="bg" src="https://github.com/user-attachments/assets/1ca25bfe-6962-4486-a50e-46815ca99cb2" />
-<img width="453" height="840" alt="style" src="https://github.com/user-attachments/assets/4e480081-fb2a-4125-9cbf-bf594139fb97" />
-<img width="452" height="848" alt="textbox" src="https://github.com/user-attachments/assets/de7a7a7a-11a1-4078-af09-34e710fa68b3" />
-
+A professional audio wave video generator with synchronized lyrics, diverse visualizer effects, and high-quality video export capabilities optimized for TikTok, YouTube Shorts, and Instagram Reels.
 
 ## ✨ Features
 
