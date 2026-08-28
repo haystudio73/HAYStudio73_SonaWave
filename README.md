@@ -2,6 +2,8 @@
 
 A professional audio wave video generator with synchronized lyrics, diverse visualizer effects, and high-quality video export capabilities optimized for TikTok, YouTube Shorts, and Instagram Reels.
 
+<img width="1920" height="896" alt="app1" src="https://github.com/user-attachments/assets/2c38e420-08e2-424f-8449-f07e194fa47e" />
+
 ## ✨ Features
 
 ### Core Functionality
@@ -10,6 +12,15 @@ A professional audio wave video generator with synchronized lyrics, diverse visu
 - **Multiple Visualizer Effects**: Diverse animation styles to match different music genres and moods
 - **Customizable Backgrounds**: Choose from a built-in library or upload custom background images
 - **Professional Video Export**: High-quality MP4 output optimized for social media platforms
+<img width="457" height="830" alt="tab1" src="https://github.com/user-attachments/assets/ccc6673b-5aaa-4cbb-9fc3-23f1fbeedde3" />
+
+<img width="456" height="834" alt="tab2" src="https://github.com/user-attachments/assets/c8623d2b-30c6-499f-b07f-a817dbc58b3b" />
+
+<img width="458" height="830" alt="tab3" src="https://github.com/user-attachments/assets/d18b9265-99e2-489f-9c4b-8b9edc02d70f" />
+
+<img width="457" height="828" alt="tab4" src="https://github.com/user-attachments/assets/77b1dac1-245b-479c-857f-d6df59d5402b" />
+
+<img width="456" height="828" alt="tab5" src="https://github.com/user-attachments/assets/7c8fde73-6ac8-4fbe-bd7b-8c2aef77d82d" />
 
 ### New & Upcoming Features
 These are planned enhancements and newly introduced features to improve workflow, customization, and automation. If you'd like to help implement or test any of them, see the Contributing section below.
@@ -37,6 +48,8 @@ These are planned enhancements and newly introduced features to improve workflow
   - TikTok: 1080x1920 (9:16)
   - YouTube Shorts: 1080x1920 (9:16)
   - Instagram Reels: 1080x1920 (9:16)
+  - 
+<img width="526" height="518" alt="export" src="https://github.com/user-attachments/assets/e4484644-f8d4-42b3-8d44-d23903d05f49" />
 
 ### Visual Effects
 - Dynamic waveform animations
