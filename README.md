@@ -1,4 +1,4 @@
-# 🎵 SonaWave - Trình Tạo Video Sóng Âm & Lyrics
+# 🎵 Sona Wave Pro - Trình Tạo Video Sóng Âm & Lyrics
 
 A professional audio wave video generator with synchronized lyrics, diverse visualizer effects, and high-quality video export capabilities optimized for TikTok, YouTube Shorts, and Instagram Reels.
 
@@ -82,14 +82,7 @@ These are planned enhancements and newly introduced features to improve workflow
    ```
 
 3. **Configure Environment Variables**
-   ```bash
-   # Copy the example environment file
-   cp .env.example .env
-   
-   # Edit .env and add your configuration
-   # GEMINI_API_KEY: Your Google Gemini API key (required)
-   # APP_URL: The URL where the app is hosted
-   ```
+   No need ENV variable
 
 4. **Start Development Server**
    ```bash
@@ -212,13 +205,6 @@ bun run clean
 bun run lint
 ```
 
-## 📝 Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `GEMINI_API_KEY` | Yes | Google Gemini API key for AI features |
-| `APP_URL` | Yes | Application hosting URL for callbacks |
-
 ## 🐛 Troubleshooting
 
 ### Common Issues
@@ -296,13 +282,12 @@ For issues, questions, or feature requests:
 ## 🎯 Roadmap
 
 - [x] Real-time waveform preview (experimental)
-- [ ] Multiple audio track support
 - [x] Advanced color grading tools (basic)
-- [ ] Video effect plugins
+- [x] Video effect plugins
 - [ ] Cloud storage integration
 - [ ] Batch processing capability
-- [ ] Mobile app version
-- [ ] Plugin marketplace
+- [x] Mobile UIX version support
+- [x] Multi lang VI/EN 
 
 ## 📊 Project Stats
 
