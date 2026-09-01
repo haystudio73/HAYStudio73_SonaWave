@@ -8,6 +8,9 @@ import {
   ParticleConfig,
   TrackMetadata,
   TextBoxItem,
+  FilmLightConfig,
+  ColorGradingConfig,
+  MasterEQConfig,
 } from '../types';
 import {
   SavedProject,
@@ -54,6 +57,9 @@ interface ProjectsModalProps {
     particles: ParticleConfig;
     track: TrackMetadata;
     textBoxes: TextBoxItem[];
+    filmLight?: FilmLightConfig;
+    colorGrading?: ColorGradingConfig;
+    masterEq?: MasterEQConfig;
     audioFileName: string;
   };
   onLoadProject: (project: SavedProject) => void;
@@ -116,6 +122,9 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
       lyricsData: currentConfig.lyricsData,
       background: currentConfig.background,
       particles: currentConfig.particles,
+      filmLight: currentConfig.filmLight,
+      colorGrading: currentConfig.colorGrading,
+      masterEq: currentConfig.masterEq,
       track: currentConfig.track,
       textBoxes: currentConfig.textBoxes,
       audioFileName: currentConfig.audioFileName,

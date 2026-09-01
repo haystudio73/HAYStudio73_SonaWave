@@ -7,6 +7,11 @@ import {
   ParticleConfig,
   TrackMetadata,
   TextBoxItem,
+  FilmLightConfig,
+  ColorGradingConfig,
+  MasterEQConfig,
+  MasterEQCustomPreset,
+  MasterEQBands,
 } from '../types';
 import {
   DEFAULT_VISUALIZER,
@@ -15,6 +20,9 @@ import {
   DEFAULT_PARTICLES,
   DEFAULT_TRACK,
   DEFAULT_TEXT_BOXES,
+  DEFAULT_FILM_LIGHT,
+  DEFAULT_COLOR_GRADING,
+  DEFAULT_MASTER_EQ,
   SAMPLE_SRT_SYNTHWAVE,
 } from './presets';
 import { parseAnyLyrics } from './lyricsParser';
@@ -32,6 +40,9 @@ export interface SavedProject {
   particles: ParticleConfig;
   track: TrackMetadata;
   textBoxes: TextBoxItem[];
+  filmLight?: FilmLightConfig;
+  colorGrading?: ColorGradingConfig;
+  masterEq?: MasterEQConfig;
   audioFileName: string;
   sampleAudioType?: 'lofi' | 'synthwave' | 'acoustic' | 'edm';
 }
@@ -232,6 +243,9 @@ export function importProjectFromJSON(file: File): Promise<SavedProject> {
           particles: { ...DEFAULT_PARTICLES, ...parsed.particles },
           track: { ...DEFAULT_TRACK, ...parsed.track },
           textBoxes: Array.isArray(parsed.textBoxes) ? parsed.textBoxes : DEFAULT_TEXT_BOXES,
+          filmLight: parsed.filmLight ? { ...DEFAULT_FILM_LIGHT, ...parsed.filmLight } : DEFAULT_FILM_LIGHT,
+          colorGrading: parsed.colorGrading ? { ...DEFAULT_COLOR_GRADING, ...parsed.colorGrading } : DEFAULT_COLOR_GRADING,
+          masterEq: parsed.masterEq ? { ...DEFAULT_MASTER_EQ, ...parsed.masterEq } : DEFAULT_MASTER_EQ,
           audioFileName: parsed.audioFileName || 'Imported_Audio.wav',
           sampleAudioType: parsed.sampleAudioType || 'synthwave',
         };
@@ -245,3 +259,118 @@ export function importProjectFromJSON(file: File): Promise<SavedProject> {
     reader.readAsText(file);
   });
 }
+
+export const STORAGE_KEY_MASTER_EQ_CUSTOM_PRESETS = 'sonawave_master_eq_custom_presets_v1';
+export const MAX_CUSTOM_MASTER_EQ_PRESETS = 5;
+
+/**
+ * Get all custom Master EQ presets from localStorage (max 5)
+ */
+export function getMasterEQCustomPresets(): MasterEQCustomPreset[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_MASTER_EQ_CUSTOM_PRESETS);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.slice(0, MAX_CUSTOM_MASTER_EQ_PRESETS);
+  } catch (err) {
+    console.error('Failed to load custom Master EQ presets from localStorage:', err);
+    return [];
+  }
+}
+
+/**
+ * Save or overwrite a custom Master EQ preset in localStorage (max 5)
+ */
+export function saveMasterEQCustomPreset(
+  presetData: {
+    name: string;
+    preampGain: number;
+    lowCutFreq: number;
+    highCutFreq: number;
+    bands: MasterEQBands;
+    id?: string;
+  }
+): { success: boolean; preset?: MasterEQCustomPreset; error?: string } {
+  try {
+    const presets = getMasterEQCustomPresets();
+    const now = Date.now();
+
+    if (presetData.id) {
+      // Update existing preset
+      const existingIdx = presets.findIndex((p) => p.id === presetData.id);
+      if (existingIdx >= 0) {
+        const updatedPreset: MasterEQCustomPreset = {
+          ...presets[existingIdx],
+          name: presetData.name.trim() || presets[existingIdx].name,
+          preampGain: presetData.preampGain,
+          lowCutFreq: presetData.lowCutFreq,
+          highCutFreq: presetData.highCutFreq,
+          bands: { ...presetData.bands },
+        };
+        presets[existingIdx] = updatedPreset;
+        localStorage.setItem(STORAGE_KEY_MASTER_EQ_CUSTOM_PRESETS, JSON.stringify(presets));
+        return { success: true, preset: updatedPreset };
+      }
+    }
+
+    // Check if limit of 5 is reached
+    if (presets.length >= MAX_CUSTOM_MASTER_EQ_PRESETS) {
+      return {
+        success: false,
+        error: `Đã đạt giới hạn tối đa ${MAX_CUSTOM_MASTER_EQ_PRESETS} cấu hình tùy chỉnh. Vui lòng xóa bớt cấu hình cũ để lưu cấu hình mới.`,
+      };
+    }
+
+    const newPreset: MasterEQCustomPreset = {
+      id: `custom_eq_${now}_${Math.random().toString(36).substr(2, 4)}`,
+      name: presetData.name.trim() || `Tùy Chỉnh EQ #${presets.length + 1}`,
+      createdAt: now,
+      preampGain: presetData.preampGain,
+      lowCutFreq: presetData.lowCutFreq,
+      highCutFreq: presetData.highCutFreq,
+      bands: { ...presetData.bands },
+    };
+
+    presets.push(newPreset);
+    localStorage.setItem(STORAGE_KEY_MASTER_EQ_CUSTOM_PRESETS, JSON.stringify(presets));
+    return { success: true, preset: newPreset };
+  } catch (err) {
+    console.error('Failed to save custom Master EQ preset:', err);
+    return { success: false, error: 'Không thể lưu cấu hình tùy chỉnh vào trình duyệt.' };
+  }
+}
+
+/**
+ * Delete a custom Master EQ preset by ID
+ */
+export function deleteMasterEQCustomPreset(id: string): MasterEQCustomPreset[] {
+  try {
+    const presets = getMasterEQCustomPresets();
+    const filtered = presets.filter((p) => p.id !== id);
+    localStorage.setItem(STORAGE_KEY_MASTER_EQ_CUSTOM_PRESETS, JSON.stringify(filtered));
+    return filtered;
+  } catch (err) {
+    console.error('Failed to delete custom Master EQ preset:', err);
+    return getMasterEQCustomPresets();
+  }
+}
+
+/**
+ * Rename a custom Master EQ preset
+ */
+export function renameMasterEQCustomPreset(id: string, newName: string): MasterEQCustomPreset[] {
+  try {
+    const presets = getMasterEQCustomPresets();
+    const existing = presets.find((p) => p.id === id);
+    if (existing && newName.trim()) {
+      existing.name = newName.trim();
+      localStorage.setItem(STORAGE_KEY_MASTER_EQ_CUSTOM_PRESETS, JSON.stringify(presets));
+    }
+    return presets;
+  } catch (err) {
+    console.error('Failed to rename custom Master EQ preset:', err);
+    return getMasterEQCustomPresets();
+  }
+}
+

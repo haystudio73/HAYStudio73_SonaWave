@@ -50,6 +50,118 @@ export function formatTime(seconds: number): string {
 }
 
 /**
+ * Format seconds to mm:ss.d with 1 decimal place (e.g. 01:23.4)
+ */
+export function formatTimeSub(seconds: number): string {
+  if (isNaN(seconds) || seconds < 0) return '00:00.0';
+  const totalTenths = Math.max(0, Math.floor(seconds * 10));
+  const tenths = totalTenths % 10;
+  const totalSeconds = Math.floor(totalTenths / 10);
+  const s = totalSeconds % 60;
+  const m = Math.floor(totalSeconds / 60);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${tenths}`;
+}
+
+export interface LyricTimingIssue {
+  lineId: string;
+  type: 'overlap' | 'inverted' | 'gap';
+  message: string;
+  diffSeconds: number;
+}
+
+/**
+ * Validate timing across all lyric lines
+ */
+export function validateLyricsTimings(lyrics: LyricLine[]): {
+  hasIssues: boolean;
+  overlapCount: number;
+  errorCount: number;
+  issueMap: Record<string, LyricTimingIssue>;
+} {
+  const issueMap: Record<string, LyricTimingIssue> = {};
+  let overlapCount = 0;
+  let errorCount = 0;
+
+  for (let i = 0; i < lyrics.length; i++) {
+    const cur = lyrics[i];
+
+    // 1. Inverted time check: Start >= End
+    if (cur.startTime >= cur.endTime) {
+      issueMap[cur.id] = {
+        lineId: cur.id,
+        type: 'inverted',
+        message: 'Lỗi: Time End phải lớn hơn Time Start',
+        diffSeconds: cur.startTime - cur.endTime,
+      };
+      errorCount++;
+      continue;
+    }
+
+    // 2. Overlap with previous line
+    if (i > 0) {
+      const prev = lyrics[i - 1];
+      if (cur.startTime < prev.endTime) {
+        const overlap = prev.endTime - cur.startTime;
+        issueMap[cur.id] = {
+          lineId: cur.id,
+          type: 'overlap',
+          message: `Chồng lấn ${overlap.toFixed(1)}s với câu trước (#${i})`,
+          diffSeconds: overlap,
+        };
+        overlapCount++;
+      }
+    }
+  }
+
+  return {
+    hasIssues: overlapCount > 0 || errorCount > 0,
+    overlapCount,
+    errorCount,
+    issueMap,
+  };
+}
+
+/**
+ * Auto-fix all timing overlaps and inverted durations
+ */
+export function autoFixLyricsOverlaps(lyrics: LyricLine[], bufferSeconds = 0.05): LyricLine[] {
+  if (!lyrics || lyrics.length === 0) return [];
+
+  // Sort by startTime
+  const sorted = [...lyrics].sort((a, b) => a.startTime - b.startTime);
+  const result: LyricLine[] = [];
+
+  for (let i = 0; i < sorted.length; i++) {
+    const cur = { ...sorted[i] };
+    const prev = i > 0 ? result[i - 1] : null;
+
+    // Fix inverted duration if invalid
+    if (cur.endTime <= cur.startTime) {
+      cur.endTime = cur.startTime + 3.0;
+    }
+
+    // Fix overlap with previous line
+    if (prev && cur.startTime < prev.endTime) {
+      // Adjust previous line's endTime to end just before this line
+      const adjustedPrevEnd = Math.max(prev.startTime + 0.5, cur.startTime - bufferSeconds);
+      prev.endTime = adjustedPrevEnd;
+
+      // If current still starts before prev.endTime, push current start
+      if (cur.startTime < prev.endTime) {
+        cur.startTime = prev.endTime + bufferSeconds;
+        if (cur.endTime <= cur.startTime) {
+          cur.endTime = cur.startTime + 2.5;
+        }
+      }
+    }
+
+    result.push(cur);
+  }
+
+  return result;
+}
+
+/**
  * Parse SRT Subtitle format
  */
 export function parseSRT(srtContent: string): LyricLine[] {
@@ -206,7 +318,7 @@ export function exportToSRT(lyrics: LyricLine[]): string {
 }
 
 /**
- * Get active lyric info with previous & next lines
+ * Get active lyric info with previous & next lines and 4-line window
  */
 export function getActiveLyricInfo(lyrics: LyricLine[], currentTime: number) {
   let activeIndex = -1;
@@ -233,7 +345,10 @@ export function getActiveLyricInfo(lyrics: LyricLine[], currentTime: number) {
 
   const activeLine = activeIndex !== -1 ? lyrics[activeIndex] : null;
   const prevLine = activeIndex > 0 ? lyrics[activeIndex - 1] : null;
+  const prevLine2 = activeIndex > 1 ? lyrics[activeIndex - 2] : null;
   const nextLine = activeIndex !== -1 && activeIndex < lyrics.length - 1 ? lyrics[activeIndex + 1] : null;
+  const nextLine2 = activeIndex !== -1 && activeIndex < lyrics.length - 2 ? lyrics[activeIndex + 2] : null;
+  const nextLine3 = activeIndex !== -1 && activeIndex < lyrics.length - 3 ? lyrics[activeIndex + 3] : null;
 
   // Calculate progress of current line (0 to 1)
   let lineProgress = 0;
@@ -247,8 +362,11 @@ export function getActiveLyricInfo(lyrics: LyricLine[], currentTime: number) {
   return {
     activeIndex,
     activeLine,
+    prevLine2,
     prevLine,
     nextLine,
+    nextLine2,
+    nextLine3,
     lineProgress,
   };
 }

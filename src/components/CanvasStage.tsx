@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { AspectRatio } from '../types';
+import { Language, TRANSLATIONS } from '../utils/i18n';
 import { 
   Play, 
   Pause, 
@@ -11,7 +12,8 @@ import {
   Activity,
   Upload,
   FileAudio,
-  Sparkles
+  Sparkles,
+  Sliders
 } from 'lucide-react';
 import { formatTime } from '../utils/lyricsParser';
 
@@ -30,6 +32,9 @@ interface CanvasStageProps {
   beatIntensity: number;
   onUploadAudioFile: (file: File) => void;
   audioFileName: string;
+  language?: Language;
+  onOpenMasterEq?: () => void;
+  masterEqActive?: boolean;
 }
 
 export const CanvasStage: React.FC<CanvasStageProps> = ({
@@ -47,7 +52,11 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
   beatIntensity,
   onUploadAudioFile,
   audioFileName,
+  language = 'vi',
+  onOpenMasterEq,
+  masterEqActive = false,
 }) => {
+  const t = TRANSLATIONS[language] || TRANSLATIONS['vi'];
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -323,10 +332,29 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
               )}
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Master EQ launcher button */}
+              {onOpenMasterEq && (
+                <button
+                  onClick={onOpenMasterEq}
+                  title={t.masterEqTitle}
+                  className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    masterEqActive
+                      ? 'bg-cyan-950/60 border border-cyan-500/50 text-cyan-300 shadow-sm'
+                      : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white'
+                  }`}
+                >
+                  <Sliders className={`w-3.5 h-3.5 ${masterEqActive ? 'text-cyan-400' : 'text-neutral-400'}`} />
+                  <span className="hidden sm:inline">EQ</span>
+                  {masterEqActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  )}
+                </button>
+              )}
+
               <button
                 onClick={toggleFullscreen}
-                title={isFullscreen ? 'Thoát toàn màn hình (Esc)' : 'Xem toàn màn hình (F)'}
+                title={isFullscreen ? t.exitFullscreen : t.fullscreen}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs font-medium transition-all cursor-pointer"
               >
                 {isFullscreen ? (

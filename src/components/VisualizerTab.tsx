@@ -19,7 +19,8 @@ import {
   Orbit,
   Sun,
   Grid3X3,
-  Compass
+  Compass,
+  Split
 } from 'lucide-react';
 
 interface VisualizerTabProps {
@@ -134,25 +135,11 @@ const VISUALIZER_TYPES: TypeOption[] = [
     description: 'Tia sóng xoay quanh tâm đĩa phát sáng',
   },
   {
-    type: 'circular-ring',
-    label: 'Neon Ring',
-    labelVi: 'Vòng Tròn Sóng Mịn',
-    icon: Disc,
-    description: 'Vòng tròn neon uốn lượn liên tục',
-  },
-  {
     type: 'smooth-wave',
     label: 'Liquid Wave',
     labelVi: 'Sóng Nước Mềm Mại',
     icon: Activity,
     description: 'Sóng chất lỏng chuyển động mượt mà',
-  },
-  {
-    type: 'galaxy-orbit',
-    label: 'Galaxy Swirl',
-    labelVi: 'Dải Ngân Hà Swirl',
-    icon: Sparkles,
-    description: 'Đám mây hạt tinh tú xoay 3D theo giai điệu',
   },
   {
     type: 'cyber-matrix',
@@ -181,13 +168,6 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Chấm Tối Giản',
     icon: Layers,
     description: 'Đường ngang tinh gọn phong cách audiophile',
-  },
-  {
-    type: 'blob-morph',
-    label: 'Liquid Morph',
-    labelVi: 'Khối Biến Hình Blob',
-    icon: Zap,
-    description: 'Khối hữu cơ co giãn linh hoạt theo âm trầm',
   },
 ];
 
@@ -435,20 +415,51 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           Tùy Chỉnh Kích Thước & Vị Trí
         </label>
 
-        {/* Position Y Slider */}
-        <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-neutral-400">Vị trí dọc (Position Y)</span>
-            <span className="text-rose-400 font-mono">{config.positionY}%</span>
+        {/* Position X & Position Y Sliders */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800/80">
+          {/* Position X Slider */}
+          <div>
+            <div className="flex justify-between items-center text-xs mb-1">
+              <span className="text-neutral-300 font-medium">Vị trí ngang (X)</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-rose-400 font-mono font-bold text-[11px]">{config.positionX !== undefined ? config.positionX : 50}%</span>
+                {(config.positionX !== undefined && config.positionX !== 50) && (
+                  <button
+                    type="button"
+                    onClick={() => update({ positionX: 50 })}
+                    className="text-[9px] text-neutral-400 hover:text-rose-300 px-1 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded transition-colors"
+                    title="Căn giữa 50%"
+                  >
+                    Giữa
+                  </button>
+                )}
+              </div>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={config.positionX !== undefined ? config.positionX : 50}
+              onChange={(e) => update({ positionX: parseInt(e.target.value) })}
+              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+            />
           </div>
-          <input
-            type="range"
-            min={10}
-            max={90}
-            value={config.positionY}
-            onChange={(e) => update({ positionY: parseInt(e.target.value) })}
-            className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
-          />
+
+          {/* Position Y Slider */}
+          <div>
+            <div className="flex justify-between items-center text-xs mb-1">
+              <span className="text-neutral-300 font-medium">Vị trí dọc (Y)</span>
+              <span className="text-rose-400 font-mono font-bold text-[11px]">{config.positionY}%</span>
+            </div>
+            <input
+              type="range"
+              min={10}
+              max={90}
+              value={config.positionY}
+              onChange={(e) => update({ positionY: parseInt(e.target.value) })}
+              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+            />
+          </div>
         </div>
 
         {/* Scale Slider */}
@@ -575,6 +586,89 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
               className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
             />
           </div>
+        </div>
+
+        {/* Chromatic Aberration RGB Glitch Effect */}
+        <div className="p-3.5 bg-neutral-900/60 rounded-xl border border-neutral-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500/20 via-rose-500/20 to-amber-500/20 border border-rose-500/30 flex items-center justify-center">
+                <Split className="w-4 h-4 text-rose-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-neutral-200">Chromatic Aberration</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    RGB Glitch
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-400">
+                  Tách lệch kênh màu Red / Cyan theo tần số âm thanh & nhịp kick
+                </p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={config.chromaticAberration === true}
+                onChange={(e) => update({ chromaticAberration: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600"></div>
+            </label>
+          </div>
+
+          {config.chromaticAberration && (
+            <div className="space-y-3 pt-1 border-t border-neutral-800/80">
+              {/* Quick Intensity Presets */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { name: 'Nhẹ êm', val: 0.25 },
+                  { name: 'Cyberpunk', val: 0.5 },
+                  { name: 'Glitch EDM', val: 0.75 },
+                  { name: 'Cực mạnh', val: 1.0 },
+                ].map((p, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => update({ chromaticAberrationIntensity: p.val })}
+                    className={`py-1 px-1 rounded-lg text-[10px] font-medium border transition-all cursor-pointer truncate ${
+                      Math.abs((config.chromaticAberrationIntensity ?? 0.55) - p.val) < 0.08
+                        ? 'bg-rose-500/20 border-rose-500 text-rose-300 font-semibold'
+                        : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* Intensity Slider */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">Độ mạnh lệch kênh màu (Shift Intensity)</span>
+                  <span className="text-rose-400 font-mono">
+                    {Math.round((config.chromaticAberrationIntensity ?? 0.55) * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.1}
+                  max={1.0}
+                  step={0.05}
+                  value={config.chromaticAberrationIntensity ?? 0.55}
+                  onChange={(e) => update({ chromaticAberrationIntensity: parseFloat(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-neutral-400 bg-neutral-950/50 p-2 rounded-lg border border-neutral-800/60">
+                <span className="flex items-center gap-1 text-cyan-400 font-mono">◀ Cyan (+X)</span>
+                <span className="text-neutral-500 text-[10px]">Tần số Bass & Treble</span>
+                <span className="flex items-center gap-1 text-rose-400 font-mono">Red (-X) ▶</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bar Count & Width */}

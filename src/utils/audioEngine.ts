@@ -1,7 +1,10 @@
+import { MasterEQConfig, MasterEQBands } from '../types';
+import { DEFAULT_MASTER_EQ, MASTER_EQ_BANDS_META } from './presets';
+
 /**
  * SonaWave Web Audio Engine
  * Handles real-time frequency analysis, beat detection, audio file decoding,
- * and audio stream routing for video recording.
+ * 10-band Pro Master Equalizer DSP chain, and audio stream routing for video recording.
  */
 
 export class AudioEngine {
@@ -13,6 +16,13 @@ export class AudioEngine {
   private sourceNode: MediaElementAudioSourceNode | null = null;
   private streamDest: MediaStreamAudioDestinationNode | null = null;
   private isInitialized = false;
+
+  // Pro Master EQ Filter Nodes
+  private preampGainNode: GainNode | null = null;
+  private lowCutFilter: BiquadFilterNode | null = null;
+  private highCutFilter: BiquadFilterNode | null = null;
+  private eqBandFilters: Map<keyof MasterEQBands, BiquadFilterNode> = new Map();
+  private currentMasterEq: MasterEQConfig = DEFAULT_MASTER_EQ;
 
   private freqData: Uint8Array = new Uint8Array(128);
   private timeData: Uint8Array = new Uint8Array(128);
@@ -51,31 +61,130 @@ export class AudioEngine {
 
     this.streamDest = this.audioCtx.createMediaStreamDestination();
 
+    // 1. Create Preamp Gain Node
+    this.preampGainNode = this.audioCtx.createGain();
+    this.preampGainNode.gain.value = 1.0;
+
+    // 2. Create Low-Cut High-Pass Filter (removes rumble below 20-80Hz)
+    this.lowCutFilter = this.audioCtx.createBiquadFilter();
+    this.lowCutFilter.type = 'highpass';
+    this.lowCutFilter.frequency.value = 10;
+    this.lowCutFilter.Q.value = 0.707;
+
+    // 3. Create 10-Band Parametric/Graphic EQ Filter Nodes
+    this.eqBandFilters.clear();
+    for (const band of MASTER_EQ_BANDS_META) {
+      const filter = this.audioCtx.createBiquadFilter();
+      if (band.frequency <= 32) {
+        filter.type = 'lowshelf';
+      } else if (band.frequency >= 16000) {
+        filter.type = 'highshelf';
+      } else {
+        filter.type = 'peaking';
+      }
+      filter.frequency.value = band.frequency;
+      filter.Q.value = 1.4;
+      filter.gain.value = 0;
+      this.eqBandFilters.set(band.id, filter);
+    }
+
+    // 4. Create High-Cut Low-Pass Filter (removes harshness above 12-18kHz)
+    this.highCutFilter = this.audioCtx.createBiquadFilter();
+    this.highCutFilter.type = 'lowpass';
+    this.highCutFilter.frequency.value = 22050;
+    this.highCutFilter.Q.value = 0.707;
+
+    // 5. Connect DSP Filter Chain:
+    // Preamp -> LowCut -> Band1 -> Band2 -> ... -> Band10 -> HighCut -> Analyser
+    let prevNode: AudioNode = this.preampGainNode;
+    prevNode.connect(this.lowCutFilter);
+    prevNode = this.lowCutFilter;
+
+    for (const band of MASTER_EQ_BANDS_META) {
+      const filter = this.eqBandFilters.get(band.id);
+      if (filter) {
+        prevNode.connect(filter);
+        prevNode = filter;
+      }
+    }
+
+    prevNode.connect(this.highCutFilter);
+    this.highCutFilter.connect(this.analyser);
+
+    // Analyser -> preview gain -> destination (speakers)
+    this.analyser.connect(this.gainNode);
+    this.gainNode.connect(this.audioCtx.destination);
+
+    // Analyser -> export gain (fixed 100% volume) -> stream destination (video recorder)
+    this.analyser.connect(this.exportGainNode);
+    this.exportGainNode.connect(this.streamDest);
+
     this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
     this.timeData = new Uint8Array(this.analyser.frequencyBinCount);
 
     this.isInitialized = true;
+
+    // Apply current master EQ settings if already configured
+    this.applyMasterEQ(this.currentMasterEq);
   }
 
   public attachAudioElement(audio: HTMLAudioElement) {
     this.init();
-    if (!this.audioCtx || !this.analyser || !this.gainNode || !this.exportGainNode || !this.streamDest) return;
+    if (!this.audioCtx || !this.preampGainNode) return;
 
     this.audioElement = audio;
 
     if (!this.sourceNode) {
       try {
         this.sourceNode = this.audioCtx.createMediaElementSource(audio);
-        // Connect to analyser for FFT visualizer analysis
-        this.sourceNode.connect(this.analyser);
-        // Analyser -> preview gain -> destination (speakers)
-        this.analyser.connect(this.gainNode);
-        this.gainNode.connect(this.audioCtx.destination);
-        // Analyser -> export gain (fixed 100% volume) -> stream destination (video recorder)
-        this.analyser.connect(this.exportGainNode);
-        this.exportGainNode.connect(this.streamDest);
+        // Connect Source into the beginning of Master EQ DSP Chain (Preamp Gain)
+        this.sourceNode.connect(this.preampGainNode);
       } catch (e) {
         console.warn('Audio source node already attached or error:', e);
+      }
+    }
+  }
+
+  /**
+   * Applies 10-band Master EQ settings, preamp gain, and low/high cut filters in real-time
+   */
+  public applyMasterEQ(config: MasterEQConfig) {
+    this.currentMasterEq = config;
+    if (!this.audioCtx || !this.preampGainNode || !this.lowCutFilter || !this.highCutFilter) {
+      return;
+    }
+
+    const now = this.audioCtx.currentTime;
+
+    if (!config.enabled) {
+      // Bypassed (Flat transparent sound)
+      this.preampGainNode.gain.setTargetAtTime(1.0, now, 0.05);
+      this.lowCutFilter.frequency.setTargetAtTime(10, now, 0.05);
+      this.highCutFilter.frequency.setTargetAtTime(22050, now, 0.05);
+      this.eqBandFilters.forEach((filter) => {
+        filter.gain.setTargetAtTime(0, now, 0.05);
+      });
+      return;
+    }
+
+    // Active EQ: Convert preamp dB to linear gain
+    const preampLinear = Math.pow(10, (config.preampGain || 0) / 20);
+    this.preampGainNode.gain.setTargetAtTime(preampLinear, now, 0.05);
+
+    // Low Cut frequency
+    const lowCut = config.lowCutFreq > 0 ? config.lowCutFreq : 10;
+    this.lowCutFilter.frequency.setTargetAtTime(lowCut, now, 0.05);
+
+    // High Cut frequency
+    const highCut = config.highCutFreq < 20000 ? config.highCutFreq : 22050;
+    this.highCutFilter.frequency.setTargetAtTime(highCut, now, 0.05);
+
+    // 10 Band Filter Gains
+    for (const band of MASTER_EQ_BANDS_META) {
+      const filter = this.eqBandFilters.get(band.id);
+      if (filter) {
+        const gainDb = config.bands[band.id] ?? 0;
+        filter.gain.setTargetAtTime(gainDb, now, 0.05);
       }
     }
   }

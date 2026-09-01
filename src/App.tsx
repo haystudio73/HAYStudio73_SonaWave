@@ -10,6 +10,9 @@ import {
   ExportSettings,
   PresetTheme,
   TextBoxItem,
+  FilmLightConfig,
+  ColorGradingConfig,
+  MasterEQConfig,
 } from './types';
 import {
   DEFAULT_VISUALIZER,
@@ -18,6 +21,9 @@ import {
   DEFAULT_PARTICLES,
   DEFAULT_TRACK,
   DEFAULT_TEXT_BOXES,
+  DEFAULT_FILM_LIGHT,
+  DEFAULT_COLOR_GRADING,
+  DEFAULT_MASTER_EQ,
   SAMPLE_SRT_LOFI,
   SAMPLE_SRT_SYNTHWAVE,
   SAMPLE_SRT_ACOUSTIC,
@@ -32,21 +38,28 @@ import {
   getAutoSave,
   hasAutoSave,
 } from './utils/projectStorage';
+import { Language, getSavedLanguage, saveLanguage, TRANSLATIONS } from './utils/i18n';
 import { Header } from './components/Header';
 import { CanvasStage } from './components/CanvasStage';
 import { VisualizerTab } from './components/VisualizerTab';
 import { LyricsTab } from './components/LyricsTab';
 import { BackgroundTab } from './components/BackgroundTab';
+import { FilmLightTab } from './components/FilmLightTab';
+import { ColorGradingTab } from './components/ColorGradingTab';
 import { TrackTab } from './components/TrackTab';
 import { TextBoxTab } from './components/TextBoxTab';
 import { PresetsModal } from './components/PresetsModal';
 import { ProjectsModal } from './components/ProjectsModal';
 import { ExportModal } from './components/ExportModal';
+import { MasterEQModal } from './components/MasterEQModal';
+import { GlobalSettingsModal } from './components/GlobalSettingsModal';
 
 import {
   BarChart2,
   FileText,
   ImageIcon,
+  Sparkles,
+  Palette,
   Disc,
   Type,
 } from 'lucide-react';
@@ -61,6 +74,8 @@ export function App() {
   );
   const [background, setBackground] = useState<BackgroundConfig>(DEFAULT_BACKGROUND);
   const [particles, setParticles] = useState<ParticleConfig>(DEFAULT_PARTICLES);
+  const [filmLight, setFilmLight] = useState<FilmLightConfig>(DEFAULT_FILM_LIGHT);
+  const [colorGrading, setColorGrading] = useState<ColorGradingConfig>(DEFAULT_COLOR_GRADING);
   const [track, setTrack] = useState<TrackMetadata>(DEFAULT_TRACK);
   const [textBoxes, setTextBoxes] = useState<TextBoxItem[]>(DEFAULT_TEXT_BOXES);
 
@@ -80,12 +95,30 @@ export function App() {
 
   // 3. UI Navigation & Modals
   const [activeTab, setActiveTab] = useState<
-    'visualizer' | 'lyrics' | 'background' | 'track' | 'textboxes'
+    'visualizer' | 'lyrics' | 'background' | 'filmlight' | 'colorgrading' | 'track' | 'textboxes'
   >('visualizer');
   const [isPresetsModalOpen, setIsPresetsModalOpen] = useState(false);
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isMasterEqModalOpen, setIsMasterEqModalOpen] = useState(false);
+  const [isGlobalSettingsModalOpen, setIsGlobalSettingsModalOpen] = useState(false);
   const [hasSavedIndicator, setHasSavedIndicator] = useState(false);
+
+  // 4. Global Language & Pro Master EQ State
+  const [language, setLanguage] = useState<Language>(() => getSavedLanguage());
+  const [masterEqConfig, setMasterEqConfig] = useState<MasterEQConfig>(() => {
+    try {
+      const saved = localStorage.getItem('sonawave_master_eq_v1');
+      return saved ? JSON.parse(saved) : DEFAULT_MASTER_EQ;
+    } catch {
+      return DEFAULT_MASTER_EQ;
+    }
+  });
+
+  const handleLanguageChange = (newLang: Language) => {
+    setLanguage(newLang);
+    saveLanguage(newLang);
+  };
 
   // 4. Export State
   const [isExporting, setIsExporting] = useState(false);
@@ -128,6 +161,12 @@ export function App() {
   const particlesRef = useRef(particles);
   particlesRef.current = particles;
 
+  const filmLightRef = useRef(filmLight);
+  filmLightRef.current = filmLight;
+
+  const colorGradingRef = useRef(colorGrading);
+  colorGradingRef.current = colorGrading;
+
   const trackRef = useRef(track);
   trackRef.current = track;
 
@@ -139,6 +178,18 @@ export function App() {
 
   const currentTimeRef = useRef(currentTime);
   currentTimeRef.current = currentTime;
+
+  // Real-time Master EQ Application to AudioEngine
+  useEffect(() => {
+    try {
+      localStorage.setItem('sonawave_master_eq_v1', JSON.stringify(masterEqConfig));
+    } catch (e) {
+      // ignore
+    }
+    if (audioEngineRef.current) {
+      audioEngineRef.current.applyMasterEQ(masterEqConfig);
+    }
+  }, [masterEqConfig]);
 
   // Auto-Save Effect (Debounced 800ms)
   useEffect(() => {
@@ -152,6 +203,9 @@ export function App() {
         particles,
         track,
         textBoxes,
+        filmLight,
+        colorGrading,
+        masterEq: masterEqConfig,
         audioFileName,
         sampleAudioType,
       });
@@ -168,6 +222,9 @@ export function App() {
     lyricsData,
     background,
     particles,
+    filmLight,
+    colorGrading,
+    masterEqConfig,
     track,
     textBoxes,
     audioFileName,
@@ -201,6 +258,11 @@ export function App() {
       setLyricsData(autoSaved.lyricsData);
       setBackground(autoSaved.background);
       setParticles(autoSaved.particles);
+      setFilmLight(autoSaved.filmLight || DEFAULT_FILM_LIGHT);
+      setColorGrading(autoSaved.colorGrading || DEFAULT_COLOR_GRADING);
+      if (autoSaved.masterEq) {
+        setMasterEqConfig(autoSaved.masterEq);
+      }
       setTrack(autoSaved.track);
       setTextBoxes(autoSaved.textBoxes || DEFAULT_TEXT_BOXES);
       setAudioFileName(autoSaved.audioFileName || 'Neon_Synthwave_Demo.wav');
@@ -243,6 +305,18 @@ export function App() {
       rendererRef.current.setCoverImage(track.coverUrl);
     }
   }, [track.coverUrl]);
+
+  useEffect(() => {
+    if (rendererRef.current) {
+      rendererRef.current.setBadgeImage(track.badgePngUrl || '');
+    }
+  }, [track.badgePngUrl]);
+
+  useEffect(() => {
+    if (rendererRef.current) {
+      rendererRef.current.setLogoImage(track.logoUrl || '');
+    }
+  }, [track.logoUrl]);
 
   // Load sample synthetic audio demo
   const loadSampleTrack = async (
@@ -415,6 +489,17 @@ export function App() {
     setLyricsData(project.lyricsData);
     setBackground(project.background);
     setParticles(project.particles);
+    if (project.filmLight) {
+      setFilmLight(project.filmLight);
+    }
+    if (project.colorGrading) {
+      setColorGrading(project.colorGrading);
+    } else {
+      setColorGrading(DEFAULT_COLOR_GRADING);
+    }
+    if (project.masterEq) {
+      setMasterEqConfig(project.masterEq);
+    }
     setTrack(project.track);
     setTextBoxes(project.textBoxes || DEFAULT_TEXT_BOXES);
     setAudioFileName(project.audioFileName || 'Neon_Synthwave_Demo.wav');
@@ -436,6 +521,9 @@ export function App() {
     setLyricsConfig(DEFAULT_LYRICS);
     setBackground(DEFAULT_BACKGROUND);
     setParticles(DEFAULT_PARTICLES);
+    setFilmLight(DEFAULT_FILM_LIGHT);
+    setColorGrading(DEFAULT_COLOR_GRADING);
+    setMasterEqConfig(DEFAULT_MASTER_EQ);
     setTrack(DEFAULT_TRACK);
     setTextBoxes(DEFAULT_TEXT_BOXES);
     loadSampleTrack('synthwave', true);
@@ -448,6 +536,8 @@ export function App() {
     setLyricsConfig(theme.lyrics);
     setBackground(theme.background);
     setParticles(theme.particles);
+    setFilmLight(theme.filmLight || DEFAULT_FILM_LIGHT);
+    setColorGrading(theme.colorGrading || DEFAULT_COLOR_GRADING);
     setTrack(theme.track);
 
     if (theme.sampleAudio) {
@@ -558,7 +648,9 @@ export function App() {
             trackRef.current,
             textBoxesRef.current,
             currentAR,
-            isPlayingRef.current
+            isPlayingRef.current,
+            filmLightRef.current,
+            colorGradingRef.current
           );
 
           // Fast blit from OffscreenCanvas to export target if exporting
@@ -817,6 +909,11 @@ export function App() {
         onLoadDemoTrack={(type) => loadSampleTrack(type, true)}
         isLoadingAudio={isLoadingAudio}
         savedIndicator={hasSavedIndicator}
+        language={language}
+        onLanguageChange={handleLanguageChange}
+        onOpenSettingsModal={() => setIsGlobalSettingsModalOpen(true)}
+        onOpenMasterEqModal={() => setIsMasterEqModalOpen(true)}
+        masterEqConfig={masterEqConfig}
       />
 
       {/* Main Studio Workspace */}
@@ -837,6 +934,9 @@ export function App() {
           beatIntensity={beatIntensity}
           onUploadAudioFile={handleUploadAudioFile}
           audioFileName={audioFileName}
+          language={language}
+          onOpenMasterEq={() => setIsMasterEqModalOpen(true)}
+          masterEqActive={masterEqConfig.enabled}
         />
 
         {/* Right Area: Customization Panel Tabs */}
@@ -845,7 +945,7 @@ export function App() {
           <div className="flex items-center border-b border-neutral-800/90 bg-neutral-900/50 p-1.5 gap-1 shrink-0 overflow-x-auto custom-scrollbar">
             <button
               onClick={() => setActiveTab('visualizer')}
-              title="Hiệu ứng Sóng Âm"
+              title={TRANSLATIONS[language].tabVisualizer}
               className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'visualizer'
                   ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
@@ -853,12 +953,12 @@ export function App() {
               }`}
             >
               <BarChart2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">Sóng Âm</span>
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabVisualizer}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('lyrics')}
-              title="Lời Nhạc Karaoke & Hiệu ứng Chữ"
+              title={TRANSLATIONS[language].tabLyrics}
               className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'lyrics'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
@@ -866,12 +966,12 @@ export function App() {
               }`}
             >
               <FileText className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">Lời Nhạc</span>
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabLyrics}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('background')}
-              title="Hình Nền & Hiệu ứng Hạt/Glitch"
+              title={TRANSLATIONS[language].tabBackground}
               className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'background'
                   ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20'
@@ -879,12 +979,38 @@ export function App() {
               }`}
             >
               <ImageIcon className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">Hình Nền</span>
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabBackground}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('filmlight')}
+              title={TRANSLATIONS[language].tabFilmLight}
+              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'filmlight'
+                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabFilmLight}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('colorgrading')}
+              title={TRANSLATIONS[language].tabColorGrading}
+              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'colorgrading'
+                  ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md shadow-amber-500/20'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+              }`}
+            >
+              <Palette className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabColorGrading}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('track')}
-              title="Thông tin Bài Hát & Đĩa Than"
+              title={TRANSLATIONS[language].tabTrack}
               className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'track'
                   ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
@@ -892,12 +1018,12 @@ export function App() {
               }`}
             >
               <Disc className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">Bài Hát</span>
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabTrack}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('textboxes')}
-              title="Văn Bản & Watermark"
+              title={TRANSLATIONS[language].tabTextBoxes}
               className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'textboxes'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
@@ -905,7 +1031,7 @@ export function App() {
               }`}
             >
               <Type className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">Văn Bản</span>
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabTextBoxes}</span>
             </button>
           </div>
 
@@ -929,6 +1055,8 @@ export function App() {
                 onLyricsChange={setLyricsData}
                 currentTime={currentTime}
                 duration={duration}
+                onSeek={handleSeek}
+                language={language}
               />
             )}
 
@@ -938,6 +1066,20 @@ export function App() {
                 onBackgroundChange={setBackground}
                 particles={particles}
                 onParticlesChange={setParticles}
+              />
+            )}
+
+            {activeTab === 'filmlight' && (
+              <FilmLightTab
+                filmLight={filmLight}
+                onChange={setFilmLight}
+              />
+            )}
+
+            {activeTab === 'colorgrading' && (
+              <ColorGradingTab
+                colorGrading={colorGrading}
+                onChange={setColorGrading}
               />
             )}
 
@@ -957,6 +1099,7 @@ export function App() {
         isOpen={isPresetsModalOpen}
         onClose={() => setIsPresetsModalOpen(false)}
         onSelectTheme={handleSelectPresetTheme}
+        language={language}
       />
 
       {/* Projects & Local Storage Save/Load Modal */}
@@ -970,12 +1113,36 @@ export function App() {
           lyricsData,
           background,
           particles,
+          filmLight,
+          colorGrading,
+          masterEq: masterEqConfig,
           track,
           textBoxes,
           audioFileName,
         }}
         onLoadProject={handleLoadProject}
         onResetToDefaults={handleResetToDefaults}
+      />
+
+      {/* Pro Master Audio Equalizer Modal */}
+      <MasterEQModal
+        isOpen={isMasterEqModalOpen}
+        onClose={() => setIsMasterEqModalOpen(false)}
+        config={masterEqConfig}
+        onChange={setMasterEqConfig}
+        language={language}
+      />
+
+      {/* Global Settings & Language Configuration Modal */}
+      <GlobalSettingsModal
+        isOpen={isGlobalSettingsModalOpen}
+        onClose={() => setIsGlobalSettingsModalOpen(false)}
+        language={language}
+        onLanguageChange={handleLanguageChange}
+        masterEqConfig={masterEqConfig}
+        onOpenMasterEq={() => setIsMasterEqModalOpen(true)}
+        aspectRatio={aspectRatio}
+        onSelectAspectRatio={setAspectRatio}
       />
 
       {/* High Definition Video Export Modal */}

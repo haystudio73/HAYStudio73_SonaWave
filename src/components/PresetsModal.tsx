@@ -1,19 +1,23 @@
 import React from 'react';
 import { PresetTheme } from '../types';
 import { PRESET_THEMES } from '../utils/presets';
+import { Language, TRANSLATIONS } from '../utils/i18n';
 import { X, Sparkles, Smartphone, Square, Tv } from 'lucide-react';
 
 interface PresetsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectTheme: (theme: PresetTheme) => void;
+  language?: Language;
 }
 
 export const PresetsModal: React.FC<PresetsModalProps> = ({
   isOpen,
   onClose,
   onSelectTheme,
+  language = 'vi',
 }) => {
+  const t = TRANSLATIONS[language] || TRANSLATIONS['vi'];
   if (!isOpen) return null;
 
   return (
@@ -26,9 +30,9 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
               <Sparkles className="w-5 h-5 text-rose-400" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Mẫu Thiết Kế Sẵn (Preset Templates)</h3>
+              <h3 className="text-base font-bold text-white">{t.presetsTitle}</h3>
               <p className="text-xs text-neutral-400">
-                Chọn phong cách visualizer, nền và hiệu ứng chuyên nghiệp với 1 chạm
+                {t.presetsSubtitle}
               </p>
             </div>
           </div>
@@ -55,7 +59,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
               <div className="relative aspect-video rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800">
                 <img
                   src={theme.thumbnail}
-                  alt={theme.nameVi}
+                  alt={language === 'vi' ? theme.nameVi : theme.name}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-mono text-neutral-200 flex items-center gap-1">
@@ -68,7 +72,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
 
               <div>
                 <h4 className="text-sm font-bold text-white group-hover:text-rose-400 transition-colors">
-                  {theme.nameVi}
+                  {language === 'vi' ? theme.nameVi : theme.name}
                 </h4>
                 <p className="text-xs text-neutral-400 mt-0.5 leading-relaxed line-clamp-2">
                   {theme.description}

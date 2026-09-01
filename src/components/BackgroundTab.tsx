@@ -5,6 +5,8 @@ import {
   ParticleType, 
   ParticleShape, 
   ParticleColorMode, 
+  SnowFlakeType,
+  RainDropType,
   BackgroundZoomTrigger, 
   BackgroundZoomStyle,
   BackgroundGlitchTrigger,
@@ -19,29 +21,36 @@ import {
   CloudRain, 
   Eye, 
   Sun, 
-  Maximize,
-  CircleDot,
-  Zap,
-  Flame,
-  Video,
-  Film,
-  Circle,
-  Square,
-  Star,
-  Heart,
-  Gem,
-  Palette,
-  Activity,
-  Gauge,
-  Waves,
-  Radio,
-  Music2,
-  Move3d,
-  Disc,
-  Tv,
-  Layers,
-  Split,
-  ScanLine
+  Maximize, 
+  CircleDot, 
+  Zap, 
+  Flame, 
+  Video, 
+  Film, 
+  Circle, 
+  Square, 
+  Star, 
+  Heart, 
+  Gem, 
+  Palette, 
+  Activity, 
+  Gauge, 
+  Waves, 
+  Radio, 
+  Music2, 
+  Move3d, 
+  Disc, 
+  Tv, 
+  Layers, 
+  Split, 
+  ScanLine, 
+  Slash, 
+  CloudSnow,
+  Wind,
+  Snowflake,
+  Compass,
+  Droplet,
+  Droplets
 } from 'lucide-react';
 
 interface BackgroundTabProps {
@@ -62,12 +71,30 @@ const CATEGORIES = [
 
 const PARTICLE_TYPES: { id: ParticleType; nameVi: string; icon: React.ComponentType<{ className?: string }>; badge?: string }[] = [
   { id: 'none', nameVi: 'Tắt hạt', icon: Eye },
+  { id: 'rain', nameVi: 'Mưa Rơi Tự Nhiên', icon: CloudRain, badge: 'Vật Lý Mưa 🌧️' },
+  { id: 'snow', nameVi: 'Tuyết Rơi Mùa Đông', icon: CloudSnow, badge: 'Mùa Đông ❄️' },
+  { id: 'spinning-dashes', nameVi: 'Đường ngắn rơi & xoay', icon: Slash, badge: 'Hot Trend' },
+  { id: 'spaghetti', nameVi: 'Mưa Spaghetti Rơi', icon: Waves, badge: 'Mới & Độc Lạ' },
   { id: 'sound-sparks', nameVi: 'Tia lửa bốc (Sparks)', icon: Flame, badge: 'Rực Rỡ' },
   { id: 'rainbow-bubbles', nameVi: 'Bong bóng cầu vồng', icon: CircleDot, badge: 'Mới & Đẹp' },
   { id: 'hyperspace', nameVi: 'Tăng tốc Hyperspace', icon: Zap, badge: 'Mới 3D' },
   { id: 'dust', nameVi: 'Bụi lofi trôi', icon: Sparkles },
   { id: 'stars', nameVi: 'Sao lấp lánh', icon: Sparkles },
-  { id: 'rain', nameVi: 'Mưa đêm rơi', icon: CloudRain },
+];
+
+const SNOWFLAKE_TYPES: { id: SnowFlakeType; nameVi: string; desc: string }[] = [
+  { id: 'mixed', nameVi: 'Hỗn Hợp Tự Nhiên', desc: 'Pha trộn cả tinh thể, đốm tròn & ánh sáng' },
+  { id: 'crystal', nameVi: 'Tinh Thể 6 Cánh', desc: 'Hoa tuyết lục giác đan nhánh tinh xảo' },
+  { id: 'flurry', nameVi: 'Đốm Mờ Bokeh', desc: 'Hạt bông tuyết tròn mờ ảo lãng mạn' },
+  { id: 'glitter', nameVi: 'Kim Cương Băng', desc: 'Chữ thập 4 cánh lấp lánh ánh kim' },
+];
+
+const RAINDROP_TYPES: { id: RainDropType; nameVi: string; desc: string }[] = [
+  { id: 'mixed', nameVi: 'Hỗn Hợp Tự Nhiên', desc: 'Pha trộn giọt nước, vệt dài cinematic & mưa nhẹ' },
+  { id: 'streaks', nameVi: 'Vệt Dài Cinematic', desc: 'Dải nước dài trong suốt lấp lánh phong cách điện ảnh' },
+  { id: 'drizzle', nameVi: 'Mưa Phùn Li Ti', desc: 'Hạt mưa bụi li ti bay lơ lửng bồng bềnh' },
+  { id: 'heavy', nameVi: 'Mưa Rào Bão Tố', desc: 'Mưa to xối xả tốc độ cao, vệt nước đậm nét' },
+  { id: 'neon-glow', nameVi: 'Mưa Phát Sáng Neon', desc: 'Tia mưa phát quang rực rỡ theo dải âm thanh' },
 ];
 
 const PARTICLE_SHAPES: { id: ParticleShape; nameVi: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -750,33 +777,354 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
         {/* Particle Controls & Customization */}
         {particles.enabled && particles.type !== 'none' && (
           <div className="space-y-4 pt-1">
-            {/* A. Particle Shape Selector */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">
-                Hình Dáng Hạt (Particle Shape)
-              </label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {PARTICLE_SHAPES.map((shapeItem) => {
-                  const Icon = shapeItem.icon;
-                  const currentShape = particles.shape || (particles.type === 'stars' ? 'star' : 'circle');
-                  const isSelected = currentShape === shapeItem.id;
-                  return (
-                    <button
-                      key={shapeItem.id}
-                      onClick={() => updatePt({ shape: shapeItem.id })}
-                      className={`p-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-cyan-500/20 border-cyan-500 text-white shadow-sm ring-1 ring-cyan-500/40'
-                          : 'bg-neutral-900/70 border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                      }`}
-                    >
-                      <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-cyan-400' : 'text-neutral-400'}`} />
-                      <span>{shapeItem.nameVi}</span>
-                    </button>
-                  );
-                })}
+            {/* 1. DEDICATED SNOWFALL & WIND DIRECTION CONTROLS */}
+            {particles.type === 'snow' && (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-sky-950/40 via-neutral-900 to-cyan-950/30 border border-sky-500/30 space-y-3.5 shadow-sm">
+                <div className="flex items-center justify-between pb-2 border-b border-sky-500/20">
+                  <div className="flex items-center gap-2">
+                    <CloudSnow className="w-4 h-4 text-sky-400" />
+                    <span className="text-xs font-bold text-sky-200">
+                      Tùy Chỉnh Tuyết Rơi & Hướng Gió (Snow & Wind Dynamics)
+                    </span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                    Vật Lý Gió ❄️
+                  </span>
+                </div>
+
+                {/* Snowflake Type Selector */}
+                <div>
+                  <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
+                    <Snowflake className="w-3.5 h-3.5 text-sky-400" />
+                    Kiểu Bông Tuyết (Snowflake Type)
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {SNOWFLAKE_TYPES.map((st) => {
+                      const isSelected = (particles.snowFlakeType || 'mixed') === st.id;
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => updatePt({ snowFlakeType: st.id })}
+                          className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/40'
+                              : 'bg-neutral-900/70 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                          }`}
+                        >
+                          <span className={`text-xs font-semibold block ${isSelected ? 'text-sky-200' : 'text-neutral-300'}`}>
+                            {st.nameVi}
+                          </span>
+                          <span className="text-[9px] text-neutral-400 block leading-tight">
+                            {st.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Wind Direction Angle (-60° to +60°) */}
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 flex items-center gap-1.5 font-medium">
+                      <Compass className="w-3.5 h-3.5 text-sky-400" />
+                      Hướng gió thổi (Wind Angle)
+                    </span>
+                    <span className="text-sky-400 font-mono font-bold">
+                      {(particles.snowWindAngle !== undefined ? particles.snowWindAngle : 15) > 0 ? `+${particles.snowWindAngle ?? 15}° (Sang Phải)` : (particles.snowWindAngle ?? 15) < 0 ? `${particles.snowWindAngle}° (Sang Trái)` : '0° (Thẳng Đứng)'}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-60}
+                    max={60}
+                    step={5}
+                    value={particles.snowWindAngle !== undefined ? particles.snowWindAngle : 15}
+                    onChange={(e) => updatePt({ snowWindAngle: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-400"
+                  />
+                  
+                  {/* Wind Direction Quick Presets */}
+                  <div className="flex items-center gap-1 pt-1.5">
+                    {[
+                      { label: 'Gió Trái (-35°)', val: -35 },
+                      { label: 'Thẳng đứng (0°)', val: 0 },
+                      { label: 'Gió Nhẹ (+15°)', val: 15 },
+                      { label: 'Gió Mạnh (+45°)', val: 45 },
+                    ].map((wp) => {
+                      const cur = particles.snowWindAngle !== undefined ? particles.snowWindAngle : 15;
+                      const active = cur === wp.val;
+                      return (
+                        <button
+                          key={wp.label}
+                          type="button"
+                          onClick={() => updatePt({ snowWindAngle: wp.val })}
+                          className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
+                            active
+                              ? 'bg-sky-500 text-white font-bold shadow-sm'
+                              : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
+                          }`}
+                        >
+                          {wp.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Wind Speed Multiplier & Turbulence */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-neutral-400 flex items-center gap-1">
+                        <Wind className="w-3 h-3 text-sky-400" />
+                        Tốc độ gió
+                      </span>
+                      <span className="text-sky-400 font-mono">
+                        {(particles.snowWindSpeed !== undefined ? particles.snowWindSpeed : 1.0).toFixed(1)}x
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.3}
+                      max={2.5}
+                      step={0.1}
+                      value={particles.snowWindSpeed !== undefined ? particles.snowWindSpeed : 1.0}
+                      onChange={(e) => updatePt({ snowWindSpeed: parseFloat(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-400"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-neutral-400">Độ chao đảo (Turbulence)</span>
+                      <span className="text-sky-400 font-mono">
+                        {particles.snowTurbulence !== undefined ? particles.snowTurbulence : 40}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={particles.snowTurbulence !== undefined ? particles.snowTurbulence : 40}
+                      onChange={(e) => updatePt({ snowTurbulence: parseInt(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-400"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* 1.5 DEDICATED RAINFALL & WIND DIRECTION CONTROLS */}
+            {particles.type === 'rain' && (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-950/40 via-neutral-900 to-cyan-950/40 border border-blue-500/30 space-y-3.5 shadow-sm">
+                <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
+                  <div className="flex items-center gap-2">
+                    <CloudRain className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs font-bold text-blue-200">
+                      Tùy Chỉnh Mưa Rơi & Hướng Gió (Rain & Wind Dynamics)
+                    </span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    Vật Lý Mưa 🌧️
+                  </span>
+                </div>
+
+                {/* Raindrop Type Selector */}
+                <div>
+                  <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
+                    <Droplets className="w-3.5 h-3.5 text-blue-400" />
+                    Kiểu Hạt Mưa (Raindrop Type)
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {RAINDROP_TYPES.map((rt) => {
+                      const isSelected = (particles.rainDropType || 'mixed') === rt.id;
+                      return (
+                        <button
+                          key={rt.id}
+                          type="button"
+                          onClick={() => updatePt({ rainDropType: rt.id })}
+                          className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-blue-500/25 border-blue-400 text-white shadow-sm ring-1 ring-blue-500/40'
+                              : 'bg-neutral-900/70 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                          }`}
+                        >
+                          <span className={`text-xs font-semibold block ${isSelected ? 'text-blue-200' : 'text-neutral-300'}`}>
+                            {rt.nameVi}
+                          </span>
+                          <span className="text-[9px] text-neutral-400 block leading-tight">
+                            {rt.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Wind Direction Angle (-60° to +60°) */}
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 flex items-center gap-1.5 font-medium">
+                      <Compass className="w-3.5 h-3.5 text-blue-400" />
+                      Hướng gió thổi & góc nghiêng (Wind Angle)
+                    </span>
+                    <span className="text-blue-400 font-mono font-bold">
+                      {(particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10) > 0 ? `+${particles.rainWindAngle ?? 10}° (Sang Phải)` : (particles.rainWindAngle ?? 10) < 0 ? `${particles.rainWindAngle}° (Sang Trái)` : '0° (Thẳng Đứng)'}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-60}
+                    max={60}
+                    step={5}
+                    value={particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10}
+                    onChange={(e) => updatePt({ rainWindAngle: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                  />
+                  
+                  {/* Wind Direction Quick Presets */}
+                  <div className="flex items-center gap-1 pt-1.5">
+                    {[
+                      { label: 'Gió Trái (-35°)', val: -35 },
+                      { label: 'Thẳng đứng (0°)', val: 0 },
+                      { label: 'Gió Nhẹ (+10°)', val: 10 },
+                      { label: 'Gió Bão (+40°)', val: 40 },
+                    ].map((wp) => {
+                      const cur = particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10;
+                      const active = cur === wp.val;
+                      return (
+                        <button
+                          key={wp.label}
+                          type="button"
+                          onClick={() => updatePt({ rainWindAngle: wp.val })}
+                          className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
+                            active
+                              ? 'bg-blue-500 text-white font-bold shadow-sm'
+                              : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
+                          }`}
+                        >
+                          {wp.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Wind Speed Multiplier & Turbulence */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-neutral-400 flex items-center gap-1">
+                        <Wind className="w-3 h-3 text-blue-400" />
+                        Tốc độ gió
+                      </span>
+                      <span className="text-blue-400 font-mono">
+                        {(particles.rainWindSpeed !== undefined ? particles.rainWindSpeed : 1.2).toFixed(1)}x
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.3}
+                      max={2.5}
+                      step={0.1}
+                      value={particles.rainWindSpeed !== undefined ? particles.rainWindSpeed : 1.2}
+                      onChange={(e) => updatePt({ rainWindSpeed: parseFloat(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-neutral-400">Độ chao đảo (Turbulence)</span>
+                      <span className="text-blue-400 font-mono">
+                        {particles.rainTurbulence !== undefined ? particles.rainTurbulence : 25}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={particles.rainTurbulence !== undefined ? particles.rainTurbulence : 25}
+                      onChange={(e) => updatePt({ rainTurbulence: parseInt(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Raindrop Length Scale & Splash Toggle */}
+                <div className="grid grid-cols-2 gap-3 pt-1 border-t border-blue-500/20">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-neutral-400 flex items-center gap-1">
+                        <Droplet className="w-3 h-3 text-blue-400" />
+                        Độ dài vệt giọt mưa
+                      </span>
+                      <span className="text-blue-400 font-mono">
+                        {(particles.rainLengthScale !== undefined ? particles.rainLengthScale : 1.2).toFixed(1)}x
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={3.0}
+                      step={0.1}
+                      value={particles.rainLengthScale !== undefined ? particles.rainLengthScale : 1.2}
+                      onChange={(e) => updatePt({ rainLengthScale: parseFloat(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                    />
+                  </div>
+
+                  <div className="flex flex-col justify-end">
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/80 border border-neutral-800 cursor-pointer">
+                      <div className="flex items-center gap-1.5">
+                        <Waves className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="text-[11px] font-medium text-neutral-300">Tóe nước đáy</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={particles.rainSplash !== false}
+                        onChange={(e) => updatePt({ rainSplash: e.target.checked })}
+                        className="rounded text-blue-500 focus:ring-blue-500 bg-neutral-800 border-neutral-700"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* A. Particle Shape Selector (Hide if specialized shapes like snow, rain, or hyperspace) */}
+            {particles.type !== 'snow' && particles.type !== 'rain' && particles.type !== 'hyperspace' && (
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">
+                  Hình Dáng Hạt (Particle Shape)
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {PARTICLE_SHAPES.map((shapeItem) => {
+                    const Icon = shapeItem.icon;
+                    const currentShape = particles.shape || (particles.type === 'stars' ? 'star' : 'circle');
+                    const isSelected = currentShape === shapeItem.id;
+                    return (
+                      <button
+                        key={shapeItem.id}
+                        onClick={() => updatePt({ shape: shapeItem.id })}
+                        className={`p-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-500/20 border-cyan-500 text-white shadow-sm ring-1 ring-cyan-500/40'
+                            : 'bg-neutral-900/70 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-cyan-400' : 'text-neutral-400'}`} />
+                        <span>{shapeItem.nameVi}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* B. Color Mode Selector */}
             <div className="space-y-2">
