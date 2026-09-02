@@ -63,7 +63,7 @@ These are planned enhancements and newly introduced features to improve workflow
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ or Bun runtime
+- Node.js 18+ or Bun runtime: -> https://nodejs.org/en/download/current
 - 2GB free disk space for video processing
 
 ### Installation
