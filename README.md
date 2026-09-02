@@ -73,7 +73,8 @@ These are planned enhancements and newly introduced features to improve workflow
    cd HAYStudio73_SonaWave
    ```
 
-2. **Install Dependencies**n   ```bash
+2. **Install Dependencies**
+   ```bash
    # Using Bun (recommended)
    bun install
    
@@ -81,10 +82,10 @@ These are planned enhancements and newly introduced features to improve workflow
    npm install
    ```
 
-3. **Configure Environment Variables**
+4. **Configure Environment Variables**
    No need ENV variable
 
-4. **Start Development Server**
+5. **Start Development Server**
    ```bash
    bun run dev
    # The app will be available at http://localhost:3000
