@@ -77,8 +77,10 @@ These are planned enhancements and newly introduced features to improve workflow
    ```bash
    # Using Bun (recommended)
    bun install
+   ```
    
    # Or using npm
+   ```bash
    npm install
    ```
 
