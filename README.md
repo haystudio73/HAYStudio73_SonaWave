@@ -43,6 +43,7 @@ These are planned enhancements and newly introduced features to improve workflow
 ### Supported Formats
 - **Audio Input**: MP3, WAV files
 - **Subtitle Formats**: SRT (SubRip), LRC (LyRiCs)
+- **Background Input Formats**: JPG / PNG / MP4
 - **Video Export**: MP4 with configurable quality and dimensions
 - **Optimal Dimensions**: 
   - TikTok: 1080x1920 (9:16)
@@ -57,12 +58,12 @@ These are planned enhancements and newly introduced features to improve workflow
 - Background blur and overlay options
 - Lyric highlighting and fade effects
 - Multi-style visualizer modes (bars, wave, particles, etc.)
+- And more ...
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 - Node.js 18+ or Bun runtime
-- Gemini API key (for AI-powered features)
 - 2GB free disk space for video processing
 
 ### Installation
@@ -92,28 +93,11 @@ These are planned enhancements and newly introduced features to improve workflow
    bun run dev
    # The app will be available at http://localhost:3000
    ```
-
-## 📁 Project Structure
-
-```
-HAYStudio73_SonaWave/
-├── src/
-│   ├── App.tsx              # Main application component
-│   ├── main.tsx             # React entry point
-│   ├── index.css            # Global styles
-│   ├── types.ts             # TypeScript type definitions
-│   ├── components/          # Reusable React components
-│   └── utils/               # Utility functions and helpers
-├── assets/                  # Static assets (images, backgrounds)
-├── index.html               # HTML template
-├── package.json             # Project dependencies
-├── vite.config.ts           # Vite build configuration
-├── tsconfig.json            # TypeScript configuration
-├── metadata.json            # Project metadata
-├── .env.example             # Environment variables template
-└── README.md                # This file
-```
-
+  # Or
+  ```bash
+   npm run dev
+   # The app will be available at http://localhost:3000
+  ```
 ## 🛠️ Technology Stack
 
 ### Frontend
@@ -155,6 +139,8 @@ HAYStudio73_SonaWave/
    - Select output quality and dimensions
    - Choose export format (MP4)
    - Click export and download your video
+  
+And more ...
 
 ### Example: Creating a TikTok Video
 
@@ -162,7 +148,7 @@ HAYStudio73_SonaWave/
 1. Upload: "my_song.mp3"
 2. Add Lyrics: "lyrics.srt"
 3. Select: Waveform Bars effect
-4. Background: Upload "my_background.jpg"
+4. Background: Upload "my_background.jpg" / "my_clip.mp4"
 5. Export: 1080x1920 quality HD
 ```
 
