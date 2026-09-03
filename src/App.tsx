@@ -263,12 +263,15 @@ export function App() {
       if (autoSaved.masterEq) {
         setMasterEqConfig(autoSaved.masterEq);
       }
-      setTrack(autoSaved.track);
+      const safeTrack = autoSaved.track ? { ...DEFAULT_TRACK, ...autoSaved.track } : DEFAULT_TRACK;
+      setTrack(safeTrack);
       setTextBoxes(autoSaved.textBoxes || DEFAULT_TEXT_BOXES);
       setAudioFileName(autoSaved.audioFileName || 'Neon_Synthwave_Demo.wav');
 
-      rendererRef.current.setBackgroundImage(autoSaved.background.url);
-      rendererRef.current.setCoverImage(autoSaved.track.coverUrl);
+      if (autoSaved.background?.url) {
+        rendererRef.current.setBackgroundImage(autoSaved.background.url);
+      }
+      rendererRef.current.setCoverImage(safeTrack.coverUrl || DEFAULT_TRACK.coverUrl);
 
       loadSampleTrack(autoSaved.sampleAudioType || 'synthwave', false);
     } else {
@@ -301,22 +304,22 @@ export function App() {
   }, [isPlaying]);
 
   useEffect(() => {
-    if (rendererRef.current) {
-      rendererRef.current.setCoverImage(track.coverUrl);
+    if (rendererRef.current && track) {
+      rendererRef.current.setCoverImage(track.coverUrl || DEFAULT_TRACK.coverUrl);
     }
-  }, [track.coverUrl]);
+  }, [track?.coverUrl]);
 
   useEffect(() => {
-    if (rendererRef.current) {
+    if (rendererRef.current && track) {
       rendererRef.current.setBadgeImage(track.badgePngUrl || '');
     }
-  }, [track.badgePngUrl]);
+  }, [track?.badgePngUrl]);
 
   useEffect(() => {
-    if (rendererRef.current) {
+    if (rendererRef.current && track) {
       rendererRef.current.setLogoImage(track.logoUrl || '');
     }
-  }, [track.logoUrl]);
+  }, [track?.logoUrl]);
 
   // Load sample synthetic audio demo
   const loadSampleTrack = async (
@@ -500,13 +503,16 @@ export function App() {
     if (project.masterEq) {
       setMasterEqConfig(project.masterEq);
     }
-    setTrack(project.track);
+    const safeTrack = project.track ? { ...DEFAULT_TRACK, ...project.track } : DEFAULT_TRACK;
+    setTrack(safeTrack);
     setTextBoxes(project.textBoxes || DEFAULT_TEXT_BOXES);
     setAudioFileName(project.audioFileName || 'Neon_Synthwave_Demo.wav');
 
     if (rendererRef.current) {
-      rendererRef.current.setBackgroundImage(project.background.url);
-      rendererRef.current.setCoverImage(project.track.coverUrl);
+      if (project.background?.url) {
+        rendererRef.current.setBackgroundImage(project.background.url);
+      }
+      rendererRef.current.setCoverImage(safeTrack.coverUrl || DEFAULT_TRACK.coverUrl);
     }
 
     if (project.sampleAudioType) {
@@ -531,14 +537,22 @@ export function App() {
 
   // Apply Preset Theme
   const handleSelectPresetTheme = (theme: PresetTheme) => {
-    setAspectRatio(theme.aspectRatio);
-    setVisualizer(theme.visualizer);
-    setLyricsConfig(theme.lyrics);
-    setBackground(theme.background);
-    setParticles(theme.particles);
+    setAspectRatio(theme.aspectRatio || '9:16');
+    setVisualizer(theme.visualizer || DEFAULT_VISUALIZER);
+    setLyricsConfig(theme.lyrics || DEFAULT_LYRICS);
+    setBackground(theme.background || DEFAULT_BACKGROUND);
+    setParticles(theme.particles || DEFAULT_PARTICLES);
     setFilmLight(theme.filmLight || DEFAULT_FILM_LIGHT);
     setColorGrading(theme.colorGrading || DEFAULT_COLOR_GRADING);
-    setTrack(theme.track);
+    const safeTrack = theme.track ? { ...DEFAULT_TRACK, ...theme.track } : DEFAULT_TRACK;
+    setTrack(safeTrack);
+
+    if (rendererRef.current) {
+      if (theme.background?.url) {
+        rendererRef.current.setBackgroundImage(theme.background.url);
+      }
+      rendererRef.current.setCoverImage(safeTrack.coverUrl || DEFAULT_TRACK.coverUrl);
+    }
 
     if (theme.sampleAudio) {
       loadSampleTrack(theme.sampleAudio.type);
@@ -548,9 +562,10 @@ export function App() {
   // Snapshot Capture
   const handleCaptureSnapshot = () => {
     if (canvasRef.current) {
+      const safeTitle = track?.title || 'Track';
       VideoExporter.captureSnapshot(
         canvasRef.current,
-        `SonaWave_${track.title.replace(/\s+/g, '_')}_Cover.png`
+        `SonaWave_${safeTitle.replace(/\s+/g, '_')}_Cover.png`
       );
     }
   };
@@ -870,7 +885,8 @@ export function App() {
 
   const handleDownloadExportedVideo = () => {
     if (exportedBlob) {
-      const filename = `SonaWave_${track.title.replace(/\s+/g, '_')}_${aspectRatio}_${Date.now()}.mp4`;
+      const safeTitle = track?.title || 'Track';
+      const filename = `SonaWave_${safeTitle.replace(/\s+/g, '_')}_${aspectRatio}_${Date.now()}.mp4`;
       const mp4Blob = exportedBlob.type === 'video/mp4' ? exportedBlob : new Blob([exportedBlob], { type: 'video/mp4' });
       VideoExporter.downloadBlob(mp4Blob, filename);
     }
@@ -1073,6 +1089,7 @@ export function App() {
               <FilmLightTab
                 filmLight={filmLight}
                 onChange={setFilmLight}
+                language={language}
               />
             )}
 
@@ -1084,7 +1101,7 @@ export function App() {
             )}
 
             {activeTab === 'track' && (
-              <TrackTab track={track} onChange={setTrack} />
+              <TrackTab track={track} onChange={setTrack} language={language} />
             )}
 
             {activeTab === 'textboxes' && (

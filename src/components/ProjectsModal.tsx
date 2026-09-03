@@ -24,6 +24,7 @@ import {
   hasAutoSave,
   clearAutoSave,
 } from '../utils/projectStorage';
+import { DEFAULT_TRACK } from '../utils/presets';
 import {
   X,
   FolderOpen,
@@ -93,13 +94,13 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
       const saved = getSavedProjects();
       setProjects(saved);
       setAutoSaveData(getAutoSave());
-      setProjectName(currentConfig.track.title || 'Dự án SonaWave mới');
+      setProjectName(currentConfig.track?.title || 'Dự án SonaWave mới');
       setNotification(null);
       setConfirmDeleteProject(null);
       setConfirmClearAll(false);
       setConfirmResetDefaults(false);
     }
-  }, [isOpen, currentConfig.track.title]);
+  }, [isOpen, currentConfig.track?.title]);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -112,7 +113,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
 
   // Handle Save Current Project
   const handleSaveCurrent = (overrideId?: string) => {
-    const trimmedName = projectName.trim() || currentConfig.track.title || 'Dự án chưa đặt tên';
+    const trimmedName = projectName.trim() || currentConfig.track?.title || 'Dự án chưa đặt tên';
     const saved = saveProject({
       id: overrideId,
       name: trimmedName,
@@ -125,7 +126,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
       filmLight: currentConfig.filmLight,
       colorGrading: currentConfig.colorGrading,
       masterEq: currentConfig.masterEq,
-      track: currentConfig.track,
+      track: currentConfig.track ? { ...DEFAULT_TRACK, ...currentConfig.track } : DEFAULT_TRACK,
       textBoxes: currentConfig.textBoxes,
       audioFileName: currentConfig.audioFileName,
     });
@@ -196,9 +197,9 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
   // Filtered projects
   const filteredProjects = projects.filter(
     (p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.track.artist.toLowerCase().includes(searchQuery.toLowerCase())
+      (p.name && p.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.track?.title && p.track.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.track?.artist && p.track.artist.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const formatDate = (timestamp: number) => {
@@ -381,10 +382,11 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
               onClick={() => {
                 const currentAsProj: SavedProject = {
                   id: `temp_${Date.now()}`,
-                  name: projectName || currentConfig.track.title,
+                  name: projectName || currentConfig.track?.title || 'Dự án SonaWave',
                   createdAt: Date.now(),
                   updatedAt: Date.now(),
                   ...currentConfig,
+                  track: currentConfig.track ? { ...DEFAULT_TRACK, ...currentConfig.track } : DEFAULT_TRACK,
                 };
                 exportProjectAsJSON(currentAsProj);
                 showNotification('success', 'Đã tải file dự án .sonawave.json về máy!');
@@ -420,7 +422,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
               <Sparkles className="w-4 h-4 text-purple-400 shrink-0 animate-pulse" />
               <div className="text-xs truncate">
                 <span className="text-purple-200 font-semibold">Phiên làm việc tự động gần nhất: </span>
-                <span className="text-neutral-300">{autoSaveData.track.title}</span>
+                <span className="text-neutral-300">{autoSaveData.track?.title || autoSaveData.name || 'Dự án'}</span>
                 <span className="text-[10px] text-neutral-400 ml-2">({formatDate(autoSaveData.updatedAt)})</span>
               </div>
             </div>
@@ -509,7 +511,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                         backgroundColor: p.visualizer.primaryColor || '#ec4899',
                       }}
                     >
-                      {p.track.coverUrl ? (
+                      {p.track?.coverUrl ? (
                         <img
                           src={p.track.coverUrl}
                           alt=""
@@ -534,7 +536,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                       </div>
 
                       <p className="text-xs text-neutral-400 truncate mt-0.5">
-                        {p.track.title} • {p.track.artist}
+                        {p.track?.title || p.name} • {p.track?.artist || 'SonaWave'}
                       </p>
 
                       <div className="flex items-center gap-2 mt-1 text-[10px] text-neutral-500 font-mono">

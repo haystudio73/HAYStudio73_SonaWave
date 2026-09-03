@@ -58,7 +58,17 @@ export function getSavedProjects(): SavedProject[] {
     const raw = localStorage.getItem(STORAGE_KEY_PROJECTS);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((p) => ({
+      ...p,
+      track: p.track ? { ...DEFAULT_TRACK, ...p.track } : { ...DEFAULT_TRACK },
+      visualizer: p.visualizer ? { ...DEFAULT_VISUALIZER, ...p.visualizer } : { ...DEFAULT_VISUALIZER },
+      lyricsConfig: p.lyricsConfig ? { ...DEFAULT_LYRICS, ...p.lyricsConfig } : { ...DEFAULT_LYRICS },
+      background: p.background ? { ...DEFAULT_BACKGROUND, ...p.background } : { ...DEFAULT_BACKGROUND },
+      particles: p.particles ? { ...DEFAULT_PARTICLES, ...p.particles } : { ...DEFAULT_PARTICLES },
+      filmLight: p.filmLight ? { ...DEFAULT_FILM_LIGHT, ...p.filmLight } : { ...DEFAULT_FILM_LIGHT },
+      colorGrading: p.colorGrading ? { ...DEFAULT_COLOR_GRADING, ...p.colorGrading } : { ...DEFAULT_COLOR_GRADING },
+    }));
   } catch (err) {
     console.error('Failed to load projects from localStorage:', err);
     return [];
@@ -156,10 +166,12 @@ export function saveAutoSave(
   state: Omit<SavedProject, 'id' | 'name' | 'createdAt' | 'updatedAt'>
 ): void {
   try {
+    const safeTrack = state.track ? { ...DEFAULT_TRACK, ...state.track } : DEFAULT_TRACK;
     const autoSaveData: SavedProject = {
       ...state,
+      track: safeTrack,
       id: 'autosave_session',
-      name: `Tự động lưu (${state.track.title || 'Dự án'})`,
+      name: `Tự động lưu (${safeTrack.title || 'Dự án'})`,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -176,7 +188,18 @@ export function getAutoSave(): SavedProject | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_AUTOSAVE);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      ...parsed,
+      track: parsed.track ? { ...DEFAULT_TRACK, ...parsed.track } : { ...DEFAULT_TRACK },
+      visualizer: parsed.visualizer ? { ...DEFAULT_VISUALIZER, ...parsed.visualizer } : { ...DEFAULT_VISUALIZER },
+      lyricsConfig: parsed.lyricsConfig ? { ...DEFAULT_LYRICS, ...parsed.lyricsConfig } : { ...DEFAULT_LYRICS },
+      background: parsed.background ? { ...DEFAULT_BACKGROUND, ...parsed.background } : { ...DEFAULT_BACKGROUND },
+      particles: parsed.particles ? { ...DEFAULT_PARTICLES, ...parsed.particles } : { ...DEFAULT_PARTICLES },
+      filmLight: parsed.filmLight ? { ...DEFAULT_FILM_LIGHT, ...parsed.filmLight } : { ...DEFAULT_FILM_LIGHT },
+      colorGrading: parsed.colorGrading ? { ...DEFAULT_COLOR_GRADING, ...parsed.colorGrading } : { ...DEFAULT_COLOR_GRADING },
+    };
   } catch (err) {
     return null;
   }
@@ -206,7 +229,8 @@ export function clearAutoSave(): void {
 export function exportProjectAsJSON(project: SavedProject): void {
   const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(project, null, 2));
   const downloadAnchor = document.createElement('a');
-  const filename = `SonaWave_Project_${(project.name || project.track.title).replace(/\s+/g, '_')}_${Date.now()}.sonawave.json`;
+  const safeName = (project.name || project.track?.title || 'Dự_án').replace(/\s+/g, '_');
+  const filename = `SonaWave_Project_${safeName}_${Date.now()}.sonawave.json`;
   downloadAnchor.setAttribute('href', dataStr);
   downloadAnchor.setAttribute('download', filename);
   document.body.appendChild(downloadAnchor);

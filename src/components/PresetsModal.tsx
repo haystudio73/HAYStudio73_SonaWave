@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PresetTheme, AspectRatio, VisualizerConfig, LyricsConfig, BackgroundConfig, ParticleConfig, FilmLightConfig, ColorGradingConfig, TrackMetadata, TextBoxItem } from '../types';
-import { PRESET_THEMES, getUserPresets, saveUserPreset, deleteUserPreset, exportUserPresetsJson, importUserPresets } from '../utils/presets';
+import { PRESET_THEMES, getUserPresets, saveUserPreset, deleteUserPreset, clearAllUserPresets, exportUserPresetsJson, importUserPresets, DEFAULT_TRACK } from '../utils/presets';
 import { Language, TRANSLATIONS } from '../utils/i18n';
-import { X, Sparkles, Smartphone, Square, Tv, Plus, Trash2, Download, Upload, Check, Bookmark, Layers } from 'lucide-react';
+import { X, Sparkles, Smartphone, Square, Tv, Plus, Trash2, Download, Upload, Check, Bookmark, Layers, AlertTriangle } from 'lucide-react';
 
 interface PresetsModalProps {
   isOpen: boolean;
@@ -36,6 +36,8 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
   const [presetName, setPresetName] = useState('');
   const [presetDesc, setPresetDesc] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [confirmDeletePreset, setConfirmDeletePreset] = useState<{ id: string; name: string } | null>(null);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load user presets on open
@@ -43,6 +45,8 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
     if (isOpen) {
       setUserPresets(getUserPresets());
       setIsCreating(false);
+      setConfirmDeletePreset(null);
+      setConfirmClearAll(false);
     }
   }, [isOpen]);
 
@@ -78,6 +82,8 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
       particles: { ...currentConfig.particles },
       filmLight: currentConfig.filmLight ? { ...currentConfig.filmLight } : undefined,
       colorGrading: currentConfig.colorGrading ? { ...currentConfig.colorGrading } : undefined,
+      track: currentConfig.track ? { ...currentConfig.track } : { ...DEFAULT_TRACK },
+      textBoxes: currentConfig.textBoxes ? [...currentConfig.textBoxes] : undefined,
       thumbnail: currentConfig.background.type === 'image' && currentConfig.background.imageUrl
         ? currentConfig.background.imageUrl
         : 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop',
@@ -94,15 +100,28 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
     showToast(t.presetSavedSuccess || (language === 'vi' ? 'Đã lưu Preset thành công!' : 'Preset saved successfully!'));
   };
 
-  const handleDelete = (id: string, name: string) => {
-    const confirmMsg = language === 'vi'
-      ? `Bạn có chắc chắn muốn xóa preset "${name}" không?`
-      : `Are you sure you want to delete preset "${name}"?`;
-    if (window.confirm(confirmMsg)) {
-      const updated = deleteUserPreset(id);
-      setUserPresets(updated);
-      showToast(t.presetDeletedSuccess || (language === 'vi' ? 'Đã xóa Preset!' : 'Preset deleted!'));
-    }
+  const handleDeleteClick = (e: React.MouseEvent, id: string, name: string) => {
+    e.stopPropagation();
+    setConfirmDeletePreset({ id, name });
+  };
+
+  const executeDelete = () => {
+    if (!confirmDeletePreset) return;
+    const { id, name } = confirmDeletePreset;
+    const updated = deleteUserPreset(id);
+    setUserPresets(updated);
+    setConfirmDeletePreset(null);
+    showToast(
+      t.presetDeletedSuccess ||
+        (language === 'vi' ? `Đã xóa Preset "${name}"!` : `Preset "${name}" deleted!`)
+    );
+  };
+
+  const executeClearAll = () => {
+    const updated = clearAllUserPresets();
+    setUserPresets(updated);
+    setConfirmClearAll(false);
+    showToast(language === 'vi' ? 'Đã xóa toàn bộ Preset tùy chỉnh!' : 'All custom presets deleted!');
   };
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -441,7 +460,8 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
 
                         <div className="flex items-center gap-1.5">
                           <button
-                            onClick={() => handleDelete(theme.id, theme.name)}
+                            type="button"
+                            onClick={(e) => handleDeleteClick(e, theme.id, theme.name)}
                             title={language === 'vi' ? 'Xóa preset này' : 'Delete this preset'}
                             className="p-1.5 rounded-lg bg-neutral-900 hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 border border-neutral-800 transition-all cursor-pointer"
                           >
@@ -449,6 +469,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
                           </button>
 
                           <button
+                            type="button"
                             onClick={() => {
                               onSelectTheme(theme);
                               onClose();
@@ -468,7 +489,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
           )}
         </div>
 
-        {/* Footer with Import & Export Tools for User Presets */}
+        {/* Footer with Import, Export, and Clear Tools for User Presets */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-neutral-800">
           <input
             ref={fileInputRef}
@@ -478,8 +499,9 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
             onChange={handleImportFile}
           />
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 text-xs font-medium border border-neutral-700 transition-all cursor-pointer"
             >
@@ -488,6 +510,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
             </button>
 
             <button
+              type="button"
               onClick={exportUserPresetsJson}
               disabled={userPresets.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800/80 hover:bg-neutral-700 text-neutral-300 text-xs font-medium border border-neutral-700 transition-all disabled:opacity-40 cursor-pointer"
@@ -495,15 +518,107 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
               <Download className="w-3.5 h-3.5" />
               <span>{t.exportPresetsJson || (language === 'vi' ? 'Xuất Presets (JSON)' : 'Export JSON')}</span>
             </button>
+
+            {activeTab === 'custom' && userPresets.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setConfirmClearAll(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-800/80 hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 text-xs font-medium border border-neutral-700 hover:border-rose-500/40 transition-all cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{language === 'vi' ? 'Xóa Hết' : 'Clear All'}</span>
+              </button>
+            )}
           </div>
 
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold cursor-pointer ml-auto"
           >
             {language === 'vi' ? 'Đóng' : 'Close'}
           </button>
         </div>
+
+        {/* Delete Single Preset Confirmation Dialog (No window.confirm to support sandboxed iframes) */}
+        {confirmDeletePreset && (
+          <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+            <div className="w-full max-w-sm bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">
+                    {language === 'vi' ? 'Xác Nhận Xóa Preset' : 'Confirm Delete Preset'}
+                  </h4>
+                  <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+                    {language === 'vi'
+                      ? `Bạn có chắc chắn muốn xóa vĩnh viễn preset "${confirmDeletePreset.name}" không?`
+                      : `Are you sure you want to delete preset "${confirmDeletePreset.name}"?`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeletePreset(null)}
+                  className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  {t.cancel || (language === 'vi' ? 'Hủy' : 'Cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={executeDelete}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer transition-colors shadow-lg shadow-rose-900/30"
+                >
+                  {language === 'vi' ? 'Xóa Vĩnh Viễn' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Clear All Custom Presets Confirmation Dialog */}
+        {confirmClearAll && (
+          <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+            <div className="w-full max-w-sm bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">
+                    {language === 'vi' ? 'Xóa Toàn Bộ Preset' : 'Clear All Presets'}
+                  </h4>
+                  <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+                    {language === 'vi'
+                      ? 'Thao tác này sẽ xóa toàn bộ các preset tùy chỉnh bạn đã lưu trong trình duyệt. Bạn có chắc không?'
+                      : 'This will delete all custom presets stored in your browser. Are you sure?'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearAll(false)}
+                  className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  {t.cancel || (language === 'vi' ? 'Hủy' : 'Cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={executeClearAll}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer transition-colors shadow-lg shadow-rose-900/30"
+                >
+                  {language === 'vi' ? 'Xóa Hết' : 'Clear All'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

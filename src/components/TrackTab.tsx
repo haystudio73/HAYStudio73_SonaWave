@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { TrackMetadata, CardStyle, LogoPosition, BadgeBeatJumpStyle, TrackLayerOrder } from '../types';
-import { AVAILABLE_FONTS } from '../utils/presets';
+import { AVAILABLE_FONTS, DEFAULT_TRACK } from '../utils/presets';
 import { 
   Disc, 
   Upload, 
@@ -55,7 +55,8 @@ const LAYER_ORDERS: { id: TrackLayerOrder; name: string; desc: string }[] = [
   { id: 'front-all', name: 'Lớp Trên Cùng (Topmost)', desc: 'Hiển thị trên cùng đè lên tất cả các lớp' },
 ];
 
-export const TrackTab: React.FC<TrackTabProps> = ({ track, onChange, language = 'vi' }) => {
+export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, language = 'vi' }) => {
+  const track = rawTrack || DEFAULT_TRACK;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const badgePngInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);

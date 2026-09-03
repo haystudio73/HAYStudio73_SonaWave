@@ -303,7 +303,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               >
                 <img
                   src={preset.thumbnail}
-                  alt={isVi ? preset.nameVi : preset.nameEn}
+                  alt={isVi ? preset.nameVi : (preset.nameEn || preset.name)}
                   loading="lazy"
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
@@ -311,7 +311,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1.5">
                   <span className="text-[10px] font-medium text-white truncate drop-shadow">
-                    {isVi ? preset.nameVi : preset.nameEn}
+                    {isVi ? preset.nameVi : (preset.nameEn || preset.name)}
                   </span>
                 </div>
               </button>

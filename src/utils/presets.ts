@@ -220,6 +220,7 @@ export interface BackgroundPresetItem {
   id: string;
   name: string;
   nameVi: string;
+  nameEn?: string;
   category: 'cyberpunk' | 'lofi' | 'nature' | 'dark' | 'abstract' | 'space';
   url: string;
   thumbnail: string;
@@ -1335,7 +1336,17 @@ export function getUserPresets(): PresetTheme[] {
     const raw = localStorage.getItem(USER_PRESETS_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((p) => ({
+      ...p,
+      track: p.track ? { ...DEFAULT_TRACK, ...p.track } : DEFAULT_TRACK,
+      visualizer: p.visualizer ? { ...DEFAULT_VISUALIZER, ...p.visualizer } : DEFAULT_VISUALIZER,
+      lyrics: p.lyrics ? { ...DEFAULT_LYRICS, ...p.lyrics } : DEFAULT_LYRICS,
+      background: p.background ? { ...DEFAULT_BACKGROUND, ...p.background } : DEFAULT_BACKGROUND,
+      particles: p.particles ? { ...DEFAULT_PARTICLES, ...p.particles } : DEFAULT_PARTICLES,
+      filmLight: p.filmLight ? { ...DEFAULT_FILM_LIGHT, ...p.filmLight } : DEFAULT_FILM_LIGHT,
+      colorGrading: p.colorGrading ? { ...DEFAULT_COLOR_GRADING, ...p.colorGrading } : DEFAULT_COLOR_GRADING,
+    }));
   } catch (e) {
     console.error('Failed to load user presets from storage:', e);
     return [];
@@ -1370,13 +1381,26 @@ export function saveUserPreset(preset: PresetTheme): PresetTheme[] {
  */
 export function deleteUserPreset(id: string): PresetTheme[] {
   const current = getUserPresets();
-  const filtered = current.filter((p) => p.id !== id);
+  const targetId = String(id).trim();
+  const filtered = current.filter((p) => String(p.id).trim() !== targetId);
   try {
     localStorage.setItem(USER_PRESETS_STORAGE_KEY, JSON.stringify(filtered));
   } catch (e) {
     console.error('Failed to delete user preset from storage:', e);
   }
   return filtered;
+}
+
+/**
+ * Clear all user presets from storage
+ */
+export function clearAllUserPresets(): PresetTheme[] {
+  try {
+    localStorage.removeItem(USER_PRESETS_STORAGE_KEY);
+  } catch (e) {
+    console.error('Failed to clear user presets from storage:', e);
+  }
+  return [];
 }
 
 /**
@@ -1418,6 +1442,7 @@ export function importUserPresets(data: any): { count: number; presets: PresetTh
     mergedMap.set(presetId, {
       ...p,
       id: presetId,
+      track: p.track ? { ...DEFAULT_TRACK, ...p.track } : DEFAULT_TRACK,
       isUserPreset: true,
       createdAt: p.createdAt || Date.now(),
     });
