@@ -90,6 +90,7 @@ export interface LyricsConfig {
   glowColor: string;       // glow color for active line
   glowIntensity: number;   // glow strength
   positionY: number;       // 0 - 100 percentage
+  positionX?: number;      // 0 - 100 percentage (default 50)
   alignment: 'center' | 'left' | 'right';
   style: LyricsStyle;
   karaokeSweepMode?: KaraokeSweepMode;
@@ -273,7 +274,7 @@ export interface ColorGradingConfig {
   bloomGlow: number;       // 0 to 100 (Diffusion glow)
 }
 
-export type CardStyle = 'vinyl' | 'glass-card' | 'circular-badge' | 'logo-badge' | 'minimal-tag' | 'hidden';
+export type CardStyle = 'vinyl' | 'glass-card' | 'circular-badge' | 'rotating-badge' | 'logo-badge' | 'minimal-tag' | 'hidden';
 
 export type LogoPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'badge-center';
 
@@ -374,6 +375,9 @@ export interface PresetTheme {
   colorGrading?: ColorGradingConfig;
   masterEq?: MasterEQConfig;
   track: TrackMetadata;
+  textBoxes?: TextBoxItem[];
+  isUserPreset?: boolean;
+  createdAt?: number;
   sampleAudio?: {
     title: string;
     artist: string;

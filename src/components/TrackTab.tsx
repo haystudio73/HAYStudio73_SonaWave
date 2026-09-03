@@ -22,18 +22,22 @@ import {
   Trash2
 } from 'lucide-react';
 
+import { Language, TRANSLATIONS } from '../utils/i18n';
+
 interface TrackTabProps {
   track: TrackMetadata;
   onChange: (track: TrackMetadata) => void;
+  language?: Language;
 }
 
-const CARD_STYLES: { id: CardStyle; nameVi: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'vinyl', nameVi: 'Đĩa Than Vinyl Xoay 360°', desc: 'Đĩa vinyl chân thực với vân bóng và ảnh bìa xoay 360°', icon: Disc },
-  { id: 'glass-card', nameVi: 'Thẻ Kính Mờ (Glass Card)', desc: 'Thẻ bo góc phủ kính hiện đại kèm ảnh bìa & tên ca sĩ', icon: CreditCard },
-  { id: 'logo-badge', nameVi: 'Huy Hiệu PNG (PNG Badge)', desc: 'Hình ảnh PNG trong suốt / sticker làm tâm điểm không có nền tròn, nhảy theo nhạc', icon: ShieldCheck },
-  { id: 'circular-badge', nameVi: 'Huy Hiệu Tròn Phát Sáng', desc: 'Vòng tròn ảnh đại diện kèm viền phát sáng', icon: Sparkles },
-  { id: 'minimal-tag', nameVi: 'Chữ Tối Giản Không Khung', desc: 'Chỉ hiển thị tên bài hát & ca sĩ không có khung bao quanh', icon: Music },
-  { id: 'hidden', nameVi: 'Ẩn Thẻ Bìa', desc: 'Không hiển thị thẻ thông tin bài hát trên video', icon: EyeOff },
+const CARD_STYLES: { id: CardStyle; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'vinyl', nameVi: 'Đĩa Than Vinyl Xoay 360°', nameEn: '360° Spinning Vinyl', descVi: 'Đĩa vinyl chân thực với vân bóng và ảnh bìa xoay 360°', descEn: 'Photorealistic vinyl grooves with spinning center label artwork', icon: Disc },
+  { id: 'rotating-badge', nameVi: 'Huy Hiệu Tròn Xoay (Rotating Badge)', nameEn: 'Rotating Vinyl Badge 360°', descVi: 'Huy hiệu tròn xoay 360° với viền chữ uốn cong xoay tròn và tâm ảnh đĩa', descEn: 'Rotating circular badge with continuous circular curved text ribbon and center album artwork', icon: Disc },
+  { id: 'glass-card', nameVi: 'Thẻ Kính Mờ (Glass Card)', nameEn: 'Frosted Glass Badge', descVi: 'Thẻ bo góc phủ kính hiện đại kèm ảnh bìa & tên ca sĩ', descEn: 'Translucent frosted glass card with artwork, title and singer', icon: CreditCard },
+  { id: 'logo-badge', nameVi: 'Huy Hiệu PNG (PNG Badge)', nameEn: 'PNG Badge', descVi: 'Hình ảnh PNG trong suốt / sticker làm tâm điểm không có nền tròn, nhảy theo nhạc', descEn: 'Clean transparent PNG badge or sticker as the center point with no circle background, reacts to beats', icon: ShieldCheck },
+  { id: 'circular-badge', nameVi: 'Huy Hiệu Tròn Phát Sáng', nameEn: 'Circular Avatar Badge', descVi: 'Vòng tròn ảnh đại diện kèm viền phát sáng', descEn: 'Glowing circular avatar frame with metadata tag', icon: Sparkles },
+  { id: 'minimal-tag', nameVi: 'Chữ Tối Giản Không Khung', nameEn: 'Minimalist Typography', descVi: 'Chỉ hiển thị tên bài hát & ca sĩ không có khung bao quanh', descEn: 'Floating text only without container boundaries', icon: Music },
+  { id: 'hidden', nameVi: 'Ẩn Thẻ Bìa', nameEn: 'Hidden / Off', descVi: 'Không hiển thị thẻ thông tin bài hát trên video', descEn: 'Hide track card info from the video render', icon: EyeOff },
 ];
 
 const BEAT_JUMP_STYLES: { id: BadgeBeatJumpStyle; name: string; desc: string }[] = [
@@ -51,10 +55,11 @@ const LAYER_ORDERS: { id: TrackLayerOrder; name: string; desc: string }[] = [
   { id: 'front-all', name: 'Lớp Trên Cùng (Topmost)', desc: 'Hiển thị trên cùng đè lên tất cả các lớp' },
 ];
 
-export const TrackTab: React.FC<TrackTabProps> = ({ track, onChange }) => {
+export const TrackTab: React.FC<TrackTabProps> = ({ track, onChange, language = 'vi' }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const badgePngInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const t = TRANSLATIONS[language] || TRANSLATIONS['vi'];
 
   const update = (partial: Partial<TrackMetadata>) => {
     onChange({ ...track, ...partial });
@@ -213,10 +218,14 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track, onChange }) => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold block truncate">{st.nameVi}</span>
+                    <span className="text-xs font-semibold block truncate">
+                      {language === 'vi' ? st.nameVi : st.nameEn}
+                    </span>
                     {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-rose-400 shrink-0 ml-1" />}
                   </div>
-                  <span className="text-[10px] text-neutral-500 line-clamp-1">{st.desc}</span>
+                  <span className="text-[10px] text-neutral-500 line-clamp-1">
+                    {language === 'vi' ? st.descVi : st.descEn}
+                  </span>
                 </div>
               </button>
             );

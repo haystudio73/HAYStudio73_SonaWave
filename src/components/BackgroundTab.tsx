@@ -13,6 +13,7 @@ import {
   BackgroundGlitchStyle 
 } from '../types';
 import { BACKGROUND_PRESETS } from '../utils/presets';
+import { Language } from '../utils/i18n';
 import { 
   Image as ImageIcon, 
   Upload, 
@@ -58,104 +59,105 @@ interface BackgroundTabProps {
   onBackgroundChange: (bg: BackgroundConfig) => void;
   particles: ParticleConfig;
   onParticlesChange: (pt: ParticleConfig) => void;
+  language?: Language;
 }
 
 const CATEGORIES = [
-  { id: 'all', name: 'Tất cả' },
-  { id: 'cyberpunk', name: 'Cyberpunk' },
-  { id: 'lofi', name: 'Lofi & Chill' },
-  { id: 'space', name: 'Vũ Trụ' },
-  { id: 'nature', name: 'Thiên Nhiên' },
-  { id: 'abstract', name: 'Nghệ Thuật' },
+  { id: 'all', nameVi: 'Tất cả', nameEn: 'All' },
+  { id: 'cyberpunk', nameVi: 'Cyberpunk', nameEn: 'Cyberpunk' },
+  { id: 'lofi', nameVi: 'Lofi & Chill', nameEn: 'Lofi & Chill' },
+  { id: 'space', nameVi: 'Vũ Trụ', nameEn: 'Deep Space' },
+  { id: 'nature', nameVi: 'Thiên Nhiên', nameEn: 'Nature' },
+  { id: 'abstract', nameVi: 'Nghệ Thuật', nameEn: 'Abstract Art' },
 ];
 
-const PARTICLE_TYPES: { id: ParticleType; nameVi: string; icon: React.ComponentType<{ className?: string }>; badge?: string }[] = [
-  { id: 'none', nameVi: 'Tắt hạt', icon: Eye },
-  { id: 'rain', nameVi: 'Mưa Rơi Tự Nhiên', icon: CloudRain, badge: 'Vật Lý Mưa 🌧️' },
-  { id: 'snow', nameVi: 'Tuyết Rơi Mùa Đông', icon: CloudSnow, badge: 'Mùa Đông ❄️' },
-  { id: 'spinning-dashes', nameVi: 'Đường ngắn rơi & xoay', icon: Slash, badge: 'Hot Trend' },
-  { id: 'spaghetti', nameVi: 'Mưa Spaghetti Rơi', icon: Waves, badge: 'Mới & Độc Lạ' },
-  { id: 'sound-sparks', nameVi: 'Tia lửa bốc (Sparks)', icon: Flame, badge: 'Rực Rỡ' },
-  { id: 'rainbow-bubbles', nameVi: 'Bong bóng cầu vồng', icon: CircleDot, badge: 'Mới & Đẹp' },
-  { id: 'hyperspace', nameVi: 'Tăng tốc Hyperspace', icon: Zap, badge: 'Mới 3D' },
-  { id: 'dust', nameVi: 'Bụi lofi trôi', icon: Sparkles },
-  { id: 'stars', nameVi: 'Sao lấp lánh', icon: Sparkles },
+const PARTICLE_TYPES: { id: ParticleType; nameVi: string; nameEn: string; icon: React.ComponentType<{ className?: string }>; badgeVi?: string; badgeEn?: string }[] = [
+  { id: 'none', nameVi: 'Tắt hạt', nameEn: 'Off', icon: Eye },
+  { id: 'rain', nameVi: 'Mưa Rơi Tự Nhiên', nameEn: 'Natural Rain', icon: CloudRain, badgeVi: 'Vật Lý Mưa 🌧️', badgeEn: 'Rain Physics 🌧️' },
+  { id: 'snow', nameVi: 'Tuyết Rơi Mùa Đông', nameEn: 'Winter Snowfall', icon: CloudSnow, badgeVi: 'Mùa Đông ❄️', badgeEn: 'Winter ❄️' },
+  { id: 'spinning-dashes', nameVi: 'Đường ngắn rơi & xoay', nameEn: 'Spinning Dashes', icon: Slash, badgeVi: 'Hot Trend', badgeEn: 'Trending' },
+  { id: 'spaghetti', nameVi: 'Mưa Spaghetti Rơi', nameEn: 'Spaghetti Rain', icon: Waves, badgeVi: 'Mới & Độc Lạ', badgeEn: 'Unique' },
+  { id: 'sound-sparks', nameVi: 'Tia lửa bốc (Sparks)', nameEn: 'Sound Sparks', icon: Flame, badgeVi: 'Rực Rỡ', badgeEn: 'Vibrant' },
+  { id: 'rainbow-bubbles', nameVi: 'Bong bóng cầu vồng', nameEn: 'Rainbow Bubbles', icon: CircleDot, badgeVi: 'Mới & Đẹp', badgeEn: 'Prismatic' },
+  { id: 'hyperspace', nameVi: 'Tăng tốc Hyperspace', nameEn: 'Hyperspace 3D', icon: Zap, badgeVi: 'Mới 3D', badgeEn: '3D Warp' },
+  { id: 'dust', nameVi: 'Bụi lofi trôi', nameEn: 'Lofi Ambient Dust', icon: Sparkles },
+  { id: 'stars', nameVi: 'Sao lấp lánh', nameEn: 'Twinkling Stars', icon: Sparkles },
 ];
 
-const SNOWFLAKE_TYPES: { id: SnowFlakeType; nameVi: string; desc: string }[] = [
-  { id: 'mixed', nameVi: 'Hỗn Hợp Tự Nhiên', desc: 'Pha trộn cả tinh thể, đốm tròn & ánh sáng' },
-  { id: 'crystal', nameVi: 'Tinh Thể 6 Cánh', desc: 'Hoa tuyết lục giác đan nhánh tinh xảo' },
-  { id: 'flurry', nameVi: 'Đốm Mờ Bokeh', desc: 'Hạt bông tuyết tròn mờ ảo lãng mạn' },
-  { id: 'glitter', nameVi: 'Kim Cương Băng', desc: 'Chữ thập 4 cánh lấp lánh ánh kim' },
+const SNOWFLAKE_TYPES: { id: SnowFlakeType; nameVi: string; nameEn: string; descVi: string; descEn: string }[] = [
+  { id: 'mixed', nameVi: 'Hỗn Hợp Tự Nhiên', nameEn: 'Natural Mixed', descVi: 'Pha trộn cả tinh thể, đốm tròn & ánh sáng', descEn: 'Mix of crystals, soft bokeh dots & glitter' },
+  { id: 'crystal', nameVi: 'Tinh Thể 6 Cánh', nameEn: 'Hexagonal Crystal', descVi: 'Hoa tuyết lục giác đan nhánh tinh xảo', descEn: 'Intricate 6-pointed hexagonal snowflakes' },
+  { id: 'flurry', nameVi: 'Đốm Mờ Bokeh', nameEn: 'Bokeh Flurry', descVi: 'Hạt bông tuyết tròn mờ ảo lãng mạn', descEn: 'Romantic soft-focused floating flakes' },
+  { id: 'glitter', nameVi: 'Kim Cương Băng', nameEn: 'Glitter Ice Cross', descVi: 'Chữ thập 4 cánh lấp lánh ánh kim', descEn: '4-pointed cross star ice reflections' },
 ];
 
-const RAINDROP_TYPES: { id: RainDropType; nameVi: string; desc: string }[] = [
-  { id: 'mixed', nameVi: 'Hỗn Hợp Tự Nhiên', desc: 'Pha trộn giọt nước, vệt dài cinematic & mưa nhẹ' },
-  { id: 'streaks', nameVi: 'Vệt Dài Cinematic', desc: 'Dải nước dài trong suốt lấp lánh phong cách điện ảnh' },
-  { id: 'drizzle', nameVi: 'Mưa Phùn Li Ti', desc: 'Hạt mưa bụi li ti bay lơ lửng bồng bềnh' },
-  { id: 'heavy', nameVi: 'Mưa Rào Bão Tố', desc: 'Mưa to xối xả tốc độ cao, vệt nước đậm nét' },
-  { id: 'neon-glow', nameVi: 'Mưa Phát Sáng Neon', desc: 'Tia mưa phát quang rực rỡ theo dải âm thanh' },
+const RAINDROP_TYPES: { id: RainDropType; nameVi: string; nameEn: string; descVi: string; descEn: string }[] = [
+  { id: 'mixed', nameVi: 'Hỗn Hợp Tự Nhiên', nameEn: 'Natural Mixed', descVi: 'Pha trộn giọt nước, vệt dài cinematic & mưa nhẹ', descEn: 'Balanced mix of raindrops, cinematic streaks & mist' },
+  { id: 'streaks', nameVi: 'Vệt Dài Cinematic', nameEn: 'Cinematic Streaks', descVi: 'Dải nước dài trong suốt lấp lánh phong cách điện ảnh', descEn: 'High-speed glass streaks with water bead heads' },
+  { id: 'drizzle', nameVi: 'Mưa Phùn Li Ti', nameEn: 'Fine Drizzle', descVi: 'Hạt mưa bụi li ti bay lơ lửng bồng bềnh', descEn: 'Micro droplets drifting gently through the air' },
+  { id: 'heavy', nameVi: 'Mưa Rào Bão Tố', nameEn: 'Heavy Downpour', descVi: 'Mưa to xối xả tốc độ cao, vệt nước đậm nét', descEn: 'Dense torrential rainfall with bright water ribbons' },
+  { id: 'neon-glow', nameVi: 'Mưa Phát Sáng Neon', nameEn: 'Neon Glow Laser Rain', descVi: 'Tia mưa phát quang rực rỡ theo dải âm thanh', descEn: 'Luminous laser rain lines reacting to music' },
 ];
 
-const PARTICLE_SHAPES: { id: ParticleShape; nameVi: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'circle', nameVi: 'Hình tròn', icon: Circle },
-  { id: 'square', nameVi: 'Khối vuông', icon: Square },
-  { id: 'star', nameVi: 'Ngôi sao', icon: Star },
-  { id: 'heart', nameVi: 'Trái tim', icon: Heart },
-  { id: 'diamond', nameVi: 'Kim cương', icon: Gem },
-  { id: 'ring', nameVi: 'Vòng tròn', icon: CircleDot },
+const PARTICLE_SHAPES: { id: ParticleShape; nameVi: string; nameEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'circle', nameVi: 'Hình tròn', nameEn: 'Circle', icon: Circle },
+  { id: 'square', nameVi: 'Khối vuông', nameEn: 'Square', icon: Square },
+  { id: 'star', nameVi: 'Ngôi sao', nameEn: 'Star', icon: Star },
+  { id: 'heart', nameVi: 'Trái tim', nameEn: 'Heart', icon: Heart },
+  { id: 'diamond', nameVi: 'Kim cương', nameEn: 'Diamond', icon: Gem },
+  { id: 'ring', nameVi: 'Vòng tròn', nameEn: 'Ring', icon: CircleDot },
 ];
 
-const COLOR_MODES: { id: ParticleColorMode; nameVi: string; desc: string }[] = [
-  { id: 'custom', nameVi: 'Tùy chọn màu', desc: 'Màu tùy chỉnh theo bảng màu' },
-  { id: 'rainbow', nameVi: 'Cầu vồng (Rainbow)', desc: 'Chuyển sắc ngũ sắc huyền ảo' },
-  { id: 'fire', nameVi: 'Lửa rực (Fire Glow)', desc: 'Tông cam vàng rực rỡ' },
-  { id: 'neon-pulse', nameVi: 'Neon Cyber', desc: 'Hồng & Xanh Cyan đối lập' },
-  { id: 'audio-reactive', nameVi: 'Phổ âm thanh', desc: 'Đổi dải màu theo tần số nhạc' },
+const COLOR_MODES: { id: ParticleColorMode; nameVi: string; nameEn: string; descVi: string; descEn: string }[] = [
+  { id: 'custom', nameVi: 'Tùy chọn màu', nameEn: 'Custom Color', descVi: 'Màu tùy chỉnh theo bảng màu', descEn: 'Palette-selected solid / dual tones' },
+  { id: 'rainbow', nameVi: 'Cầu vồng (Rainbow)', nameEn: 'Rainbow Gradient', descVi: 'Chuyển sắc ngũ sắc huyền ảo', descEn: 'Shifting multi-hue spectrum' },
+  { id: 'fire', nameVi: 'Lửa rực (Fire Glow)', nameEn: 'Fire Glow', descVi: 'Tông cam vàng rực rỡ', descEn: 'Warm amber & solar flare tones' },
+  { id: 'neon-pulse', nameVi: 'Neon Cyber', nameEn: 'Neon Cyber', descVi: 'Hồng & Xanh Cyan đối lập', descEn: 'Cyberpunk magenta and cyan pulse' },
+  { id: 'audio-reactive', nameVi: 'Phổ âm thanh', nameEn: 'Audio Reactive', descVi: 'Đổi dải màu theo tần số nhạc', descEn: 'Color adapts directly to audio frequencies' },
 ];
 
 const QUICK_COLORS = [
-  { name: 'Trắng tuyết', color: '#ffffff' },
-  { name: 'Hồng Neon', color: '#ec4899' },
-  { name: 'Xanh Cyan', color: '#06b6d4' },
-  { name: 'Vàng Kim', color: '#eab308' },
-  { name: 'Tím Cyber', color: '#a855f7' },
-  { name: 'Cam Lửa', color: '#f97316' },
-  { name: 'Xanh Ngọc', color: '#10b981' },
+  { nameVi: 'Trắng tuyết', nameEn: 'Pure White', color: '#ffffff' },
+  { nameVi: 'Hồng Neon', nameEn: 'Neon Pink', color: '#ec4899' },
+  { nameVi: 'Xanh Cyan', nameEn: 'Cyan Blue', color: '#06b6d4' },
+  { nameVi: 'Vàng Kim', nameEn: 'Golden Yellow', color: '#eab308' },
+  { nameVi: 'Tím Cyber', nameEn: 'Cyber Purple', color: '#a855f7' },
+  { nameVi: 'Cam Lửa', nameEn: 'Flame Orange', color: '#f97316' },
+  { nameVi: 'Xanh Ngọc', nameEn: 'Emerald Green', color: '#10b981' },
 ];
 
-const ZOOM_TRIGGERS: { id: BackgroundZoomTrigger; nameVi: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'bass', nameVi: 'Nhịp Bass / Trống Kick', desc: 'Bắt nhịp tiếng trống trầm, nhịp drop mạnh', icon: Disc },
-  { id: 'beat', nameVi: 'Nhịp Điệu Tổng Thể (Beat)', desc: 'Bắt nhịp điệu bài hát, snare & tempo', icon: Music2 },
-  { id: 'hybrid', nameVi: 'Kết Hợp Bass & Beat', desc: 'Phản hồi toàn dải nhịp sống động nhất', icon: Waves },
+const ZOOM_TRIGGERS: { id: BackgroundZoomTrigger; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'bass', nameVi: 'Nhịp Bass / Trống Kick', nameEn: 'Bass Kick Drum', descVi: 'Bắt nhịp tiếng trống trầm, nhịp drop mạnh', descEn: 'Trigger on deep low-end thuds & drops', icon: Disc },
+  { id: 'beat', nameVi: 'Nhịp Điệu Tổng Thể (Beat)', nameEn: 'Overall Beat / Snare', descVi: 'Bắt nhịp điệu bài hát, snare & tempo', descEn: 'Follows musical rhythm and percussion', icon: Music2 },
+  { id: 'hybrid', nameVi: 'Kết Hợp Bass & Beat', nameEn: 'Hybrid Bass + Beat', descVi: 'Phản hồi toàn dải nhịp sống động nhất', descEn: 'Full-spectrum dynamic response', icon: Waves },
 ];
 
-const ZOOM_STYLES: { id: BackgroundZoomStyle; nameVi: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'pulse', nameVi: 'Nảy Nhịp (Pulse)', desc: 'Giật nảy tức thì theo từng tiếng trống', icon: Zap },
-  { id: 'smooth', nameVi: 'Mượt Mà (Cinematic)', desc: 'Co giãn điện ảnh êm dịu, uyển chuyển', icon: Waves },
-  { id: 'shake', nameVi: 'Rung Lắc (EDM Shake)', desc: 'Rung giật điện tử bùng nổ theo giọt bass', icon: Activity },
-  { id: 'breathe', nameVi: 'Thở Nhịp (Breathe)', desc: 'Co giãn tuần hoàn theo tần số thấp', icon: Move3d },
+const ZOOM_STYLES: { id: BackgroundZoomStyle; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'pulse', nameVi: 'Nảy Nhịp (Pulse)', nameEn: 'Pulse Kick', descVi: 'Giật nảy tức thì theo từng tiếng trống', descEn: 'Instant energetic punch on each hit', icon: Zap },
+  { id: 'smooth', nameVi: 'Mượt Mà (Cinematic)', nameEn: 'Cinematic Smooth', descVi: 'Co giãn điện ảnh êm dịu, uyển chuyển', descEn: 'Fluid gradual breathing expansion', icon: Waves },
+  { id: 'shake', nameVi: 'Rung Lắc (EDM Shake)', nameEn: 'EDM Bass Shake', descVi: 'Rung giật điện tử bùng nổ theo giọt bass', descEn: 'High-energy shudder on heavy drops', icon: Activity },
+  { id: 'breathe', nameVi: 'Thở Nhịp (Breathe)', nameEn: 'Rhythmic Breathe', descVi: 'Co giãn tuần hoàn theo tần số thấp', descEn: 'Slow cyclical respiratory movement', icon: Move3d },
 ];
 
 const SPEED_PRESETS = [
-  { label: 'Chậm êm', value: 0.5 },
-  { label: 'Chuẩn', value: 1.0 },
-  { label: 'Nhanh', value: 1.8 },
-  { label: 'Cực nhanh', value: 2.6 },
+  { labelVi: 'Chậm êm', labelEn: 'Gentle', value: 0.5 },
+  { labelVi: 'Chuẩn', labelEn: 'Standard', value: 1.0 },
+  { labelVi: 'Nhanh', labelEn: 'Fast', value: 1.8 },
+  { labelVi: 'Cực nhanh', labelEn: 'Ultra', value: 2.6 },
 ];
 
-const GLITCH_TRIGGERS: { id: BackgroundGlitchTrigger; nameVi: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'bass', nameVi: 'Bass Kick', desc: 'Nhiễu giật mạnh mỗi khi đập trống trầm', icon: Disc },
-  { id: 'beat', nameVi: 'Nhịp Beat', desc: 'Nhiễu theo nhịp điệu bài hát & tempo', icon: Music2 },
-  { id: 'random', nameVi: 'Bất Chợt', desc: 'Nhiễu giật ngẫu nhiên tạo cảm giác bí ẩn', icon: Zap },
-  { id: 'continuous', nameVi: 'Liên Tục', desc: 'Hiệu ứng nhiễu sóng chạy liên hồi không ngừng', icon: Activity },
+const GLITCH_TRIGGERS: { id: BackgroundGlitchTrigger; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'bass', nameVi: 'Bass Kick', nameEn: 'Bass Kick', descVi: 'Nhiễu giật mạnh mỗi khi đập trống trầm', descEn: 'Fires intense glitch on deep sub bass', icon: Disc },
+  { id: 'beat', nameVi: 'Nhịp Beat', nameEn: 'Track Beat', descVi: 'Nhiễu theo nhịp điệu bài hát & tempo', descEn: 'Syncs with musical tempo & snare hits', icon: Music2 },
+  { id: 'random', nameVi: 'Bất Chợt', nameEn: 'Random', descVi: 'Nhiễu giật ngẫu nhiên tạo cảm giác bí ẩn', descEn: 'Unpredictable occasional glitch cuts', icon: Zap },
+  { id: 'continuous', nameVi: 'Liên Tục', nameEn: 'Continuous', descVi: 'Hiệu ứng nhiễu sóng chạy liên hồi không ngừng', descEn: 'Constantly rolling scanlines & distortion', icon: Activity },
 ];
 
-const GLITCH_STYLES: { id: BackgroundGlitchStyle; nameVi: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'rgb-shift', nameVi: 'Tách Màu RGB (Chromatic)', desc: 'Tách sắc quang Red/Cyan & Blue ma mị', icon: Split },
-  { id: 'slice-displacement', nameVi: 'Cắt Lát Tearing (Glitch)', desc: 'Xé rách dịch chuyển lát ngang màn hình', icon: Layers },
-  { id: 'vhs-tape', nameVi: 'Băng VHS Retro (Scanline)', desc: 'Vạch nhiễu quét băng video & gợn sóng', icon: ScanLine },
-  { id: 'cyber-digital', nameVi: 'Cyber Data Matrix', desc: 'Số hóa dữ liệu khối giật chớp Cyberpunk', icon: Tv },
+const GLITCH_STYLES: { id: BackgroundGlitchStyle; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'rgb-shift', nameVi: 'Tách Màu RGB (Chromatic)', nameEn: 'RGB Chromatic Shift', descVi: 'Tách sắc quang Red/Cyan & Blue ma mị', descEn: 'Anaglyph red-cyan displacement fringing', icon: Split },
+  { id: 'slice-displacement', nameVi: 'Cắt Lát Tearing (Glitch)', nameEn: 'Slice Displacement', descVi: 'Xé rách dịch chuyển lát ngang màn hình', descEn: 'Horizontal screen tearing and slicing blocks', icon: Layers },
+  { id: 'vhs-tape', nameVi: 'Băng VHS Retro (Scanline)', nameEn: 'VHS Retro Scanlines', descVi: 'Vạch nhiễu quét băng video & gợn sóng', descEn: 'Magnetic tape tracking lines & roll wave', icon: ScanLine },
+  { id: 'cyber-digital', nameVi: 'Cyber Data Matrix', nameEn: 'Cyber Data Matrix', descVi: 'Số hóa dữ liệu khối giật chớp Cyberpunk', descEn: 'Digital pixelation block artifacts', icon: Tv },
 ];
 
 export const BackgroundTab: React.FC<BackgroundTabProps> = ({
@@ -163,7 +165,9 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
   onBackgroundChange,
   particles,
   onParticlesChange,
+  language = 'vi',
 }) => {
+  const isVi = language === 'vi';
   const [activeCategory, setActiveCategory] = useState('all');
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -212,24 +216,24 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
-            Hình / Video Nền (Background Source)
+            {isVi ? 'Hình / Video Nền (Background Source)' : 'Background Image & Video Source'}
           </label>
           <div className="flex items-center gap-2">
             <button
               onClick={() => imageInputRef.current?.click()}
               className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition-all cursor-pointer"
-              title="Tải ảnh PNG/JPG từ máy tính"
+              title={isVi ? 'Tải ảnh PNG/JPG từ máy tính' : 'Upload custom PNG/JPG image'}
             >
               <Upload className="w-3 h-3" />
-              <span>Tải Ảnh</span>
+              <span>{isVi ? 'Tải Ảnh' : 'Upload Image'}</span>
             </button>
             <button
               onClick={() => videoInputRef.current?.click()}
               className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-semibold transition-all cursor-pointer shadow-sm"
-              title="Tải video MP4 làm nền chuyển động"
+              title={isVi ? 'Tải video MP4 làm nền chuyển động' : 'Upload custom MP4 video background'}
             >
               <Video className="w-3 h-3 text-rose-400" />
-              <span>Tải Video MP4</span>
+              <span>{isVi ? 'Tải Video MP4' : 'Upload MP4'}</span>
             </button>
           </div>
         </div>
@@ -255,13 +259,13 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
           <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-200 text-xs">
             <div className="flex items-center gap-2">
               <Film className="w-4 h-4 text-rose-400 animate-pulse" />
-              <span className="font-semibold">Đang phát nền Video MP4 động</span>
+              <span className="font-semibold">{isVi ? 'Đang phát nền Video MP4 động' : 'Active MP4 Video Background'}</span>
             </div>
             <button
               onClick={() => updateBg({ type: 'preset', isVideo: false, url: BACKGROUND_PRESETS[0].url })}
               className="px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-[11px] font-medium text-rose-300 transition-all cursor-pointer"
             >
-              Trở về Preset Ảnh
+              {isVi ? 'Trở về Preset Ảnh' : 'Return to Image Preset'}
             </button>
           </div>
         )}
@@ -278,12 +282,12 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                   : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              {cat.name}
+              {isVi ? cat.nameVi : cat.nameEn}
             </button>
           ))}
         </div>
 
-        {/* Preset Gallery Grid (From Pexels) */}
+        {/* Preset Gallery Grid */}
         <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1 bg-neutral-900/40 border border-neutral-800/80 rounded-2xl custom-scrollbar">
           {filteredPresets.map((preset) => {
             const isSelected = !background.isVideo && background.url === preset.url;
@@ -299,7 +303,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               >
                 <img
                   src={preset.thumbnail}
-                  alt={preset.nameVi}
+                  alt={isVi ? preset.nameVi : preset.nameEn}
                   loading="lazy"
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
@@ -307,7 +311,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1.5">
                   <span className="text-[10px] font-medium text-white truncate drop-shadow">
-                    {preset.nameVi}
+                    {isVi ? preset.nameVi : preset.nameEn}
                   </span>
                 </div>
               </button>
@@ -319,13 +323,13 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
       {/* 2. Image Filters & Adjustments */}
       <div className="space-y-3.5 pt-2 border-t border-neutral-800/80">
         <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
-          Bộ Lọc & Hiệu Ứng Nền (Filters)
+          {isVi ? 'Bộ Lọc & Hiệu Ứng Nền (Filters)' : 'Background Filters & FX'}
         </label>
 
         {/* Blur slider */}
         <div>
           <div className="flex justify-between text-xs mb-1">
-            <span className="text-neutral-400">Độ làm mờ (Blur)</span>
+            <span className="text-neutral-400">{isVi ? 'Độ làm mờ (Blur)' : 'Blur Radius'}</span>
             <span className="text-cyan-400 font-mono">{background.blur}px</span>
           </div>
           <input
@@ -341,7 +345,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
         {/* Brightness */}
         <div>
           <div className="flex justify-between text-xs mb-1">
-            <span className="text-neutral-400">Độ sáng (Brightness)</span>
+            <span className="text-neutral-400">{isVi ? 'Độ sáng (Brightness)' : 'Brightness'}</span>
             <span className="text-cyan-400 font-mono">{background.brightness}%</span>
           </div>
           <input
@@ -357,7 +361,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
         {/* Vignette Shadow */}
         <div>
           <div className="flex justify-between text-xs mb-1">
-            <span className="text-neutral-400">Viền đen nghệ thuật (Vignette)</span>
+            <span className="text-neutral-400">{isVi ? 'Viền đen nghệ thuật (Vignette)' : 'Artistic Vignette'}</span>
             <span className="text-cyan-400 font-mono">{background.vignette}%</span>
           </div>
           <input
@@ -379,10 +383,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               </div>
               <div>
                 <span className="text-xs font-bold text-neutral-200 block">
-                  Zoom Nền Theo Nhịp (Beat & Bass Zoom)
+                  {isVi ? 'Zoom Nền Theo Nhịp (Beat & Bass Zoom)' : 'Beat & Bass Zoom Dynamics'}
                 </span>
                 <span className="text-[10px] text-neutral-400">
-                  Phóng to co giãn nền theo nhịp trống Kick & giai điệu
+                  {isVi ? 'Phóng to co giãn nền theo nhịp trống Kick & giai điệu' : 'Pumps and scales background in sync with kicks and tempo'}
                 </span>
               </div>
             </div>
@@ -403,7 +407,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               <div>
                 <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
                   <Disc className="w-3 h-3 text-cyan-400" />
-                  Nguồn bắt nhịp âm thanh (Audio Source)
+                  {isVi ? 'Nguồn bắt nhịp âm thanh (Audio Source)' : 'Audio Detection Source'}
                 </span>
                 <div className="grid grid-cols-3 gap-1.5">
                   {ZOOM_TRIGGERS.map((trig) => {
@@ -423,11 +427,11 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                         <div className="flex items-center gap-1.5">
                           <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-cyan-300' : 'text-neutral-500'}`} />
                           <span className={`text-[11px] font-semibold truncate ${isSelected ? 'text-cyan-200' : 'text-neutral-300'}`}>
-                            {trig.id === 'bass' ? 'Bass Kick' : trig.id === 'beat' ? 'Nhịp Beat' : 'Bass + Beat'}
+                            {isVi ? trig.nameVi : trig.nameEn}
                           </span>
                         </div>
                         <span className="text-[9px] text-neutral-400 line-clamp-2 leading-tight">
-                          {trig.desc}
+                          {isVi ? trig.descVi : trig.descEn}
                         </span>
                       </button>
                     );
@@ -439,7 +443,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               <div>
                 <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
                   <Zap className="w-3 h-3 text-cyan-400" />
-                  Kiểu chuyển động Zoom (Motion Style)
+                  {isVi ? 'Kiểu chuyển động Zoom (Motion Style)' : 'Motion Curve Style'}
                 </span>
                 <div className="grid grid-cols-2 gap-1.5">
                   {ZOOM_STYLES.map((st) => {
@@ -459,10 +463,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                         <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${isSelected ? 'text-cyan-300' : 'text-neutral-500'}`} />
                         <div className="min-w-0">
                           <span className={`text-xs font-semibold block ${isSelected ? 'text-cyan-200' : 'text-neutral-300'}`}>
-                            {st.nameVi}
+                            {isVi ? st.nameVi : st.nameEn}
                           </span>
                           <span className="text-[9px] text-neutral-400 block leading-tight">
-                            {st.desc}
+                            {isVi ? st.descVi : st.descEn}
                           </span>
                         </div>
                       </button>
@@ -476,11 +480,11 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-neutral-300 font-medium flex items-center gap-1.5">
                     <Gauge className="w-3.5 h-3.5 text-cyan-400" />
-                    Tốc độ phản hồi (Slow &rarr; Fast)
+                    {isVi ? 'Tốc độ phản hồi (Slow → Fast)' : 'Response Speed (Slow → Fast)'}
                   </span>
                   <span className="text-cyan-400 font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20">
                     {(background.zoomSpeed !== undefined ? background.zoomSpeed : 1.0).toFixed(1)}x{' '}
-                    {(background.zoomSpeed || 1.0) <= 0.6 ? '(Chậm êm)' : (background.zoomSpeed || 1.0) >= 2.0 ? '(Cực nhanh)' : '(Chuẩn)'}
+                    {(background.zoomSpeed || 1.0) <= 0.6 ? (isVi ? '(Chậm êm)' : '(Smooth)') : (background.zoomSpeed || 1.0) >= 2.0 ? (isVi ? '(Cực nhanh)' : '(Ultra)') : (isVi ? '(Chuẩn)' : '(Normal)')}
                   </span>
                 </div>
                 <input
@@ -500,7 +504,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                     const isActive = Math.abs(currentSpeed - sp.value) < 0.05;
                     return (
                       <button
-                        key={sp.label}
+                        key={sp.value}
                         type="button"
                         onClick={() => updateBg({ zoomSpeed: sp.value })}
                         className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
@@ -509,7 +513,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                             : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
                         }`}
                       >
-                        {sp.label} ({sp.value}x)
+                        {isVi ? sp.labelVi : sp.labelEn} ({sp.value}x)
                       </button>
                     );
                   })}
@@ -519,7 +523,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               {/* 4. Biên độ Zoom (Zoom Intensity Scale) */}
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-300 font-medium">Độ phóng to (Zoom Scale / Intensity)</span>
+                  <span className="text-neutral-300 font-medium">{isVi ? 'Độ phóng to (Zoom Scale / Intensity)' : 'Zoom Intensity Scale'}</span>
                   <span className="text-cyan-400 font-mono">
                     {((background.zoomIntensity !== undefined ? background.zoomIntensity : 0.05) * 100).toFixed(1)}%
                   </span>
@@ -534,9 +538,9 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                   className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                 />
                 <div className="flex justify-between text-[9px] text-neutral-500 mt-0.5">
-                  <span>Nhẹ nhàng (1%)</span>
-                  <span>Vừa phải (5%)</span>
-                  <span>Mạnh mẽ (15%)</span>
+                  <span>{isVi ? 'Nhẹ nhàng (1%)' : 'Subtle (1%)'}</span>
+                  <span>{isVi ? 'Vừa phải (5%)' : 'Balanced (5%)'}</span>
+                  <span>{isVi ? 'Mạnh mẽ (15%)' : 'Intense (15%)'}</span>
                 </div>
               </div>
 
@@ -544,10 +548,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/60 border border-neutral-800 cursor-pointer">
                 <div>
                   <span className="text-[11px] font-medium text-neutral-300 block">
-                    Đảo chiều Zoom (Zoom Out khi có beat)
+                    {isVi ? 'Đảo chiều Zoom (Zoom Out khi có beat)' : 'Invert Zoom (Zoom Out on beat)'}
                   </span>
                   <span className="text-[9px] text-neutral-500">
-                    Mặc định là phóng to ra (Zoom In), bật lên để thu nhỏ lại khi đập nhịp
+                    {isVi ? 'Mặc định là phóng to ra (Zoom In), bật lên để thu nhỏ lại khi đập nhịp' : 'Default scales outward; enable to compress inward on beats'}
                   </span>
                 </div>
                 <input
@@ -570,10 +574,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               </div>
               <div>
                 <span className="text-xs font-bold text-neutral-200 block">
-                  Hiệu Ứng Nhiễu Sóng Nền (Glitch Effect)
+                  {isVi ? 'Hiệu Ứng Nhiễu Sóng Nền (Glitch Effect)' : 'Background Glitch & Scanline Effect'}
                 </span>
                 <span className="text-[10px] text-neutral-400">
-                  Tách màu RGB, cắt lát xé hình & quét vạch VHS theo nhịp nhạc
+                  {isVi ? 'Tách màu RGB, cắt lát xé hình & quét vạch VHS theo nhịp nhạc' : 'RGB chromatic displacement, tearing slices & VHS scanlines on beat'}
                 </span>
               </div>
             </div>
@@ -594,7 +598,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               <div>
                 <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
                   <Disc className="w-3 h-3 text-rose-400" />
-                  Thời điểm kích hoạt giật nhiễu (Trigger)
+                  {isVi ? 'Thời điểm kích hoạt giật nhiễu (Trigger)' : 'Glitch Trigger Event'}
                 </span>
                 <div className="grid grid-cols-4 gap-1.5">
                   {GLITCH_TRIGGERS.map((trig) => {
@@ -613,7 +617,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                       >
                         <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-rose-300' : 'text-neutral-500'}`} />
                         <span className={`text-[10px] font-semibold truncate ${isSelected ? 'text-rose-200' : 'text-neutral-300'}`}>
-                          {trig.nameVi}
+                          {isVi ? trig.nameVi : trig.nameEn}
                         </span>
                       </button>
                     );
@@ -625,7 +629,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               <div>
                 <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
                   <Zap className="w-3 h-3 text-rose-400" />
-                  Kiểu hiệu ứng Glitch (Glitch Style)
+                  {isVi ? 'Kiểu hiệu ứng Glitch (Glitch Style)' : 'Glitch Visual Style'}
                 </span>
                 <div className="grid grid-cols-2 gap-1.5">
                   {GLITCH_STYLES.map((st) => {
@@ -645,10 +649,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                         <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${isSelected ? 'text-rose-300' : 'text-neutral-500'}`} />
                         <div className="min-w-0">
                           <span className={`text-xs font-semibold block ${isSelected ? 'text-rose-200' : 'text-neutral-300'}`}>
-                            {st.nameVi}
+                            {isVi ? st.nameVi : st.nameEn}
                           </span>
                           <span className="text-[9px] text-neutral-400 block leading-tight">
-                            {st.desc}
+                            {isVi ? st.descVi : st.descEn}
                           </span>
                         </div>
                       </button>
@@ -660,7 +664,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               {/* 3. Cường độ Glitch (Intensity Slider) */}
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-300 font-medium">Cường độ xé hình & giật nhiễu</span>
+                  <span className="text-neutral-300 font-medium">{isVi ? 'Cường độ xé hình & giật nhiễu' : 'Glitch Intensity & Tearing'}</span>
                   <span className="text-rose-400 font-mono font-bold">
                     {Math.round((background.glitchIntensity !== undefined ? background.glitchIntensity : 0.45) * 100)}%
                   </span>
@@ -678,16 +682,16 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                 {/* Intensity Quick Presets */}
                 <div className="flex items-center gap-1 pt-1">
                   {[
-                    { label: 'Nhẹ êm', val: 0.25 },
-                    { label: 'Vừa phải', val: 0.45 },
-                    { label: 'Mạnh mẽ', val: 0.75 },
-                    { label: 'Bùng nổ', val: 1.0 },
+                    { labelVi: 'Nhẹ êm', labelEn: 'Subtle', val: 0.25 },
+                    { labelVi: 'Vừa phải', labelEn: 'Medium', val: 0.45 },
+                    { labelVi: 'Mạnh mẽ', labelEn: 'Strong', val: 0.75 },
+                    { labelVi: 'Bùng nổ', labelEn: 'Extreme', val: 1.0 },
                   ].map((p) => {
                     const cur = background.glitchIntensity !== undefined ? background.glitchIntensity : 0.45;
                     const active = Math.abs(cur - p.val) < 0.05;
                     return (
                       <button
-                        key={p.label}
+                        key={p.val}
                         type="button"
                         onClick={() => updateBg({ glitchIntensity: p.val })}
                         className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
@@ -696,7 +700,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                             : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
                         }`}
                       >
-                        {p.label}
+                        {isVi ? p.labelVi : p.labelEn}
                       </button>
                     );
                   })}
@@ -709,10 +713,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                   <Split className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                   <div>
                     <span className="text-[11px] font-medium text-neutral-300 block">
-                      Tách sắc sai quang học RGB (Color Split)
+                      {isVi ? 'Tách sắc sai quang học RGB (Color Split)' : 'RGB Chromatic Color Split'}
                     </span>
                     <span className="text-[9px] text-neutral-500">
-                      Tạo viền bóng đỏ và xanh lam (Anaglyph 3D) khi có chấn động
+                      {isVi ? 'Tạo viền bóng đỏ và xanh lam (Anaglyph 3D) khi có chấn động' : 'Creates red and blue 3D anaglyph borders on heavy impact'}
                     </span>
                   </div>
                 </div>
@@ -732,7 +736,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
       <div className="space-y-3.5 pt-2 border-t border-neutral-800/80">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
-            Hiệu Ứng Hạt Lơ Lửng (Particles)
+            {isVi ? 'Hiệu Ứng Hạt Lơ Lửng (Particles)' : 'Floating Particle Overlays'}
           </label>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -762,11 +766,11 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               >
                 <div className="flex items-center gap-2 truncate">
                   <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-cyan-400' : 'text-neutral-400'}`} />
-                  <span className="text-xs font-semibold truncate">{pt.nameVi}</span>
+                  <span className="text-xs font-semibold truncate">{isVi ? pt.nameVi : pt.nameEn}</span>
                 </div>
-                {pt.badge && (
+                {(pt.badgeVi || pt.badgeEn) && (
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 whitespace-nowrap">
-                    {pt.badge}
+                    {isVi ? pt.badgeVi : pt.badgeEn}
                   </span>
                 )}
               </button>
@@ -784,11 +788,11 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                   <div className="flex items-center gap-2">
                     <CloudSnow className="w-4 h-4 text-sky-400" />
                     <span className="text-xs font-bold text-sky-200">
-                      Tùy Chỉnh Tuyết Rơi & Hướng Gió (Snow & Wind Dynamics)
+                      {isVi ? 'Tùy Chỉnh Tuyết Rơi & Hướng Gió (Snow & Wind Dynamics)' : 'Snowfall & Wind Dynamics'}
                     </span>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                    Vật Lý Gió ❄️
+                    {isVi ? 'Vật Lý Gió ❄️' : 'Wind Physics ❄️'}
                   </span>
                 </div>
 
@@ -796,7 +800,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                 <div>
                   <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
                     <Snowflake className="w-3.5 h-3.5 text-sky-400" />
-                    Kiểu Bông Tuyết (Snowflake Type)
+                    {isVi ? 'Kiểu Bông Tuyết (Snowflake Type)' : 'Snowflake Geometry'}
                   </span>
                   <div className="grid grid-cols-2 gap-1.5">
                     {SNOWFLAKE_TYPES.map((st) => {
@@ -813,10 +817,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                           }`}
                         >
                           <span className={`text-xs font-semibold block ${isSelected ? 'text-sky-200' : 'text-neutral-300'}`}>
-                            {st.nameVi}
+                            {isVi ? st.nameVi : st.nameEn}
                           </span>
                           <span className="text-[9px] text-neutral-400 block leading-tight">
-                            {st.desc}
+                            {isVi ? st.descVi : st.descEn}
                           </span>
                         </button>
                       );
@@ -829,10 +833,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-neutral-300 flex items-center gap-1.5 font-medium">
                       <Compass className="w-3.5 h-3.5 text-sky-400" />
-                      Hướng gió thổi (Wind Angle)
+                      {isVi ? 'Hướng gió thổi (Wind Angle)' : 'Wind Direction Angle'}
                     </span>
                     <span className="text-sky-400 font-mono font-bold">
-                      {(particles.snowWindAngle !== undefined ? particles.snowWindAngle : 15) > 0 ? `+${particles.snowWindAngle ?? 15}° (Sang Phải)` : (particles.snowWindAngle ?? 15) < 0 ? `${particles.snowWindAngle}° (Sang Trái)` : '0° (Thẳng Đứng)'}
+                      {(particles.snowWindAngle !== undefined ? particles.snowWindAngle : 15) > 0 ? `+${particles.snowWindAngle ?? 15}° ${isVi ? '(Sang Phải)' : '(Rightward)'}` : (particles.snowWindAngle ?? 15) < 0 ? `${particles.snowWindAngle}° ${isVi ? '(Sang Trái)' : '(Leftward)'}` : `0° ${isVi ? '(Thẳng Đứng)' : '(Vertical)'}`}
                     </span>
                   </div>
                   <input
@@ -848,16 +852,16 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                   {/* Wind Direction Quick Presets */}
                   <div className="flex items-center gap-1 pt-1.5">
                     {[
-                      { label: 'Gió Trái (-35°)', val: -35 },
-                      { label: 'Thẳng đứng (0°)', val: 0 },
-                      { label: 'Gió Nhẹ (+15°)', val: 15 },
-                      { label: 'Gió Mạnh (+45°)', val: 45 },
+                      { labelVi: 'Gió Trái (-35°)', labelEn: 'Left (-35°)', val: -35 },
+                      { labelVi: 'Thẳng đứng (0°)', labelEn: 'Vertical (0°)', val: 0 },
+                      { labelVi: 'Gió Nhẹ (+15°)', labelEn: 'Breeze (+15°)', val: 15 },
+                      { labelVi: 'Gió Mạnh (+45°)', labelEn: 'Gale (+45°)', val: 45 },
                     ].map((wp) => {
                       const cur = particles.snowWindAngle !== undefined ? particles.snowWindAngle : 15;
                       const active = cur === wp.val;
                       return (
                         <button
-                          key={wp.label}
+                          key={wp.val}
                           type="button"
                           onClick={() => updatePt({ snowWindAngle: wp.val })}
                           className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
@@ -866,7 +870,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                               : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
                           }`}
                         >
-                          {wp.label}
+                          {isVi ? wp.labelVi : wp.labelEn}
                         </button>
                       );
                     })}
@@ -879,7 +883,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-neutral-400 flex items-center gap-1">
                         <Wind className="w-3 h-3 text-sky-400" />
-                        Tốc độ gió
+                        {isVi ? 'Tốc độ gió' : 'Wind Velocity'}
                       </span>
                       <span className="text-sky-400 font-mono">
                         {(particles.snowWindSpeed !== undefined ? particles.snowWindSpeed : 1.0).toFixed(1)}x
@@ -898,7 +902,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
 
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-400">Độ chao đảo (Turbulence)</span>
+                      <span className="text-neutral-400">{isVi ? 'Độ chao đảo (Turbulence)' : 'Turbulence'}</span>
                       <span className="text-sky-400 font-mono">
                         {particles.snowTurbulence !== undefined ? particles.snowTurbulence : 40}%
                       </span>
@@ -924,11 +928,11 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                   <div className="flex items-center gap-2">
                     <CloudRain className="w-4 h-4 text-blue-400" />
                     <span className="text-xs font-bold text-blue-200">
-                      Tùy Chỉnh Mưa Rơi & Hướng Gió (Rain & Wind Dynamics)
+                      {isVi ? 'Tùy Chỉnh Mưa Rơi & Hướng Gió (Rain & Wind Dynamics)' : 'Rain & Wind Dynamics'}
                     </span>
                   </div>
                   <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                    Vật Lý Mưa 🌧️
+                    {isVi ? 'Vật Lý Mưa 🌧️' : 'Rain Physics 🌧️'}
                   </span>
                 </div>
 
@@ -936,7 +940,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                 <div>
                   <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
                     <Droplets className="w-3.5 h-3.5 text-blue-400" />
-                    Kiểu Hạt Mưa (Raindrop Type)
+                    {isVi ? 'Kiểu Hạt Mưa (Raindrop Type)' : 'Raindrop Geometry & Streaks'}
                   </span>
                   <div className="grid grid-cols-2 gap-1.5">
                     {RAINDROP_TYPES.map((rt) => {
@@ -953,10 +957,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                           }`}
                         >
                           <span className={`text-xs font-semibold block ${isSelected ? 'text-blue-200' : 'text-neutral-300'}`}>
-                            {rt.nameVi}
+                            {isVi ? rt.nameVi : rt.nameEn}
                           </span>
                           <span className="text-[9px] text-neutral-400 block leading-tight">
-                            {rt.desc}
+                            {isVi ? rt.descVi : rt.descEn}
                           </span>
                         </button>
                       );
@@ -969,10 +973,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-neutral-300 flex items-center gap-1.5 font-medium">
                       <Compass className="w-3.5 h-3.5 text-blue-400" />
-                      Hướng gió thổi & góc nghiêng (Wind Angle)
+                      {isVi ? 'Hướng gió thổi & góc nghiêng (Wind Angle)' : 'Wind Tilt Angle'}
                     </span>
                     <span className="text-blue-400 font-mono font-bold">
-                      {(particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10) > 0 ? `+${particles.rainWindAngle ?? 10}° (Sang Phải)` : (particles.rainWindAngle ?? 10) < 0 ? `${particles.rainWindAngle}° (Sang Trái)` : '0° (Thẳng Đứng)'}
+                      {(particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10) > 0 ? `+${particles.rainWindAngle ?? 10}° ${isVi ? '(Sang Phải)' : '(Rightward)'}` : (particles.rainWindAngle ?? 10) < 0 ? `${particles.rainWindAngle}° ${isVi ? '(Sang Trái)' : '(Leftward)'}` : `0° ${isVi ? '(Thẳng Đứng)' : '(Vertical)'}`}
                     </span>
                   </div>
                   <input
@@ -988,16 +992,16 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                   {/* Wind Direction Quick Presets */}
                   <div className="flex items-center gap-1 pt-1.5">
                     {[
-                      { label: 'Gió Trái (-35°)', val: -35 },
-                      { label: 'Thẳng đứng (0°)', val: 0 },
-                      { label: 'Gió Nhẹ (+10°)', val: 10 },
-                      { label: 'Gió Bão (+40°)', val: 40 },
+                      { labelVi: 'Gió Trái (-35°)', labelEn: 'Left (-35°)', val: -35 },
+                      { labelVi: 'Thẳng đứng (0°)', labelEn: 'Vertical (0°)', val: 0 },
+                      { labelVi: 'Gió Nhẹ (+10°)', labelEn: 'Breeze (+10°)', val: 10 },
+                      { labelVi: 'Gió Bão (+40°)', labelEn: 'Storm (+40°)', val: 40 },
                     ].map((wp) => {
                       const cur = particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10;
                       const active = cur === wp.val;
                       return (
                         <button
-                          key={wp.label}
+                          key={wp.val}
                           type="button"
                           onClick={() => updatePt({ rainWindAngle: wp.val })}
                           className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
@@ -1006,7 +1010,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                               : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
                           }`}
                         >
-                          {wp.label}
+                          {isVi ? wp.labelVi : wp.labelEn}
                         </button>
                       );
                     })}
@@ -1019,7 +1023,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-neutral-400 flex items-center gap-1">
                         <Wind className="w-3 h-3 text-blue-400" />
-                        Tốc độ gió
+                        {isVi ? 'Tốc độ gió' : 'Wind Velocity'}
                       </span>
                       <span className="text-blue-400 font-mono">
                         {(particles.rainWindSpeed !== undefined ? particles.rainWindSpeed : 1.2).toFixed(1)}x
@@ -1038,7 +1042,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
 
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-400">Độ chao đảo (Turbulence)</span>
+                      <span className="text-neutral-400">{isVi ? 'Độ chao đảo (Turbulence)' : 'Turbulence'}</span>
                       <span className="text-blue-400 font-mono">
                         {particles.rainTurbulence !== undefined ? particles.rainTurbulence : 25}%
                       </span>
@@ -1061,7 +1065,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-neutral-400 flex items-center gap-1">
                         <Droplet className="w-3 h-3 text-blue-400" />
-                        Độ dài vệt giọt mưa
+                        {isVi ? 'Độ dài vệt giọt mưa' : 'Streak Length Scale'}
                       </span>
                       <span className="text-blue-400 font-mono">
                         {(particles.rainLengthScale !== undefined ? particles.rainLengthScale : 1.2).toFixed(1)}x
@@ -1082,7 +1086,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                     <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/80 border border-neutral-800 cursor-pointer">
                       <div className="flex items-center gap-1.5">
                         <Waves className="w-3.5 h-3.5 text-blue-400" />
-                        <span className="text-[11px] font-medium text-neutral-300">Tóe nước đáy</span>
+                        <span className="text-[11px] font-medium text-neutral-300">{isVi ? 'Tóe nước đáy' : 'Ground Splash Ripples'}</span>
                       </div>
                       <input
                         type="checkbox"
@@ -1096,11 +1100,11 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               </div>
             )}
 
-            {/* A. Particle Shape Selector (Hide if specialized shapes like snow, rain, or hyperspace) */}
+            {/* A. Particle Shape Selector */}
             {particles.type !== 'snow' && particles.type !== 'rain' && particles.type !== 'hyperspace' && (
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">
-                  Hình Dáng Hạt (Particle Shape)
+                  {isVi ? 'Hình Dáng Hạt (Particle Shape)' : 'Particle Geometry'}
                 </label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {PARTICLE_SHAPES.map((shapeItem) => {
@@ -1118,7 +1122,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                         }`}
                       >
                         <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-cyan-400' : 'text-neutral-400'}`} />
-                        <span>{shapeItem.nameVi}</span>
+                        <span>{isVi ? shapeItem.nameVi : shapeItem.nameEn}</span>
                       </button>
                     );
                   })}
@@ -1131,7 +1135,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Palette className="w-3.5 h-3.5 text-cyan-400" />
-                  Phong Cách & Màu Sắc Hạt
+                  {isVi ? 'Phong Cách & Màu Sắc Hạt' : 'Particle Color Palette & Palette Theme'}
                 </label>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
@@ -1148,18 +1152,18 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                           : 'bg-neutral-900/70 border-neutral-800 text-neutral-400 hover:text-neutral-200'
                       }`}
                     >
-                      <span className="text-xs font-semibold block">{mode.nameVi}</span>
-                      <span className="text-[10px] text-neutral-400 block truncate">{mode.desc}</span>
+                      <span className="text-xs font-semibold block">{isVi ? mode.nameVi : mode.nameEn}</span>
+                      <span className="text-[10px] text-neutral-400 block truncate">{isVi ? mode.descVi : mode.descEn}</span>
                     </button>
                   );
                 })}
               </div>
 
-              {/* Custom Color Pickers and Swatches (when custom or base color is used) */}
+              {/* Custom Color Pickers and Swatches */}
               {(!particles.colorMode || particles.colorMode === 'custom') && (
                 <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-2.5 mt-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-300">Màu chính của hạt:</span>
+                    <span className="text-xs text-neutral-300">{isVi ? 'Màu chính của hạt:' : 'Primary Particle Color:'}</span>
                     <div className="flex items-center gap-2">
                       <input
                         type="color"
@@ -1173,7 +1177,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
 
                   {/* Secondary Flash Color */}
                   <div className="flex items-center justify-between pt-1 border-t border-neutral-800/60">
-                    <span className="text-xs text-neutral-300">Màu chớp sáng (Flash):</span>
+                    <span className="text-xs text-neutral-300">{isVi ? 'Màu chớp sáng (Flash):' : 'Secondary Flash Color:'}</span>
                     <div className="flex items-center gap-2">
                       <input
                         type="color"
@@ -1191,7 +1195,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                       <button
                         key={c.color}
                         onClick={() => updatePt({ color: c.color })}
-                        title={c.name}
+                        title={isVi ? c.nameVi : c.nameEn}
                         className="w-5 h-5 rounded-full border border-neutral-700 hover:scale-110 transition-transform cursor-pointer"
                         style={{ backgroundColor: c.color }}
                       />
@@ -1208,10 +1212,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                   <Activity className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
                   <div>
                     <span className="text-xs font-bold text-neutral-100 block">
-                      Đổi Màu & Chớp Sáng Theo Bass (Bass Reactive Color)
+                      {isVi ? 'Đổi Màu & Chớp Sáng Theo Bass (Bass Reactive Color)' : 'Bass Reactive Color & Flash'}
                     </span>
                     <span className="text-[10px] text-neutral-400 leading-relaxed block">
-                      Hạt bừng sáng rực rỡ và chuyển màu flash theo từng nhịp drop của bài hát
+                      {isVi ? 'Hạt bừng sáng rực rỡ và chuyển màu flash theo từng nhịp drop của bài hát' : 'Particles flash brightly and burst into secondary accents on beat drops'}
                     </span>
                   </div>
                 </div>
@@ -1226,7 +1230,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               {(particles.bassReactiveColor ?? true) && (
                 <div className="pt-2 border-t border-cyan-500/20">
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-neutral-300">Độ bùng nổ chớp sáng (Flash Boost)</span>
+                    <span className="text-neutral-300">{isVi ? 'Độ bùng nổ chớp sáng (Flash Boost)' : 'Flash Explosion Boost'}</span>
                     <span className="text-cyan-400 font-mono">{(particles.bassFlashBoost || 1.5).toFixed(1)}x</span>
                   </div>
                   <input
@@ -1246,7 +1250,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">Kích thước hạt</span>
+                  <span className="text-neutral-400">{isVi ? 'Kích thước hạt' : 'Particle Scale'}</span>
                   <span className="text-cyan-400 font-mono">{(particles.sizeScale || 1.0).toFixed(1)}x</span>
                 </div>
                 <input
@@ -1262,7 +1266,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
 
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">Độ phát sáng (Glow)</span>
+                  <span className="text-neutral-400">{isVi ? 'Độ phát sáng (Glow)' : 'Glow Radius'}</span>
                   <span className="text-cyan-400 font-mono">{particles.glowIntensity !== undefined ? particles.glowIntensity : 12}px</span>
                 </div>
                 <input
@@ -1280,7 +1284,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">Số lượng hạt</span>
+                  <span className="text-neutral-400">{isVi ? 'Số lượng hạt' : 'Particle Count'}</span>
                   <span className="text-cyan-400 font-mono">{particles.count}</span>
                 </div>
                 <input
@@ -1295,7 +1299,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
 
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">Tốc độ bay</span>
+                  <span className="text-neutral-400">{isVi ? 'Tốc độ bay' : 'Flight Velocity'}</span>
                   <span className="text-cyan-400 font-mono">{particles.speed.toFixed(1)}x</span>
                 </div>
                 <input
@@ -1320,10 +1324,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               />
               <div>
                 <span className="text-xs font-semibold text-neutral-200 block">
-                  Chuyển động & Kích thước giật theo nhịp Bass
+                  {isVi ? 'Chuyển động & Kích thước giật theo nhịp Bass' : 'Beat-Synchronized Size & Velocity Pulse'}
                 </span>
                 <span className="text-[10px] text-neutral-400">
-                  Hạt tăng tốc và phóng to khi trống kick dồn dập
+                  {isVi ? 'Hạt tăng tốc và phóng to khi trống kick dồn dập' : 'Particles accelerate and enlarge on punchy kick impacts'}
                 </span>
               </div>
             </label>

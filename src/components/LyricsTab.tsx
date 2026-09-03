@@ -49,34 +49,42 @@ interface LyricsTabProps {
   language?: Language;
 }
 
-const STYLES: { id: LyricsStyle; labelVi: string; desc: string; badge?: string }[] = [
-  { id: 'karaoke-single', labelVi: 'Karaoke 1 Dòng', desc: '1 dòng duy nhất quét màu mượt mà + hiệu ứng theo nhịp', badge: 'Hot Trend' },
-  { id: 'teleprompter-4lines', labelVi: 'Karaoke 4 Dòng (Tự Cuộn)', desc: '4 dòng liên tục tự động cuộn mượt mà như máy nhắc chữ', badge: 'Mới' },
-  { id: 'karaoke', labelVi: 'Karaoke 3 Dòng', desc: '3 dòng kinh điển: dòng trước, dòng đang hát & dòng kế tiếp' },
-  { id: 'subtitle-bar', labelVi: 'Thanh Phụ Đề Mờ', desc: 'Hộp bo góc frosted glass tối giản hiện đại' },
-  { id: 'minimal-glow', labelVi: 'Phát Sáng Tối Giản', desc: 'Font chữ sắc nét phát sáng hào quang nhẹ nhàng' },
+const STYLES: { id: LyricsStyle; labelVi: string; labelEn: string; descVi: string; descEn: string; badge?: string }[] = [
+  { id: 'karaoke-single', labelVi: 'Karaoke 1 Dòng', labelEn: '1-Line Karaoke', descVi: '1 dòng duy nhất quét màu mượt mà + hiệu ứng theo nhịp', descEn: 'Single line with smooth progressive highlight and cursor trail', badge: 'Hot Trend' },
+  { id: 'teleprompter-4lines', labelVi: 'Karaoke 4 Dòng (Tự Cuộn)', labelEn: '4-Line Teleprompter', descVi: '4 dòng liên tục tự động cuộn mượt mà như máy nhắc chữ', descEn: '4 continuous auto-scrolling lines with focus on the active lyric', badge: 'Mới' },
+  { id: 'karaoke', labelVi: 'Karaoke 3 Dòng', labelEn: '3-Line Classic Karaoke', descVi: '3 dòng kinh điển: dòng trước, dòng đang hát & dòng kế tiếp', descEn: 'Classic 3-line layout showing previous, active, and upcoming lines' },
+  { id: 'subtitle-bar', labelVi: 'Thanh Phụ Đề Mờ', labelEn: 'Frosted Subtitle Bar', descVi: 'Hộp bo góc frosted glass tối giản hiện đại', descEn: 'Modern frosted glass bar with centered crisp subtitles' },
+  { id: 'minimal-glow', labelVi: 'Phát Sáng Tối Giản', labelEn: 'Minimalist Glow', descVi: 'Font chữ sắc nét phát sáng hào quang nhẹ nhàng', descEn: 'Clean floating lyrics with soft atmospheric glow' },
 ];
 
-const KARAOKE_SWEEP_MODES: { id: KaraokeSweepMode; labelVi: string; desc: string; icon: React.ComponentType<{ className?: string }>; badge?: string }[] = [
+const KARAOKE_SWEEP_MODES: { id: KaraokeSweepMode; labelVi: string; labelEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }>; badgeVi?: string; badgeEn?: string }[] = [
   { 
     id: 'color-only', 
     labelVi: 'Chỉ Đổi Màu', 
-    desc: 'Quét màu mượt mà chuẩn xác, phong cách tối giản & tinh tế', 
+    labelEn: 'Color Fill Only',
+    descVi: 'Quét màu mượt mà chuẩn xác, phong cách tối giản & tinh tế', 
+    descEn: 'Smooth color sweep progression with clean minimalist text',
     icon: Sparkles,
   },
   { 
     id: 'star-flying', 
     labelVi: 'Sao vàng bay+đổi màu', 
-    desc: 'Ngôi sao vàng 5 cánh phát sáng bay lượn & nảy theo từng từ', 
+    labelEn: 'Golden Star + Color Fill',
+    descVi: 'Ngôi sao vàng 5 cánh phát sáng bay lượn & nảy theo từng từ', 
+    descEn: 'Glowing 5-point golden star bouncing along with the lyrics',
     icon: Star,
-    badge: 'Kinh Điển ⭐'
+    badgeVi: 'Kinh Điển ⭐',
+    badgeEn: 'Classic ⭐'
   },
   { 
     id: 'bouncing-ball', 
     labelVi: 'Quả bóng nhỏ bay+đổi màu', 
-    desc: 'Quả bóng tròn phát sáng nảy bồng bềnh nhịp nhàng trên từng từ', 
+    labelEn: 'Bouncing Ball + Color Fill',
+    descVi: 'Quả bóng tròn phát sáng nảy bồng bềnh nhịp nhàng trên từng từ', 
+    descEn: 'Glossy 3D bouncing sphere jumping rhythmically with words',
     icon: CircleDot,
-    badge: 'Vui Nhộn ⚪'
+    badgeVi: 'Vui Nhộn ⚪',
+    badgeEn: 'Playful ⚪'
   },
 ];
 
@@ -360,7 +368,9 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold block">{st.labelVi}</span>
+                <span className="text-xs font-semibold block">
+                  {language === 'vi' ? st.labelVi : st.labelEn}
+                </span>
                 {st.badge && (
                   <span className="px-1.5 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 text-[9px] font-bold text-rose-300">
                     {st.badge}
@@ -368,7 +378,7 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                 )}
               </div>
               <span className="text-[10px] text-neutral-500 line-clamp-2 mt-0.5">
-                {st.desc}
+                {language === 'vi' ? st.descVi : st.descEn}
               </span>
             </button>
           ))}
@@ -382,11 +392,11 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-400" />
               <span className="text-xs font-bold text-amber-200 uppercase tracking-wider">
-                Cách Chạy Chữ Karaoke (Karaoke Sweep Mode)
+                {t.karaokeSweepMode || 'Cách Chạy Chữ Karaoke (Karaoke Sweep Mode)'}
               </span>
             </div>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              3 Tùy Chọn Mới
+              {language === 'vi' ? '3 Tùy Chọn Mới' : '3 Cursor Modes'}
             </span>
           </div>
 
@@ -410,19 +420,19 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                       <div className="flex items-center gap-1.5">
                         <IconComp className={`w-3.5 h-3.5 ${isSelected ? 'text-amber-400' : 'text-neutral-400'}`} />
                         <span className={`text-xs font-bold ${isSelected ? 'text-amber-200' : 'text-neutral-200'}`}>
-                          {km.labelVi}
+                          {language === 'vi' ? km.labelVi : km.labelEn}
                         </span>
                       </div>
                     </div>
                     <span className="text-[10px] text-neutral-400 block leading-tight">
-                      {km.desc}
+                      {language === 'vi' ? km.descVi : km.descEn}
                     </span>
                   </div>
 
-                  {km.badge && (
+                  {(km.badgeVi || km.badgeEn) && (
                     <div className="mt-2 pt-1.5 border-t border-neutral-800/60 flex justify-end">
                       <span className="text-[9px] font-semibold text-amber-300">
-                        {km.badge}
+                        {language === 'vi' ? km.badgeVi : km.badgeEn}
                       </span>
                     </div>
                   )}
@@ -544,8 +554,8 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
           </div>
         </div>
 
-        {/* Font Size & Position Y */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Font Size & Position Y & Position X */}
+        <div className="grid grid-cols-3 gap-2">
           <div>
             <div className="flex justify-between text-xs mb-1">
               <span className="text-neutral-400">{t.fontSize || 'Cỡ chữ'}</span>
@@ -563,7 +573,7 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
 
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-neutral-400">{t.lyricsPosition || 'Vị trí dọc'}</span>
+              <span className="text-neutral-400">{t.lyricsPosition || 'Vị trí dọc (Y)'}</span>
               <span className="text-purple-400 font-mono">{config.positionY}%</span>
             </div>
             <input
@@ -572,6 +582,21 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
               max={88}
               value={config.positionY}
               onChange={(e) => update({ positionY: parseInt(e.target.value) })}
+              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-neutral-400">{language === 'vi' ? 'Vị trí ngang (X)' : 'Horizontal (X)'}</span>
+              <span className="text-purple-400 font-mono">{config.positionX !== undefined ? config.positionX : 50}%</span>
+            </div>
+            <input
+              type="range"
+              min={10}
+              max={90}
+              value={config.positionX !== undefined ? config.positionX : 50}
+              onChange={(e) => update({ positionX: parseInt(e.target.value) })}
               className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
             />
           </div>

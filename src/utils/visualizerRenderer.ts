@@ -2185,6 +2185,140 @@ export class VisualizerRenderer {
 
       ctx.restore();
 
+    } else if (track.cardStyle === 'rotating-badge') {
+      // --- HUY HIỆU TRÒN XOAY 360° (Rotating Circular Vinyl Badge with Curved Title/Artist Ribbon & Center Art) ---
+      const badgeR = Math.min(width, height) * 0.16 * cardScale;
+      ctx.save();
+      ctx.translate(centerX, centerY + offsetY);
+      if (tiltAngle !== 0) ctx.rotate(tiltAngle);
+      ctx.scale(scaleBoostX, scaleBoostY);
+
+      // Smooth continuous spin angle driven by vinyl rotation
+      const spinAngle = this.vinylRotation;
+
+      // 1. Ambient Glow behind the badge (reacts to beat if badgeBeatGlow)
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, badgeR + 10, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.shadowColor = track.accentColor || '#ec4899';
+      ctx.shadowBlur = track.badgeBeatGlow ? 32 + beatIntensity * 36 : 22 + beatIntensity * 16;
+      ctx.fill();
+      ctx.restore();
+
+      // 2. Outer Base Disc (Metallic dark vinyl base)
+      const outerDiscGrad = ctx.createRadialGradient(0, 0, badgeR * 0.4, 0, 0, badgeR);
+      outerDiscGrad.addColorStop(0, '#1c1c20');
+      outerDiscGrad.addColorStop(0.55, '#121216');
+      outerDiscGrad.addColorStop(0.85, '#0a0a0d');
+      outerDiscGrad.addColorStop(1, '#050508');
+      ctx.beginPath();
+      ctx.arc(0, 0, badgeR, 0, Math.PI * 2);
+      ctx.fillStyle = outerDiscGrad;
+      ctx.fill();
+
+      // 3. Outer Golden / Neon rim border
+      ctx.beginPath();
+      ctx.arc(0, 0, badgeR, 0, Math.PI * 2);
+      ctx.lineWidth = Math.max(2, 3.5 * userScale);
+      ctx.strokeStyle = track.accentColor || '#ec4899';
+      ctx.stroke();
+
+      // 4. Perimeter graduation tick dashes along the border
+      ctx.save();
+      ctx.rotate(spinAngle * 0.6);
+      const tickCount = 40;
+      for (let t = 0; t < tickCount; t++) {
+        const a = (t / tickCount) * Math.PI * 2;
+        const r1 = badgeR - 2;
+        const r2 = badgeR - (t % 4 === 0 ? 9 : 5);
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+        ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
+        ctx.strokeStyle = t % 4 === 0 ? (track.accentColor || '#ec4899') : 'rgba(255, 255, 255, 0.22)';
+        ctx.lineWidth = t % 4 === 0 ? 1.6 : 1;
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // 5. Curved 360° Rotating Track Title & Artist Ring Text
+      const textRadius = badgeR * 0.81;
+      const titleStr = (track.title || 'SONAWAVE PRO').trim().toUpperCase();
+      const artistStr = (track.artist || 'STUDIO AUDIO').trim().toUpperCase();
+      const bannerText = `✦  ${titleStr}  ✦  ${artistStr}  `;
+
+      ctx.save();
+      ctx.rotate(spinAngle);
+      const totalChars = bannerText.length;
+      const arcPerChar = (Math.PI * 2) / Math.max(16, totalChars);
+      const bannerFontSize = Math.max(8, Math.min(15, badgeR * 0.115));
+      ctx.font = `bold ${bannerFontSize}px '${track.fontFamily || 'Be Vietnam Pro'}', sans-serif`;
+      ctx.fillStyle = track.textColor || '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      for (let i = 0; i < totalChars; i++) {
+        const char = bannerText[i];
+        const charAngle = i * arcPerChar;
+        ctx.save();
+        ctx.rotate(charAngle);
+        ctx.translate(0, -textRadius);
+        ctx.fillText(char, 0, 0);
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // 6. Inner Dividing Metallic Ring
+      const innerRingR = badgeR * 0.64;
+      ctx.beginPath();
+      ctx.arc(0, 0, innerRingR, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // 7. Center Spinning Artwork / Badge Image
+      const centerR = innerRingR - 2.5;
+      ctx.save();
+      ctx.rotate(spinAngle); // artwork spins with the badge
+      ctx.beginPath();
+      ctx.arc(0, 0, centerR, 0, Math.PI * 2);
+      ctx.clip();
+
+      const activeImg = (this.badgePngImage && this.badgePngImage.complete && this.badgePngImage.naturalWidth > 0)
+        ? this.badgePngImage
+        : (this.coverImage && this.coverImage.complete && this.coverImage.naturalWidth > 0
+            ? this.coverImage
+            : (this.logoImage && this.logoImage.complete ? this.logoImage : null));
+
+      if (activeImg) {
+        ctx.drawImage(activeImg, -centerR, -centerR, centerR * 2, centerR * 2);
+      } else {
+        ctx.fillStyle = track.accentColor || '#ec4899';
+        ctx.fillRect(-centerR, -centerR, centerR * 2, centerR * 2);
+      }
+
+      // Glossy Vinyl Sheen overlay over center
+      const sheen = ctx.createLinearGradient(-centerR, -centerR, centerR, centerR);
+      sheen.addColorStop(0, 'rgba(255, 255, 255, 0.28)');
+      sheen.addColorStop(0.45, 'rgba(255, 255, 255, 0.02)');
+      sheen.addColorStop(0.55, 'rgba(0, 0, 0, 0.12)');
+      sheen.addColorStop(1, 'rgba(255, 255, 255, 0.18)');
+      ctx.fillStyle = sheen;
+      ctx.fillRect(-centerR, -centerR, centerR * 2, centerR * 2);
+
+      ctx.restore();
+
+      // 8. Center Spindle Pin / Eyelet
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(4, 6.5 * userScale), 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.restore();
+
     } else if (track.cardStyle === 'logo-badge') {
       // --- PNG BADGE (Clean transparent rendering without any circular background disc) ---
       const logoSize = Math.min(width, height) * 0.24 * cardScale;
@@ -2232,15 +2366,17 @@ export class VisualizerRenderer {
       ctx.restore();
     }
 
-    // Render Title & Artist for vinyl, circular badge, logo badge, or minimal tag
-    if (track.cardStyle === 'vinyl' || track.cardStyle === 'circular-badge' || track.cardStyle === 'logo-badge' || track.cardStyle === 'minimal-tag') {
+    // Render Title & Artist for vinyl, circular badge, rotating badge, logo badge, or minimal tag
+    if (track.cardStyle === 'vinyl' || track.cardStyle === 'circular-badge' || track.cardStyle === 'rotating-badge' || track.cardStyle === 'logo-badge' || track.cardStyle === 'minimal-tag') {
       const offsetBelow = track.cardStyle === 'minimal-tag' 
         ? 0 
         : (track.cardStyle === 'vinyl' 
             ? Math.min(width, height) * 0.18 * cardScale + 30 * userScale 
-            : (track.cardStyle === 'logo-badge'
-                ? Math.min(width, height) * 0.14 * cardScale + 30 * userScale
-                : Math.min(width, height) * 0.14 * cardScale + 26 * userScale));
+            : (track.cardStyle === 'rotating-badge'
+                ? Math.min(width, height) * 0.16 * cardScale + 28 * userScale
+                : (track.cardStyle === 'logo-badge'
+                    ? Math.min(width, height) * 0.14 * cardScale + 30 * userScale
+                    : Math.min(width, height) * 0.14 * cardScale + 26 * userScale)));
 
       const textY = centerY + offsetBelow + (jumpStyle === 'bounce-up' ? offsetY * 0.45 : 0);
       const alignment = track.alignment || 'center';
@@ -3799,7 +3935,7 @@ export class VisualizerRenderer {
 
     ctx.save();
     const posY = (height * lyrics.positionY) / 100;
-    const centerX = width / 2;
+    const basePosX = (width * (lyrics.positionX !== undefined ? lyrics.positionX : 50)) / 100;
 
     const baseFontSize = lyrics.fontSize || 24;
     const fontFam = lyrics.fontFamily || 'Be Vietnam Pro';
@@ -3814,6 +3950,30 @@ export class VisualizerRenderer {
       return text;
     };
 
+    // Compute exact drawX (for ctx.fillText with ctx.textAlign) and textLeft (exact pixel start of text)
+    const computeLyricCoords = (textW: number) => {
+      let drawX = basePosX;
+      let textLeft = basePosX - textW / 2;
+
+      if (lyrics.alignment === 'center') {
+        drawX = basePosX;
+        textLeft = basePosX - textW / 2;
+      } else if (lyrics.alignment === 'left') {
+        const leftAnchor = (lyrics.positionX !== undefined && lyrics.positionX !== 50)
+          ? basePosX
+          : Math.max(width * 0.06, 24);
+        drawX = leftAnchor;
+        textLeft = leftAnchor;
+      } else if (lyrics.alignment === 'right') {
+        const rightAnchor = (lyrics.positionX !== undefined && lyrics.positionX !== 50)
+          ? basePosX
+          : Math.min(width * 0.94, width - 24);
+        drawX = rightAnchor;
+        textLeft = rightAnchor - textW;
+      }
+      return { drawX, textLeft };
+    };
+
     // --- 1. KARAOKE 1 DÒNG (Single Line Focus) ---
     if (lyrics.style === 'karaoke-single') {
       const targetLine = info.activeLine || info.nextLine;
@@ -3823,21 +3983,23 @@ export class VisualizerRenderer {
         const lineFontSize = baseFontSize * 1.15;
         const popScale = 1 + (info.activeLine ? beatIntensity * 0.06 : 0);
 
-        ctx.save();
-        ctx.translate(centerX, posY);
-        ctx.scale(popScale, popScale);
-        ctx.translate(-centerX, -posY);
-
         ctx.font = `${fontStyle}${fontWeight} ${lineFontSize}px '${fontFam}', sans-serif`;
         const textMetrics = ctx.measureText(fullText);
         const textW = textMetrics.width;
+        const { drawX, textLeft } = computeLyricCoords(textW);
+
+        ctx.save();
+        ctx.translate(drawX, posY);
+        ctx.scale(popScale, popScale);
+        ctx.translate(-drawX, -posY);
 
         // Frosted Container Pill
         if (lyrics.showBackgroundPill) {
           const pillW = Math.min(width * 0.94, textW + 48);
           const pillH = lineFontSize * 2.1;
+          const pillX = textLeft - 24;
           ctx.beginPath();
-          ctx.roundRect(centerX - pillW / 2, posY - pillH / 2, pillW, pillH, pillH / 2);
+          ctx.roundRect(pillX, posY - pillH / 2, pillW, pillH, pillH / 2);
           ctx.fillStyle = lyrics.pillColor || 'rgba(10, 14, 28, 0.7)';
           ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
           ctx.shadowBlur = 16;
@@ -3851,13 +4013,9 @@ export class VisualizerRenderer {
         ctx.textBaseline = 'middle';
 
         // Dimmed Base Text Layer
-        this.renderLyricTextWithEffect(ctx, fullText, centerX, posY, width * 0.88, lyrics, false, beatIntensity);
+        this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, false, beatIntensity);
 
         // Sweeping Highlight Fill
-        let textLeft = centerX - textW / 2;
-        if (lyrics.alignment === 'left') textLeft = centerX - (width * 0.44);
-        if (lyrics.alignment === 'right') textLeft = centerX + (width * 0.44) - textW;
-
         const fillWidth = textW * progress;
 
         if (fillWidth > 0.5 && info.activeLine) {
@@ -3866,7 +4024,7 @@ export class VisualizerRenderer {
           ctx.rect(textLeft - 4, posY - lineFontSize * 1.6, fillWidth + 4, lineFontSize * 3.2);
           ctx.clip();
 
-          this.renderLyricTextWithEffect(ctx, fullText, centerX, posY, width * 0.88, lyrics, true, beatIntensity);
+          this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, true, beatIntensity);
           ctx.restore();
 
           // Animated Karaoke Flying Indicator / Ball / Star
@@ -3894,12 +4052,14 @@ export class VisualizerRenderer {
 
       // Line 1: Previous line (faded top)
       if (info.prevLine) {
+        const text = formatText(info.prevLine.text);
+        ctx.font = `${fontStyle}500 ${baseFontSize * 0.76}px '${fontFam}', sans-serif`;
+        const { drawX } = computeLyricCoords(ctx.measureText(text).width);
         ctx.save();
         ctx.globalAlpha = 0.35;
-        ctx.font = `${fontStyle}500 ${baseFontSize * 0.76}px '${fontFam}', sans-serif`;
         ctx.textAlign = lyrics.alignment;
         ctx.textBaseline = 'middle';
-        this.renderLyricTextWithEffect(ctx, formatText(info.prevLine.text), centerX, posY - lineGap * 1.5, width * 0.88, lyrics, false, beatIntensity);
+        this.renderLyricTextWithEffect(ctx, text, drawX, posY - lineGap * 1.5, width * 0.88, lyrics, false, beatIntensity);
         ctx.restore();
       }
 
@@ -3909,21 +4069,23 @@ export class VisualizerRenderer {
         const progress = Math.max(0, Math.min(1, info.lineProgress || 0));
         const popScale = 1 + (beatIntensity * 0.05);
 
-        ctx.save();
-        ctx.translate(centerX, posY);
-        ctx.scale(popScale, popScale);
-        ctx.translate(-centerX, -posY);
-
         ctx.font = `${fontStyle}${fontWeight} ${baseFontSize * 1.05}px '${fontFam}', sans-serif`;
         const textMetrics = ctx.measureText(fullText);
         const textW = textMetrics.width;
+        const { drawX, textLeft } = computeLyricCoords(textW);
+
+        ctx.save();
+        ctx.translate(drawX, posY);
+        ctx.scale(popScale, popScale);
+        ctx.translate(-drawX, -posY);
 
         // Optional Pill
         if (lyrics.showBackgroundPill) {
           const pillW = Math.min(width * 0.94, textW + 40);
           const pillH = baseFontSize * 1.9;
+          const pillX = textLeft - 20;
           ctx.beginPath();
-          ctx.roundRect(centerX - pillW / 2, posY - pillH / 2, pillW, pillH, pillH / 2);
+          ctx.roundRect(pillX, posY - pillH / 2, pillW, pillH, pillH / 2);
           ctx.fillStyle = lyrics.pillColor || 'rgba(10, 14, 28, 0.65)';
           ctx.fill();
         }
@@ -3932,20 +4094,16 @@ export class VisualizerRenderer {
         ctx.textBaseline = 'middle';
 
         // Base Layer
-        this.renderLyricTextWithEffect(ctx, fullText, centerX, posY, width * 0.88, lyrics, false, beatIntensity);
+        this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, false, beatIntensity);
 
         // Highlight Layer
-        let textLeft = centerX - textW / 2;
-        if (lyrics.alignment === 'left') textLeft = centerX - (width * 0.44);
-        if (lyrics.alignment === 'right') textLeft = centerX + (width * 0.44) - textW;
-
         const fillWidth = textW * progress;
         if (fillWidth > 0.5) {
           ctx.save();
           ctx.beginPath();
           ctx.rect(textLeft - 4, posY - baseFontSize * 1.5, fillWidth + 4, baseFontSize * 3);
           ctx.clip();
-          this.renderLyricTextWithEffect(ctx, fullText, centerX, posY, width * 0.88, lyrics, true, beatIntensity);
+          this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, true, beatIntensity);
           ctx.restore();
 
           // Animated Karaoke Indicator
@@ -3969,23 +4127,27 @@ export class VisualizerRenderer {
 
       // Line 3: Next line (faded bottom 1)
       if (info.nextLine) {
+        const text = formatText(info.nextLine.text);
+        ctx.font = `${fontStyle}500 ${baseFontSize * 0.82}px '${fontFam}', sans-serif`;
+        const { drawX } = computeLyricCoords(ctx.measureText(text).width);
         ctx.save();
         ctx.globalAlpha = 0.65;
-        ctx.font = `${fontStyle}500 ${baseFontSize * 0.82}px '${fontFam}', sans-serif`;
         ctx.textAlign = lyrics.alignment;
         ctx.textBaseline = 'middle';
-        this.renderLyricTextWithEffect(ctx, formatText(info.nextLine.text), centerX, posY + lineGap * 1.1, width * 0.88, lyrics, false, beatIntensity);
+        this.renderLyricTextWithEffect(ctx, text, drawX, posY + lineGap * 1.1, width * 0.88, lyrics, false, beatIntensity);
         ctx.restore();
       }
 
       // Line 4: Next line 2 (faded bottom 2)
       if (info.nextLine2) {
+        const text = formatText(info.nextLine2.text);
+        ctx.font = `${fontStyle}500 ${baseFontSize * 0.72}px '${fontFam}', sans-serif`;
+        const { drawX } = computeLyricCoords(ctx.measureText(text).width);
         ctx.save();
         ctx.globalAlpha = 0.32;
-        ctx.font = `${fontStyle}500 ${baseFontSize * 0.72}px '${fontFam}', sans-serif`;
         ctx.textAlign = lyrics.alignment;
         ctx.textBaseline = 'middle';
-        this.renderLyricTextWithEffect(ctx, formatText(info.nextLine2.text), centerX, posY + lineGap * 2.3, width * 0.88, lyrics, false, beatIntensity);
+        this.renderLyricTextWithEffect(ctx, text, drawX, posY + lineGap * 2.3, width * 0.88, lyrics, false, beatIntensity);
         ctx.restore();
       }
 
@@ -3995,12 +4157,14 @@ export class VisualizerRenderer {
 
       // Previous Line
       if (info.prevLine) {
+        const text = formatText(info.prevLine.text);
+        ctx.font = `${fontStyle}500 ${baseFontSize * 0.74}px '${fontFam}', sans-serif`;
+        const { drawX } = computeLyricCoords(ctx.measureText(text).width);
         ctx.save();
         ctx.globalAlpha = 0.45;
-        ctx.font = `${fontStyle}500 ${baseFontSize * 0.74}px '${fontFam}', sans-serif`;
         ctx.textAlign = lyrics.alignment;
         ctx.textBaseline = 'middle';
-        this.renderLyricTextWithEffect(ctx, formatText(info.prevLine.text), centerX, posY - baseFontSize * 2.1, width * 0.88, lyrics, false, beatIntensity);
+        this.renderLyricTextWithEffect(ctx, text, drawX, posY - baseFontSize * 2.1, width * 0.88, lyrics, false, beatIntensity);
         ctx.restore();
       }
 
@@ -4009,20 +4173,22 @@ export class VisualizerRenderer {
         const fullText = formatText(info.activeLine.text);
         const progress = Math.max(0, Math.min(1, info.lineProgress || 0));
 
-        ctx.save();
-        ctx.translate(centerX, posY);
-        ctx.scale(popScale, popScale);
-        ctx.translate(-centerX, -posY);
-
         ctx.font = `${fontStyle}${fontWeight} ${baseFontSize}px '${fontFam}', sans-serif`;
         const textMetrics = ctx.measureText(fullText);
         const textW = textMetrics.width;
+        const { drawX, textLeft } = computeLyricCoords(textW);
+
+        ctx.save();
+        ctx.translate(drawX, posY);
+        ctx.scale(popScale, popScale);
+        ctx.translate(-drawX, -posY);
 
         if (lyrics.showBackgroundPill) {
           const pillW = Math.min(width * 0.94, textW + 44);
           const pillH = baseFontSize * 2.0;
+          const pillX = textLeft - 22;
           ctx.beginPath();
-          ctx.roundRect(centerX - pillW / 2, posY - pillH / 2, pillW, pillH, pillH / 2);
+          ctx.roundRect(pillX, posY - pillH / 2, pillW, pillH, pillH / 2);
           ctx.fillStyle = lyrics.pillColor || 'rgba(10, 14, 28, 0.65)';
           ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
           ctx.shadowBlur = 14;
@@ -4036,20 +4202,16 @@ export class VisualizerRenderer {
         ctx.textBaseline = 'middle';
 
         // Base Layer
-        this.renderLyricTextWithEffect(ctx, fullText, centerX, posY, width * 0.88, lyrics, false, beatIntensity);
+        this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, false, beatIntensity);
 
         // Sweeping Highlight
-        let textLeft = centerX - textW / 2;
-        if (lyrics.alignment === 'left') textLeft = centerX - (width * 0.44);
-        if (lyrics.alignment === 'right') textLeft = centerX + (width * 0.44) - textW;
-
         const fillWidth = textW * progress;
         if (fillWidth > 0.5) {
           ctx.save();
           ctx.beginPath();
           ctx.rect(textLeft - 4, posY - baseFontSize * 1.5, fillWidth + 4, baseFontSize * 3);
           ctx.clip();
-          this.renderLyricTextWithEffect(ctx, fullText, centerX, posY, width * 0.88, lyrics, true, beatIntensity);
+          this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, true, beatIntensity);
           ctx.restore();
 
           const cursorX = textLeft + fillWidth;
@@ -4072,23 +4234,14 @@ export class VisualizerRenderer {
 
       // Next Line Preview
       if (info.nextLine) {
+        const text = formatText(info.nextLine.text);
+        ctx.font = `${fontStyle}500 ${baseFontSize * 0.74}px '${fontFam}', sans-serif`;
+        const { drawX } = computeLyricCoords(ctx.measureText(text).width);
         ctx.save();
         ctx.globalAlpha = 0.45;
-        ctx.font = `${fontStyle}500 ${baseFontSize * 0.74}px '${fontFam}', sans-serif`;
         ctx.textAlign = lyrics.alignment;
         ctx.textBaseline = 'middle';
-        this.renderLyricTextWithEffect(ctx, formatText(info.nextLine.text), centerX, posY + baseFontSize * 2.1, width * 0.88, lyrics, false, beatIntensity);
-        ctx.restore();
-      }
-
-      // Next Line Preview
-      if (info.nextLine) {
-        ctx.save();
-        ctx.globalAlpha = 0.45;
-        ctx.font = `${fontStyle}500 ${baseFontSize * 0.74}px '${fontFam}', sans-serif`;
-        ctx.textAlign = lyrics.alignment;
-        ctx.textBaseline = 'middle';
-        this.renderLyricTextWithEffect(ctx, formatText(info.nextLine.text), centerX, posY + baseFontSize * 2.1, width * 0.88, lyrics, false, beatIntensity);
+        this.renderLyricTextWithEffect(ctx, text, drawX, posY + baseFontSize * 2.1, width * 0.88, lyrics, false, beatIntensity);
         ctx.restore();
       }
 
@@ -4098,9 +4251,10 @@ export class VisualizerRenderer {
         const text = formatText(info.activeLine.text);
         ctx.font = `${fontStyle}${fontWeight} ${baseFontSize}px '${fontFam}', sans-serif`;
         const textMetrics = ctx.measureText(text);
+        const { drawX, textLeft } = computeLyricCoords(textMetrics.width);
         const barW = Math.min(width * 0.9, textMetrics.width + 48);
         const barH = baseFontSize * 2.2;
-        const barX = centerX - barW / 2;
+        const barX = textLeft - 24;
         const barY = posY - barH / 2;
 
         ctx.beginPath();
@@ -4115,7 +4269,7 @@ export class VisualizerRenderer {
 
         ctx.textAlign = lyrics.alignment;
         ctx.textBaseline = 'middle';
-        this.renderLyricTextWithEffect(ctx, text, centerX, posY, width * 0.84, lyrics, true, beatIntensity);
+        this.renderLyricTextWithEffect(ctx, text, drawX, posY, width * 0.84, lyrics, true, beatIntensity);
       }
 
     // --- 5. MINIMAL GLOW / DEFAULT ---
@@ -4123,9 +4277,10 @@ export class VisualizerRenderer {
       if (info.activeLine) {
         const text = formatText(info.activeLine.text);
         ctx.font = `${fontStyle}${fontWeight} ${baseFontSize}px '${fontFam}', sans-serif`;
+        const { drawX } = computeLyricCoords(ctx.measureText(text).width);
         ctx.textAlign = lyrics.alignment;
         ctx.textBaseline = 'middle';
-        this.renderLyricTextWithEffect(ctx, text, centerX, posY, width * 0.9, lyrics, true, beatIntensity);
+        this.renderLyricTextWithEffect(ctx, text, drawX, posY, width * 0.9, lyrics, true, beatIntensity);
       }
     }
 

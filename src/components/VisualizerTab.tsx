@@ -1,12 +1,12 @@
 import React from 'react';
 import { VisualizerConfig, VisualizerType, VisualizerColorMode } from '../types';
 import { COLOR_PALETTES } from '../utils/presets';
+import { Language, TRANSLATIONS } from '../utils/i18n';
 import { 
   BarChart2, 
   Disc, 
   Activity, 
   Sparkles, 
-  Sliders, 
   Flame, 
   Radio, 
   Cpu, 
@@ -19,7 +19,6 @@ import {
   Orbit,
   Sun,
   Grid3X3,
-  Compass,
   Split
 } from 'lucide-react';
 
@@ -29,6 +28,7 @@ interface VisualizerTabProps {
   detectedBpm?: number;
   isDetectingBpm?: boolean;
   onReDetectBpm?: () => void;
+  language?: Language;
 }
 
 interface TypeOption {
@@ -37,7 +37,9 @@ interface TypeOption {
   labelVi: string;
   icon: React.ComponentType<{ className?: string }>;
   description: string;
+  descriptionEn: string;
   badge?: string;
+  badgeEn?: string;
 }
 
 const VISUALIZER_TYPES: TypeOption[] = [
@@ -47,7 +49,9 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Spectrum Cột Hạt Rơi',
     icon: BarChart2,
     description: 'Thanh phổ âm kèm hạt đỉnh rơi vật lý siêu thực Winamp',
+    descriptionEn: 'Audio spectrum bars with realistic gravity peak drops',
     badge: 'Mới & Hot',
+    badgeEn: 'Hot',
   },
   {
     type: 'bars-mirrored-peaks',
@@ -55,7 +59,9 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Sóng Đối Xứng Hạt Đỉnh',
     icon: BarChart2,
     description: 'Cột đối xứng 2 đầu kèm hạt rơi phía trên và dưới',
+    descriptionEn: 'Dual-sided mirrored bars with floating peak particles',
     badge: 'Mới',
+    badgeEn: 'New',
   },
   {
     type: 'spectrum-line',
@@ -63,7 +69,9 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Dải Phổ Gradient Mịn',
     icon: Waves,
     description: 'Đường cong sóng phủ màu gradient và điểm sáng lấp lánh',
+    descriptionEn: 'Silky smooth curved audio waveform with glowing crests',
     badge: 'Mới',
+    badgeEn: 'New',
   },
   {
     type: 'radial-bars-peaks',
@@ -71,7 +79,9 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Vòng Tròn Hạt Bay Tỏa',
     icon: Disc,
     description: 'Tia xoay tròn 360° với hạt đỉnh bắn ra theo nhịp bass',
+    descriptionEn: '360° circular orbit rays emitting dynamic bass particles',
     badge: 'Mới',
+    badgeEn: 'New',
   },
   {
     type: 'dna-helix',
@@ -79,7 +89,9 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Chuỗi Xoắn Kép DNA 3D',
     icon: Dna,
     description: 'Hai dải xoắn kép đan xen kèm bậc thang tần số phát sáng 3D',
+    descriptionEn: 'Double-helix neon DNA strands with 3D oscillating rungs',
     badge: 'Mới Siêu Đẹp',
+    badgeEn: 'Stunning 3D',
   },
   {
     type: 'tunnel-vortex',
@@ -87,7 +99,9 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Đường Hầm Không Gian 3D',
     icon: Orbit,
     description: 'Cổng đa giác xoay vô cực chuyển động theo dải tần âm trầm',
+    descriptionEn: 'Infinite polygon spatial wormhole pulsing to sub-bass',
     badge: 'Mới 3D',
+    badgeEn: '3D Tunnel',
   },
   {
     type: 'laser-beams',
@@ -95,7 +109,9 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Tia Laser Sân Khấu EDM',
     icon: Zap,
     description: 'Dàn chùm tia laser quét góc rộng bùng nổ theo nhịp kick',
+    descriptionEn: 'Wide-angle concert laser show synchronized with kick drums',
     badge: 'Mới Sôi Động',
+    badgeEn: 'Concert',
   },
   {
     type: 'starburst-core',
@@ -103,7 +119,9 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Lõi Siêu Tân Tinh Tỏa Sáng',
     icon: Sun,
     description: 'Vụ nổ hạt sao đa giác 360° với tâm phát quang hạt năng lượng',
+    descriptionEn: 'Radial cosmic supernova core erupting audio spark flares',
     badge: 'Mới Vũ Trụ',
+    badgeEn: 'Cosmic',
   },
   {
     type: 'audio-equalizer-grid',
@@ -111,7 +129,9 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Ma Trận EQ Khối Nổi',
     icon: Grid3X3,
     description: 'Lưới tầng bậc LED đa sắc màu xếp chồng phản ứng cực nhạy',
+    descriptionEn: 'Cyberpunk layered LED VU meter grid with instant transient response',
     badge: 'Mới Pro',
+    badgeEn: 'Pro Grid',
   },
   {
     type: 'bars-mirrored',
@@ -119,6 +139,7 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Sóng Cột Đối Xứng',
     icon: BarChart2,
     description: 'Thanh equalizer đối xứng trên dưới bắt mắt',
+    descriptionEn: 'Top and bottom symmetrical equalizer bars',
   },
   {
     type: 'bars',
@@ -126,6 +147,7 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Cột Cổ Điển (EQ)',
     icon: BarChart2,
     description: 'Equalizer truyền thống hướng lên trên',
+    descriptionEn: 'Classic bottom-to-top audio frequency columns',
   },
   {
     type: 'circular-spikes',
@@ -133,6 +155,7 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Tia Tròn Tỏa Sáng',
     icon: Disc,
     description: 'Tia sóng xoay quanh tâm đĩa phát sáng',
+    descriptionEn: 'Luminous circular spikes rotating around vinyl center',
   },
   {
     type: 'smooth-wave',
@@ -140,6 +163,7 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Sóng Nước Mềm Mại',
     icon: Activity,
     description: 'Sóng chất lỏng chuyển động mượt mà',
+    descriptionEn: 'Silky smooth liquid audio oscilloscope wave',
   },
   {
     type: 'cyber-matrix',
@@ -147,6 +171,7 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Ma Trận LED Cyber',
     icon: Cpu,
     description: 'Khối LED số nhảy theo từng dải tần số',
+    descriptionEn: 'Digital cyber LED bricks jumping to octave bins',
   },
   {
     type: 'flame-spectrum',
@@ -154,6 +179,7 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Ngọn Lửa Plasma',
     icon: Flame,
     description: 'Ngọn lửa âm nhạc rực cháy theo nhịp kick',
+    descriptionEn: 'Blazing musical plasma flames rising on heavy drops',
   },
   {
     type: 'double-ribbon',
@@ -161,6 +187,7 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Dải Ruy Băng Đôi',
     icon: Radio,
     description: 'Hai sợi dây sóng đan xen mềm mại',
+    descriptionEn: 'Dual intertwined neon ribbons flowing effortlessly',
   },
   {
     type: 'minimal-pulse',
@@ -168,6 +195,7 @@ const VISUALIZER_TYPES: TypeOption[] = [
     labelVi: 'Chấm Tối Giản',
     icon: Layers,
     description: 'Đường ngang tinh gọn phong cách audiophile',
+    descriptionEn: 'Clean minimalist dot matrix for high-end aesthetic',
   },
 ];
 
@@ -177,7 +205,9 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
   detectedBpm = 120,
   isDetectingBpm = false,
   onReDetectBpm,
+  language = 'vi',
 }) => {
+  const isVi = language === 'vi';
   const update = (partial: Partial<VisualizerConfig>) => {
     onChange({ ...config, ...partial });
   };
@@ -204,12 +234,16 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-neutral-100">Đồng Bộ Nhịp BPM (Tempo Sync)</span>
+                <span className="text-xs font-bold text-neutral-100">
+                  {isVi ? 'Đồng Bộ Nhịp BPM (Tempo Sync)' : 'BPM Tempo Synchronization'}
+                </span>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse">
                   {currentBpm} BPM
                 </span>
               </div>
-              <p className="text-[10px] text-neutral-400">Tự động bắt nhịp BPM bài hát để visualizer nảy xung nhịp chuẩn xác</p>
+              <p className="text-[10px] text-neutral-400">
+                {isVi ? 'Tự động bắt nhịp BPM bài hát để visualizer nảy xung nhịp chuẩn xác' : 'Automatically synchronizes visuals and pulse rate to track tempo'}
+              </p>
             </div>
           </div>
 
@@ -220,7 +254,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
               onChange={(e) => update({ syncBpmPulse: e.target.checked })}
               className="sr-only peer"
             />
-            <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500"></div>
+            <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500"></div>
           </label>
         </div>
 
@@ -229,7 +263,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           <div className="flex items-center justify-between text-xs">
             <span className="text-neutral-400 flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5 text-rose-400" />
-              Tốc độ nhịp đập (Pulse Rate)
+              {isVi ? 'Tốc độ nhịp đập (Pulse Rate)' : 'Pulse Rate (BPM)'}
             </span>
             <div className="flex items-center gap-2">
               <span className="font-mono font-bold text-rose-400">{currentBpm} BPM</span>
@@ -237,11 +271,11 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                 <button
                   onClick={onReDetectBpm}
                   disabled={isDetectingBpm}
-                  title="Phân tích lại BPM từ file âm thanh"
+                  title={isVi ? 'Phân tích lại BPM từ file âm thanh' : 'Re-detect BPM from audio'}
                   className="px-2 py-1 text-[10px] rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 flex items-center gap-1 border border-neutral-700 transition cursor-pointer disabled:opacity-50"
                 >
                   <RefreshCw className={`w-3 h-3 ${isDetectingBpm ? 'animate-spin text-rose-400' : ''}`} />
-                  {isDetectingBpm ? 'Đang dò...' : 'Dò lại BPM'}
+                  {isDetectingBpm ? (isVi ? 'Đang dò...' : 'Detecting...') : (isVi ? 'Dò lại BPM' : 'Auto Detect')}
                 </button>
               )}
             </div>
@@ -260,10 +294,10 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           </div>
 
           <div className="flex justify-between text-[10px] text-neutral-500 px-0.5">
-            <span>60 (Lofi Chậm)</span>
+            <span>60 ({isVi ? 'Lofi Chậm' : 'Slow Lofi'})</span>
             <span>120 (House/Pop)</span>
             <span>128 (EDM)</span>
-            <span>180 (DnB/Fast)</span>
+            <span>180 ({isVi ? 'DnB Nhanh' : 'DnB/Fast'})</span>
           </div>
         </div>
       </div>
@@ -272,10 +306,10 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
-            Kiểu Sóng Âm (Visualizer Type)
+            {isVi ? 'Kiểu Sóng Âm (Visualizer Type)' : 'Visualizer Type'}
           </label>
           <span className="text-[11px] text-rose-400 font-medium">
-            {VISUALIZER_TYPES.length} Kiểu Hiệu Ứng
+            {VISUALIZER_TYPES.length} {isVi ? 'Kiểu Hiệu Ứng' : 'Styles'}
           </span>
         </div>
 
@@ -283,6 +317,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           {VISUALIZER_TYPES.map((t) => {
             const Icon = t.icon;
             const isSelected = config.type === t.type;
+            const badgeText = isVi ? t.badge : (t.badgeEn || t.badge);
             return (
               <button
                 key={t.type}
@@ -293,17 +328,19 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                     : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
                 }`}
               >
-                {t.badge && (
+                {badgeText && (
                   <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                    {t.badge}
+                    {badgeText}
                   </span>
                 )}
                 <div className="flex items-center gap-2">
                   <Icon className={`w-4 h-4 ${isSelected ? 'text-rose-400' : 'text-neutral-400'}`} />
-                  <span className="text-xs font-semibold leading-tight">{t.labelVi}</span>
+                  <span className="text-xs font-semibold leading-tight">
+                    {isVi ? t.labelVi : t.label}
+                  </span>
                 </div>
                 <span className="text-[10px] text-neutral-500 line-clamp-1">
-                  {t.description}
+                  {isVi ? t.description : t.descriptionEn}
                 </span>
               </button>
             );
@@ -314,36 +351,38 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
       {/* 2. Color Palettes & Color Modes */}
       <div className="space-y-3.5 pt-2 border-t border-neutral-800/80">
         <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
-          Màu Sắc & Gradient (Color Styles)
+          {isVi ? 'Màu Sắc & Gradient (Color Styles)' : 'Color & Gradient Styles'}
         </label>
 
         {/* Color Mode Selector */}
-        <div className="grid grid-cols-3 gap-1.5 p-1 bg-neutral-900/80 rounded-xl border border-neutral-800">
+        <div className="grid grid-cols-4 gap-1.5 p-1 bg-neutral-900/80 rounded-xl border border-neutral-800">
           {(
             [
-              { id: 'gradient2', name: 'Gradient 2 Màu' },
-              { id: 'gradient3', name: 'Gradient 3 Màu' },
-              { id: 'rainbow', name: 'Cầu Vồng' },
-              { id: 'solid', name: 'Đơn Sắc' },
+              { id: 'gradient2', nameVi: 'Gradient 2 Màu', nameEn: '2-Color Grad' },
+              { id: 'gradient3', nameVi: 'Gradient 3 Màu', nameEn: '3-Color Grad' },
+              { id: 'rainbow', nameVi: 'Cầu Vồng', nameEn: 'Rainbow' },
+              { id: 'solid', nameVi: 'Đơn Sắc', nameEn: 'Solid' },
             ] as const
           ).map((m) => (
             <button
               key={m.id}
               onClick={() => update({ colorMode: m.id as VisualizerColorMode })}
-              className={`py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+              className={`py-1.5 px-1 text-center rounded-lg text-xs font-medium transition-all cursor-pointer truncate ${
                 config.colorMode === m.id
                   ? 'bg-rose-600 text-white font-semibold shadow-sm'
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              {m.name}
+              {isVi ? m.nameVi : m.nameEn}
             </button>
           ))}
         </div>
 
         {/* Quick Palettes Grid */}
         <div>
-          <span className="text-[11px] text-neutral-400 block mb-1.5">Bảng màu pha sẵn</span>
+          <span className="text-[11px] text-neutral-400 block mb-1.5">
+            {isVi ? 'Bảng màu pha sẵn' : 'Color Palettes'}
+          </span>
           <div className="grid grid-cols-4 gap-2">
             {COLOR_PALETTES.map((p, idx) => (
               <button
@@ -363,7 +402,9 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
         {/* Individual Color Pickers */}
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <span className="text-[10px] text-neutral-400 block mb-1">Màu chính</span>
+            <span className="text-[10px] text-neutral-400 block mb-1">
+              {isVi ? 'Màu chính' : 'Primary'}
+            </span>
             <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 p-1.5 rounded-xl">
               <input
                 type="color"
@@ -378,7 +419,9 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           </div>
 
           <div>
-            <span className="text-[10px] text-neutral-400 block mb-1">Màu thứ 2 / Đỉnh</span>
+            <span className="text-[10px] text-neutral-400 block mb-1">
+              {isVi ? 'Màu thứ 2 / Đỉnh' : 'Secondary'}
+            </span>
             <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 p-1.5 rounded-xl">
               <input
                 type="color"
@@ -393,7 +436,9 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           </div>
 
           <div>
-            <span className="text-[10px] text-neutral-400 block mb-1">Màu thứ 3</span>
+            <span className="text-[10px] text-neutral-400 block mb-1">
+              {isVi ? 'Màu thứ 3' : 'Tertiary'}
+            </span>
             <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 p-1.5 rounded-xl">
               <input
                 type="color"
@@ -412,7 +457,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
       {/* 3. Sliders: Position, Scale, Amplitude, Glow, Bars */}
       <div className="space-y-3.5 pt-2 border-t border-neutral-800/80">
         <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
-          Tùy Chỉnh Kích Thước & Vị Trí
+          {isVi ? 'Tùy Chỉnh Kích Thước & Vị Trí' : 'Size & Position Adjustments'}
         </label>
 
         {/* Position X & Position Y Sliders */}
@@ -420,7 +465,9 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           {/* Position X Slider */}
           <div>
             <div className="flex justify-between items-center text-xs mb-1">
-              <span className="text-neutral-300 font-medium">Vị trí ngang (X)</span>
+              <span className="text-neutral-300 font-medium">
+                {isVi ? 'Vị trí ngang (X)' : 'Horizontal (X)'}
+              </span>
               <div className="flex items-center gap-1.5">
                 <span className="text-rose-400 font-mono font-bold text-[11px]">{config.positionX !== undefined ? config.positionX : 50}%</span>
                 {(config.positionX !== undefined && config.positionX !== 50) && (
@@ -428,9 +475,9 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                     type="button"
                     onClick={() => update({ positionX: 50 })}
                     className="text-[9px] text-neutral-400 hover:text-rose-300 px-1 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded transition-colors"
-                    title="Căn giữa 50%"
+                    title={isVi ? 'Căn giữa 50%' : 'Center at 50%'}
                   >
-                    Giữa
+                    {isVi ? 'Giữa' : 'Center'}
                   </button>
                 )}
               </div>
@@ -448,7 +495,9 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           {/* Position Y Slider */}
           <div>
             <div className="flex justify-between items-center text-xs mb-1">
-              <span className="text-neutral-300 font-medium">Vị trí dọc (Y)</span>
+              <span className="text-neutral-300 font-medium">
+                {isVi ? 'Vị trí dọc (Y)' : 'Vertical (Y)'}
+              </span>
               <span className="text-rose-400 font-mono font-bold text-[11px]">{config.positionY}%</span>
             </div>
             <input
@@ -465,7 +514,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
         {/* Scale Slider */}
         <div>
           <div className="flex justify-between text-xs mb-1">
-            <span className="text-neutral-400">Độ phóng to (Scale)</span>
+            <span className="text-neutral-400">{isVi ? 'Độ phóng to (Scale)' : 'Scale Factor'}</span>
             <span className="text-rose-400 font-mono">{config.scale.toFixed(2)}x</span>
           </div>
           <input
@@ -482,7 +531,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
         {/* Amplitude / Sensitivity */}
         <div>
           <div className="flex justify-between text-xs mb-1">
-            <span className="text-neutral-400">Độ nảy sóng âm (Amplitude)</span>
+            <span className="text-neutral-400">{isVi ? 'Độ nảy sóng âm (Amplitude)' : 'Bounce Amplitude'}</span>
             <span className="text-rose-400 font-mono">{config.amplitude.toFixed(1)}x</span>
           </div>
           <input
@@ -502,7 +551,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-rose-400" />
               <span className="text-xs font-bold text-neutral-200 uppercase tracking-wide">
-                Hiệu Ứng Phát Sáng & Bloom Neon
+                {isVi ? 'Hiệu Ứng Phát Sáng & Bloom Neon' : 'Glow & Neon Bloom'}
               </span>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -519,10 +568,10 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           {/* Quick Glow Presets */}
           <div className="grid grid-cols-4 gap-1.5 pt-1">
             {[
-              { name: 'Tắt', glow: 0, bloom: 0, active: config.glowIntensity === 0 && config.bloomEffect === false },
-              { name: 'Nhẹ êm', glow: 12, bloom: 35, active: config.glowIntensity === 12 && config.bloomIntensity === 35 },
-              { name: 'Neon Sáng', glow: 24, bloom: 70, active: config.glowIntensity === 24 && config.bloomIntensity === 70 },
-              { name: 'Cyberpunk', glow: 40, bloom: 100, active: config.glowIntensity === 40 && config.bloomIntensity === 100 },
+              { nameVi: 'Tắt', nameEn: 'Off', glow: 0, bloom: 0, active: config.glowIntensity === 0 && config.bloomEffect === false },
+              { nameVi: 'Nhẹ êm', nameEn: 'Subtle', glow: 12, bloom: 35, active: config.glowIntensity === 12 && config.bloomIntensity === 35 },
+              { nameVi: 'Neon Sáng', nameEn: 'Bright', glow: 24, bloom: 70, active: config.glowIntensity === 24 && config.bloomIntensity === 70 },
+              { nameVi: 'Cyberpunk', nameEn: 'Vivid', glow: 40, bloom: 100, active: config.glowIntensity === 40 && config.bloomIntensity === 100 },
             ].map((p, idx) => (
               <button
                 key={idx}
@@ -533,7 +582,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                     : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
                 }`}
               >
-                {p.name}
+                {isVi ? p.nameVi : p.nameEn}
               </button>
             ))}
           </div>
@@ -541,7 +590,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           {/* Glow Intensity Slider */}
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-neutral-400">Độ phát quang viền (Glow Blur)</span>
+              <span className="text-neutral-400">{isVi ? 'Độ phát quang viền (Glow Blur)' : 'Glow Blur Radius'}</span>
               <span className="text-rose-400 font-mono">{config.glowIntensity}px</span>
             </div>
             <input
@@ -557,7 +606,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           {/* Bloom Aura Intensity Slider */}
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-neutral-400">Độ bung tỏa ánh hào quang (Bloom Aura)</span>
+              <span className="text-neutral-400">{isVi ? 'Độ bung tỏa ánh hào quang (Bloom Aura)' : 'Bloom Halo Aura'}</span>
               <span className="text-rose-400 font-mono">{config.bloomIntensity !== undefined ? config.bloomIntensity : 65}%</span>
             </div>
             <input
@@ -573,7 +622,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           {/* Line Thickness for Waveforms */}
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-neutral-400">Độ dày nét vẽ sóng âm (Line Thickness)</span>
+              <span className="text-neutral-400">{isVi ? 'Độ dày nét vẽ sóng âm (Line Thickness)' : 'Line Thickness'}</span>
               <span className="text-rose-400 font-mono">{config.lineThickness || 3}px</span>
             </div>
             <input
@@ -603,7 +652,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-neutral-400">
-                  Tách lệch kênh màu Red / Cyan theo tần số âm thanh & nhịp kick
+                  {isVi ? 'Tách lệch kênh màu Red / Cyan theo tần số âm thanh & nhịp kick' : 'RGB color split effect reacting dynamically to bass beats'}
                 </p>
               </div>
             </div>
@@ -623,10 +672,10 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
               {/* Quick Intensity Presets */}
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { name: 'Nhẹ êm', val: 0.25 },
-                  { name: 'Cyberpunk', val: 0.5 },
-                  { name: 'Glitch EDM', val: 0.75 },
-                  { name: 'Cực mạnh', val: 1.0 },
+                  { nameVi: 'Nhẹ êm', nameEn: 'Subtle', val: 0.25 },
+                  { nameVi: 'Cyberpunk', nameEn: 'Medium', val: 0.5 },
+                  { nameVi: 'Glitch EDM', nameEn: 'Strong', val: 0.75 },
+                  { nameVi: 'Cực mạnh', nameEn: 'Extreme', val: 1.0 },
                 ].map((p, idx) => (
                   <button
                     key={idx}
@@ -638,7 +687,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                         : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
                     }`}
                   >
-                    {p.name}
+                    {isVi ? p.nameVi : p.nameEn}
                   </button>
                 ))}
               </div>
@@ -646,7 +695,9 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
               {/* Intensity Slider */}
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">Độ mạnh lệch kênh màu (Shift Intensity)</span>
+                  <span className="text-neutral-400">
+                    {isVi ? 'Độ mạnh lệch kênh màu (Shift Intensity)' : 'Color Split Shift Intensity'}
+                  </span>
                   <span className="text-rose-400 font-mono">
                     {Math.round((config.chromaticAberrationIntensity ?? 0.55) * 100)}%
                   </span>
@@ -664,7 +715,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
 
               <div className="flex items-center justify-between text-[11px] text-neutral-400 bg-neutral-950/50 p-2 rounded-lg border border-neutral-800/60">
                 <span className="flex items-center gap-1 text-cyan-400 font-mono">◀ Cyan (+X)</span>
-                <span className="text-neutral-500 text-[10px]">Tần số Bass & Treble</span>
+                <span className="text-neutral-500 text-[10px]">{isVi ? 'Tần số Bass & Treble' : 'Bass & Treble Frequencies'}</span>
                 <span className="flex items-center gap-1 text-rose-400 font-mono">Red (-X) ▶</span>
               </div>
             </div>
@@ -675,7 +726,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-neutral-400">Số lượng cột</span>
+              <span className="text-neutral-400">{isVi ? 'Số lượng cột' : 'Bar Count'}</span>
               <span className="text-rose-400 font-mono">{config.barCount}</span>
             </div>
             <input
@@ -691,7 +742,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
 
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-neutral-400">Độ rộng cột</span>
+              <span className="text-neutral-400">{isVi ? 'Độ rộng cột' : 'Bar Width'}</span>
               <span className="text-rose-400 font-mono">{config.barWidth}px</span>
             </div>
             <input
@@ -714,7 +765,9 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
               onChange={(e) => update({ bassBoost: e.target.checked })}
               className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
             />
-            <span className="text-xs font-semibold text-neutral-300">Tăng Lực Bass</span>
+            <span className="text-xs font-semibold text-neutral-300">
+              {isVi ? 'Tăng Lực Bass' : 'Bass Boost'}
+            </span>
           </label>
 
           <label className="flex items-center gap-2 p-2.5 rounded-xl bg-neutral-900/60 border border-neutral-800 cursor-pointer">
@@ -724,7 +777,9 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
               onChange={(e) => update({ dynamicBeatPulse: e.target.checked })}
               className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
             />
-            <span className="text-xs font-semibold text-neutral-300">Chớp Sáng Theo Beat</span>
+            <span className="text-xs font-semibold text-neutral-300">
+              {isVi ? 'Chớp Sáng Theo Beat' : 'Dynamic Beat Flash'}
+            </span>
           </label>
         </div>
       </div>

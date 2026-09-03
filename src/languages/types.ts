@@ -409,10 +409,40 @@ export interface TranslationDictionary {
   styleMinimalTagDesc: string;
   styleHidden: string;
   styleHiddenDesc: string;
+  styleRotatingBadge: string;
+  styleRotatingBadgeDesc: string;
+
+  // Karaoke Cursor Sweep Modes
+  karaokeSweepMode: string;
+  sweepModeColorOnly: string;
+  sweepModeColorOnlyDesc: string;
+  sweepModeStarFlying: string;
+  sweepModeStarFlyingDesc: string;
+  sweepModeBouncingBall: string;
+  sweepModeBouncingBallDesc: string;
+
+  // Rain Particles
+  rainDropStyle: string;
+  rainStyleStreaks: string;
+  rainStyleDrizzle: string;
+  rainStyleHeavy: string;
 
   // Modals: Presets, Projects, Export
   presetsTitle: string;
   presetsSubtitle: string;
+  builtInPresets: string;
+  myCustomPresets: string;
+  saveAsNewPreset: string;
+  savePresetModalTitle: string;
+  savePresetModalDesc: string;
+  presetName: string;
+  presetDescription: string;
+  deletePresetConfirm: string;
+  noUserPresets: string;
+  exportPresetsJson: string;
+  importPresetsJson: string;
+  presetSavedSuccess: string;
+  presetDeletedSuccess: string;
   applyPreset: string;
   appliedBadge: string;
   projectsTitle: string;

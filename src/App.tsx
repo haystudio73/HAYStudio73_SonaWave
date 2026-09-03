@@ -1100,6 +1100,17 @@ export function App() {
         onClose={() => setIsPresetsModalOpen(false)}
         onSelectTheme={handleSelectPresetTheme}
         language={language}
+        currentConfig={{
+          aspectRatio,
+          visualizer,
+          lyrics: lyricsConfig,
+          background,
+          particles,
+          filmLight,
+          colorGrading,
+          track,
+          textBoxes,
+        }}
       />
 
       {/* Projects & Local Storage Save/Load Modal */}

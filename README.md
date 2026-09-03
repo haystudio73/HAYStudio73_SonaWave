@@ -2,7 +2,7 @@
 
 A professional audio wave video generator with synchronized lyrics, diverse visualizer effects, and high-quality video export capabilities optimized for TikTok, YouTube Shorts, and Instagram Reels.
 
-<img width="1920" height="896" alt="app1" src="https://github.com/user-attachments/assets/2c38e420-08e2-424f-8449-f07e194fa47e" />
+<img width="1914" height="892" alt="image" src="https://github.com/user-attachments/assets/2cf2be46-7b38-48ba-864d-4d6219e07591" />
 
 ## ✨ Features
 
@@ -73,8 +73,13 @@ These are planned enhancements and newly introduced features to improve workflow
    git clone https://github.com/haystudio73/HAYStudio73_SonaWave.git
    cd HAYStudio73_SonaWave
    ```
+2. **Update new features**
+   ```bash
+   cd HAYStudio73_SonaWave
+   git pull origin main
+   ```
 
-2. **Install Dependencies**
+3. **Install Dependencies**
    ```bash
    # Using Bun (recommended)
    bun install

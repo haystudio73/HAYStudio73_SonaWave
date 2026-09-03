@@ -421,6 +421,7 @@ export const DEFAULT_LYRICS: LyricsConfig = {
   activeColor: '#ffffff',
   glowColor: '#ec4899',
   glowIntensity: 15,
+  positionX: 50,
   positionY: 48,
   alignment: 'center',
   style: 'karaoke-single',
@@ -1322,3 +1323,113 @@ export const COLOR_PALETTES = [
   { name: 'Monochrome Silver Glow', primary: '#f8fafc', secondary: '#94a3b8', tertiary: '#475569' },
   { name: 'Fire Plasma', primary: '#ef4444', secondary: '#f97316', tertiary: '#facc15' },
 ];
+
+const USER_PRESETS_STORAGE_KEY = 'sonawave_user_custom_presets';
+
+/**
+ * Get all user-created custom presets from localStorage
+ */
+export function getUserPresets(): PresetTheme[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(USER_PRESETS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error('Failed to load user presets from storage:', e);
+    return [];
+  }
+}
+
+/**
+ * Save a new user custom preset or update an existing one
+ */
+export function saveUserPreset(preset: PresetTheme): PresetTheme[] {
+  const current = getUserPresets();
+  const existingIndex = current.findIndex((p) => p.id === preset.id);
+  
+  let updated: PresetTheme[];
+  if (existingIndex >= 0) {
+    updated = [...current];
+    updated[existingIndex] = { ...preset, isUserPreset: true };
+  } else {
+    updated = [{ ...preset, isUserPreset: true, createdAt: Date.now() }, ...current];
+  }
+
+  try {
+    localStorage.setItem(USER_PRESETS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Failed to save user presets to storage:', e);
+  }
+  return updated;
+}
+
+/**
+ * Delete a user preset by ID
+ */
+export function deleteUserPreset(id: string): PresetTheme[] {
+  const current = getUserPresets();
+  const filtered = current.filter((p) => p.id !== id);
+  try {
+    localStorage.setItem(USER_PRESETS_STORAGE_KEY, JSON.stringify(filtered));
+  } catch (e) {
+    console.error('Failed to delete user preset from storage:', e);
+  }
+  return filtered;
+}
+
+/**
+ * Export all user presets to a downloadable JSON file
+ */
+export function exportUserPresetsJson() {
+  const presets = getUserPresets();
+  const blob = new Blob([JSON.stringify(presets, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `SonaWave_User_Presets_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Import presets from a JSON string or object
+ */
+export function importUserPresets(data: any): { count: number; presets: PresetTheme[] } {
+  let list: PresetTheme[] = [];
+  if (Array.isArray(data)) {
+    list = data;
+  } else if (data && typeof data === 'object') {
+    list = [data];
+  }
+
+  const validPresets = list.filter((p) => p && p.name && p.visualizer);
+  if (validPresets.length === 0) {
+    throw new Error('Không tìm thấy preset hợp lệ trong file!');
+  }
+
+  const current = getUserPresets();
+  const mergedMap = new Map<string, PresetTheme>();
+  current.forEach((p) => mergedMap.set(p.id, p));
+
+  validPresets.forEach((p) => {
+    const presetId = p.id || `user-preset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    mergedMap.set(presetId, {
+      ...p,
+      id: presetId,
+      isUserPreset: true,
+      createdAt: p.createdAt || Date.now(),
+    });
+  });
+
+  const finalPresets = Array.from(mergedMap.values());
+  try {
+    localStorage.setItem(USER_PRESETS_STORAGE_KEY, JSON.stringify(finalPresets));
+  } catch (e) {
+    console.error('Failed to save imported presets:', e);
+  }
+
+  return { count: validPresets.length, presets: finalPresets };
+}
+

@@ -1,6 +1,7 @@
 import React from 'react';
 import { TextBoxItem, TextBoxLayerOrder } from '../types';
 import { AVAILABLE_FONTS } from '../utils/presets';
+import { Language, TRANSLATIONS } from '../utils/i18n';
 import { 
   Plus, 
   Trash2, 
@@ -27,37 +28,55 @@ import {
 interface TextBoxTabProps {
   textBoxes: TextBoxItem[];
   onChange: (textBoxes: TextBoxItem[]) => void;
+  language?: Language;
 }
 
-const LAYER_OPTIONS: { id: TextBoxLayerOrder; nameVi: string; desc: string; icon: React.ComponentType<{ className?: string }> }[] = [
+const LAYER_OPTIONS: { 
+  id: TextBoxLayerOrder; 
+  nameVi: string; 
+  nameEn: string; 
+  descVi: string; 
+  descEn: string; 
+  icon: React.ComponentType<{ className?: string }> 
+}[] = [
   { 
     id: 'front-all', 
     nameVi: 'Trước tất cả (Trên cùng)', 
-    desc: 'Hiển thị trên cùng đè lên sóng âm, đĩa nhạc và lời bài hát',
+    nameEn: 'Top Layer (Front of All)',
+    descVi: 'Hiển thị trên cùng đè lên sóng âm, đĩa nhạc và lời bài hát',
+    descEn: 'Rendered in front of visualizer waves, album art, and lyrics',
     icon: Sparkles 
   },
   { 
     id: 'behind-lyrics', 
     nameVi: 'Sau Lời bài hát', 
-    desc: 'Hiển thị sau Lời bài hát nhưng trước Sóng âm',
+    nameEn: 'Behind Lyrics',
+    descVi: 'Hiển thị sau Lời bài hát nhưng trước Sóng âm',
+    descEn: 'Rendered below lyric subtitles but above visualizer waves',
     icon: Music2 
   },
   { 
     id: 'behind-visualizer', 
     nameVi: 'Sau Sóng âm (Waveform)', 
-    desc: 'Hiển thị sau Sóng âm thanh nhưng trước Đĩa nhạc',
+    nameEn: 'Behind Visualizer Waveform',
+    descVi: 'Hiển thị sau Sóng âm thanh nhưng trước Đĩa nhạc',
+    descEn: 'Rendered behind audio waveforms but above album card',
     icon: Activity 
   },
   { 
     id: 'behind-track', 
     nameVi: 'Sau Đĩa nhạc / Thẻ bài hát', 
-    desc: 'Hiển thị sau Đĩa xoay Vinyl & Card tiêu đề',
+    nameEn: 'Behind Track Info / Badge',
+    descVi: 'Hiển thị sau Đĩa xoay Vinyl & Card tiêu đề',
+    descEn: 'Rendered behind spinning vinyl & title metadata card',
     icon: Disc 
   },
   { 
     id: 'back-all', 
     nameVi: 'Sau cùng (Gần hình nền)', 
-    desc: 'Nằm sát nền phía dưới tất cả các hiệu ứng & hạt',
+    nameEn: 'Back of All (Near Background)',
+    descVi: 'Nằm sát nền phía dưới tất cả các hiệu ứng & hạt',
+    descEn: 'Rendered right on top of background image, under all particles',
     icon: ImageIcon 
   },
 ];
@@ -65,7 +84,9 @@ const LAYER_OPTIONS: { id: TextBoxLayerOrder; nameVi: string; desc: string; icon
 export const TextBoxTab: React.FC<TextBoxTabProps> = ({
   textBoxes,
   onChange,
+  language = 'vi',
 }) => {
+  const t = TRANSLATIONS[language] || TRANSLATIONS['vi'];
   const [selectedId, setSelectedId] = React.useState<string>(
     textBoxes.length > 0 ? textBoxes[0].id : ''
   );
@@ -73,9 +94,14 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
   const activeBox = textBoxes.find((b) => b.id === selectedId) || textBoxes[0];
 
   const handleAddBox = (presetText?: string) => {
+    const defaultText = presetText || (
+      language === 'vi' 
+        ? '🎧 Đeo tai nghe để cảm nhận âm thanh tốt nhất' 
+        : '🎧 Use headphones for the best experience'
+    );
     const newBox: TextBoxItem = {
       id: 'tb-' + Date.now(),
-      text: presetText || '🎧 Đeo tai nghe để cảm nhận âm thanh tốt nhất',
+      text: defaultText,
       fontFamily: 'Be Vietnam Pro',
       fontSize: 16,
       color: '#ffffff',
@@ -141,14 +167,14 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
       {/* Header & Add Button */}
       <div className="flex items-center justify-between">
         <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
-          Hộp Chữ & Watermark ({textBoxes.length})
+          {language === 'vi' ? `Hộp Chữ & Watermark (${textBoxes.length})` : `Text Boxes & Watermark (${textBoxes.length})`}
         </label>
         <button
           onClick={() => handleAddBox()}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600/25 hover:bg-rose-600/35 border border-rose-500/50 text-rose-300 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Thêm Hộp Chữ</span>
+          <span>{language === 'vi' ? 'Thêm Hộp Chữ' : 'Add Text Box'}</span>
         </button>
       </div>
 
@@ -156,14 +182,16 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
       {textBoxes.length === 0 && (
         <div className="p-4 rounded-2xl bg-neutral-900/60 border border-dashed border-neutral-800 text-center space-y-3">
           <p className="text-xs text-neutral-400">
-            Chưa có hộp chữ nào. Thêm watermark, credit nghệ sĩ, thông điệp hoặc tài khoản mạng xã hội của bạn!
+            {language === 'vi'
+              ? 'Chưa có hộp chữ nào. Thêm watermark, credit nghệ sĩ, thông điệp hoặc tài khoản mạng xã hội của bạn!'
+              : 'No text boxes yet. Add watermarks, artist credits, headphone tips, or social handles!'}
           </p>
           <div className="flex flex-wrap gap-2 justify-center">
             <button
-              onClick={() => handleAddBox('🎧 Đeo tai nghe để trải nghiệm tốt nhất')}
+              onClick={() => handleAddBox(language === 'vi' ? '🎧 Đeo tai nghe để trải nghiệm tốt nhất' : '🎧 Best experienced with headphones')}
               className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs transition-colors cursor-pointer"
             >
-              🎧 Gợi ý tai nghe
+              {language === 'vi' ? '🎧 Gợi ý tai nghe' : '🎧 Headphone tip'}
             </button>
             <button
               onClick={() => handleAddBox('✨ Follow @your_channel on TikTok')}
@@ -199,11 +227,11 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
                 >
                   <span>#{idx + 1}</span>
                   <span className="max-w-[90px] truncate text-[11px] font-normal opacity-90">
-                    {box.text ? box.text.slice(0, 14) : 'Trống'}
+                    {box.text ? box.text.slice(0, 14) : (language === 'vi' ? 'Trống' : 'Empty')}
                   </span>
                   {currentLayer && (
                     <span className="text-[9px] px-1 py-0.2 rounded bg-black/30 text-rose-200 border border-white/10">
-                      {currentLayer.nameVi.split(' ')[0]}
+                      {language === 'vi' ? currentLayer.nameVi.split(' ')[0] : currentLayer.nameEn.split(' ')[0]}
                     </span>
                   )}
                 </button>
@@ -219,7 +247,9 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
           {/* Text input & Actions */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-neutral-400 font-medium">Nội dung chữ</span>
+              <span className="text-xs text-neutral-400 font-medium">
+                {language === 'vi' ? 'Nội dung chữ' : 'Text Content'}
+              </span>
               <div className="flex items-center gap-1">
                 {/* Reorder Buttons */}
                 {textBoxes.length > 1 && (
@@ -227,7 +257,7 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
                     <button
                       onClick={() => handleMoveOrder(textBoxes.findIndex((b) => b.id === activeBox.id), 'up')}
                       disabled={textBoxes.findIndex((b) => b.id === activeBox.id) === 0}
-                      title="Di chuyển lên trước"
+                      title={language === 'vi' ? 'Di chuyển lên trước' : 'Move up'}
                       className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                       <ArrowUp className="w-3.5 h-3.5" />
@@ -235,7 +265,7 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
                     <button
                       onClick={() => handleMoveOrder(textBoxes.findIndex((b) => b.id === activeBox.id), 'down')}
                       disabled={textBoxes.findIndex((b) => b.id === activeBox.id) === textBoxes.length - 1}
-                      title="Di chuyển xuống sau"
+                      title={language === 'vi' ? 'Di chuyển xuống sau' : 'Move down'}
                       className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
                     >
                       <ArrowDown className="w-3.5 h-3.5" />
@@ -244,14 +274,14 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
                 )}
                 <button
                   onClick={() => handleDuplicateBox(activeBox)}
-                  title="Nhân bản hộp chữ này"
+                  title={language === 'vi' ? 'Nhân bản hộp chữ này' : 'Duplicate this text box'}
                   className="p-1 text-neutral-400 hover:text-white rounded hover:bg-neutral-800 transition-colors cursor-pointer"
                 >
                   <Copy className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => handleDeleteBox(activeBox.id)}
-                  title="Xóa hộp chữ này"
+                  title={language === 'vi' ? 'Xóa hộp chữ này' : 'Delete this text box'}
                   className="p-1 text-red-400 hover:text-red-300 rounded hover:bg-red-500/10 transition-colors cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -263,7 +293,7 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
               rows={3}
               value={activeBox.text}
               onChange={(e) => handleUpdateBox(activeBox.id, { text: e.target.value })}
-              placeholder="Nhập nội dung hiển thị (hỗ trợ nhiều dòng)..."
+              placeholder={language === 'vi' ? 'Nhập nội dung hiển thị (hỗ trợ nhiều dòng)...' : 'Enter text content (multi-line supported)...'}
               className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 resize-y font-medium"
             />
           </div>
@@ -273,10 +303,10 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-[11px] font-bold text-neutral-200 uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-rose-400" />
-                Thứ Tự Lớp (Layer Order)
+                {language === 'vi' ? 'Thứ Tự Lớp (Layer Order)' : 'Layer Order Depth'}
               </label>
               <span className="text-[10px] text-rose-400 font-medium">
-                Trước / Sau Sóng âm, Lời, Đĩa nhạc
+                {language === 'vi' ? 'Trước / Sau Sóng âm, Lời, Đĩa nhạc' : 'In front / Behind waves & cards'}
               </span>
             </div>
 
@@ -299,16 +329,16 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className={`text-xs font-semibold block ${isSelected ? 'text-rose-200' : 'text-neutral-300'}`}>
-                          {layer.nameVi}
+                          {language === 'vi' ? layer.nameVi : layer.nameEn}
                         </span>
                         {isSelected && (
                           <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-500 text-white">
-                            Đang chọn
+                            {language === 'vi' ? 'Đang chọn' : 'Selected'}
                           </span>
                         )}
                       </div>
                       <span className="text-[10px] text-neutral-400 block leading-tight mt-0.5">
-                        {layer.desc}
+                        {language === 'vi' ? layer.descVi : layer.descEn}
                       </span>
                     </div>
                   </button>
@@ -319,7 +349,9 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
 
           {/* Font Selector */}
           <div>
-            <span className="text-xs text-neutral-400 block mb-1">Phông chữ (Font Family)</span>
+            <span className="text-xs text-neutral-400 block mb-1">
+              {language === 'vi' ? 'Phông chữ (Font Family)' : 'Font Family'}
+            </span>
             <div className="relative">
               <Type className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <select
@@ -340,7 +372,7 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-neutral-400">Cỡ chữ</span>
+                <span className="text-neutral-400">{language === 'vi' ? 'Cỡ chữ' : 'Font Size'}</span>
                 <span className="text-rose-400 font-mono">{activeBox.fontSize}px</span>
               </div>
               <input
@@ -355,7 +387,7 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
 
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-neutral-400">Độ trong suốt (Opacity)</span>
+                <span className="text-neutral-400">{language === 'vi' ? 'Độ trong suốt' : 'Opacity'}</span>
                 <span className="text-rose-400 font-mono">{Math.round((activeBox.opacity || 1) * 100)}%</span>
               </div>
               <input
@@ -379,7 +411,7 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
                     fontWeight: activeBox.fontWeight === 'bold' ? 'normal' : 'bold',
                   })
                 }
-                title="Đậm"
+                title={language === 'vi' ? 'In đậm' : 'Bold'}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   activeBox.fontWeight === 'bold' ? 'bg-rose-500/20 text-rose-400' : 'text-neutral-400 hover:text-white'
                 }`}
@@ -392,7 +424,7 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
                     fontStyle: activeBox.fontStyle === 'italic' ? 'normal' : 'italic',
                   })
                 }
-                title="Nghiêng"
+                title={language === 'vi' ? 'In nghiêng' : 'Italic'}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   activeBox.fontStyle === 'italic' ? 'bg-rose-500/20 text-rose-400' : 'text-neutral-400 hover:text-white'
                 }`}
@@ -405,7 +437,7 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
                     isUppercase: !activeBox.isUppercase,
                   })
                 }
-                title="Chữ in hoa"
+                title={language === 'vi' ? 'Chữ in hoa' : 'Uppercase'}
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   activeBox.isUppercase ? 'bg-rose-500/20 text-rose-400' : 'text-neutral-400 hover:text-white'
                 }`}
@@ -446,7 +478,9 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
             <label className="flex items-center justify-between cursor-pointer">
               <div className="flex items-center gap-2">
                 <WrapText className="w-4 h-4 text-rose-400" />
-                <span className="text-xs font-semibold text-neutral-300">Tự động xuống dòng (Wrap text)</span>
+                <span className="text-xs font-semibold text-neutral-300">
+                  {language === 'vi' ? 'Tự động xuống dòng (Wrap text)' : 'Wrap text automatically'}
+                </span>
               </div>
               <input
                 type="checkbox"
@@ -460,7 +494,9 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
               <div className="space-y-2.5 pt-1 border-t border-neutral-800/60">
                 <div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-neutral-400">Độ rộng tối đa dòng</span>
+                    <span className="text-neutral-400">
+                      {language === 'vi' ? 'Độ rộng tối đa dòng' : 'Max line width'}
+                    </span>
                     <span className="text-rose-400 font-mono">{activeBox.maxWidth !== undefined ? activeBox.maxWidth : 80}%</span>
                   </div>
                   <input
@@ -476,7 +512,9 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
 
                 <div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-neutral-400">Khoảng cách dòng (Line Height)</span>
+                    <span className="text-neutral-400">
+                      {language === 'vi' ? 'Khoảng cách dòng (Line Height)' : 'Line Height'}
+                    </span>
                     <span className="text-rose-400 font-mono">{(activeBox.lineHeight !== undefined ? activeBox.lineHeight : 1.35).toFixed(2)}x</span>
                   </div>
                   <input
@@ -496,7 +534,9 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
           {/* Color & Glow */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <span className="text-[10px] text-neutral-400 block mb-1">Màu chữ</span>
+              <span className="text-[10px] text-neutral-400 block mb-1">
+                {language === 'vi' ? 'Màu chữ' : 'Text Color'}
+              </span>
               <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 p-1.5 rounded-xl">
                 <input
                   type="color"
@@ -509,7 +549,9 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
             </div>
 
             <div>
-              <span className="text-[10px] text-neutral-400 block mb-1">Màu phát sáng (Glow)</span>
+              <span className="text-[10px] text-neutral-400 block mb-1">
+                {language === 'vi' ? 'Màu phát sáng (Glow)' : 'Glow Color'}
+              </span>
               <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 p-1.5 rounded-xl">
                 <input
                   type="color"
@@ -526,7 +568,9 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
           <div className="space-y-3 pt-1">
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-neutral-400">Vị trí ngang (Position X)</span>
+                <span className="text-neutral-400">
+                  {language === 'vi' ? 'Vị trí ngang (Position X)' : 'Horizontal Position (X)'}
+                </span>
                 <span className="text-rose-400 font-mono">{activeBox.positionX}%</span>
               </div>
               <input
@@ -541,7 +585,9 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
 
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-neutral-400">Vị trí dọc (Position Y)</span>
+                <span className="text-neutral-400">
+                  {language === 'vi' ? 'Vị trí dọc (Position Y)' : 'Vertical Position (Y)'}
+                </span>
                 <span className="text-rose-400 font-mono">{activeBox.positionY}%</span>
               </div>
               <input
@@ -558,7 +604,9 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
           {/* Background Pill */}
           <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-2">
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-xs font-semibold text-neutral-300">Khung nền mờ (Pill Backdrop)</span>
+              <span className="text-xs font-semibold text-neutral-300">
+                {language === 'vi' ? 'Khung nền mờ (Pill Backdrop)' : 'Pill Frosted Backdrop'}
+              </span>
               <input
                 type="checkbox"
                 checked={activeBox.hasBackground}
@@ -576,7 +624,9 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
                     onChange={(e) => handleUpdateBox(activeBox.id, { backgroundColor: e.target.value })}
                     className="w-5 h-5 rounded border-0 cursor-pointer bg-transparent"
                   />
-                  <span className="text-[11px] font-mono text-neutral-400">Màu nền khung</span>
+                  <span className="text-[11px] font-mono text-neutral-400">
+                    {language === 'vi' ? 'Màu nền khung' : 'Backdrop Color'}
+                  </span>
                 </div>
               </div>
             )}
