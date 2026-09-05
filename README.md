@@ -2,6 +2,8 @@
 
 A professional audio wave video generator with synchronized lyrics, diverse visualizer effects, and high-quality video export capabilities optimized for TikTok, YouTube Shorts, and Instagram Reels.
 
+Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">https://hay-studio73-sona-wave.vercel.app/</a>
+
 <img width="1914" height="892" alt="image" src="https://github.com/user-attachments/assets/2cf2be46-7b38-48ba-864d-4d6219e07591" />
 
 ## ✨ Features
