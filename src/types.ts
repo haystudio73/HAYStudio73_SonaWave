@@ -48,15 +48,22 @@ export interface VisualizerConfig {
   bpm?: number;           // Detected or manual BPM (e.g. 120)
   chromaticAberration?: boolean; // Tách sắc sai kênh màu RGB Glitch phản hồi theo tần số âm thanh
   chromaticAberrationIntensity?: number; // 0.1 to 1.0 (Độ mạnh tách kênh màu)
+  verticalReflection?: boolean; // Bật bóng phản chiếu dọc của sóng âm (Vertical Reflection)
+  reflectionOpacity?: number;   // Độ mờ phản chiếu: 0.05 to 1.0 (mặc định 0.35)
+  reflectionPositionY?: number; // Vị trí trục phản chiếu dọc: 0 to 100% (mặc định theo positionY hoặc 75%)
+  reflectionFade?: boolean;     // Mờ dần theo khoảng cách Gradient Fade (mặc định true)
   lineThickness: number;
   fillOpacity: number;
 }
 
 export interface LyricLine {
   id: string;
-  startTime: number; // seconds
-  endTime: number;   // seconds
+  startTime: number; // seconds (thời gian bắt đầu hiển thị câu trên màn hình)
+  endTime: number;   // seconds (thời gian kết thúc hiển thị câu trên màn hình)
   text: string;
+  // Karaoke timing riêng cho từng câu (thời gian hát / quét màu):
+  karaokeStartTime?: number; // seconds (thời gian bắt đầu quét màu karaoke, mặc định = startTime)
+  karaokeEndTime?: number;   // seconds (thời gian kết thúc quét màu karaoke, ví dụ: 00:12.8 thay vì 00:14.8)
 }
 
 export type LyricsStyle = 
@@ -142,6 +149,16 @@ export interface BackgroundConfig {
   glitchStyle?: BackgroundGlitchStyle; // 'rgb-shift' | 'slice-displacement' | 'vhs-tape' | 'cyber-digital'
   glitchColorSplit?: boolean; // Tách sắc sai RGB Chromatic Aberration
   filmGrain: boolean;
+  // Circle Ripple Effect (Gợn sóng tròn đồng tâm phản hồi theo nhịp nhạc)
+  circleRipple?: boolean;             // Bật hiệu ứng sóng gợn tròn (Circle Ripple)
+  circleRippleColor?: string;          // Màu gợn sóng (Hex, mặc định '#ffffff' hoặc neon)
+  circleRippleOpacity?: number;        // Độ mờ đục 0.05 to 1.0 (mặc định 0.4)
+  circleRippleCount?: number;          // Số lượng vòng tròn đồng tâm (1 đến 8, mặc định 4)
+  circleRippleSpeed?: number;          // Tốc độ lan tỏa (0.2x đến 3.0x, mặc định 1.0)
+  circleRippleLineWidth?: number;      // Độ dày nét viền (1px đến 12px, mặc định 2.5)
+  circleRippleReactive?: boolean;      // Phản ứng nảy nở theo nhịp Bass / Beat
+  circleRippleGlow?: boolean;          // Hào quang phát sáng Neon cho viền sóng
+  circleRippleOrigin?: 'center' | 'bottom' | 'cover'; // Tâm lan tỏa sóng
 }
 
 export type ParticleType = 
@@ -274,7 +291,15 @@ export interface ColorGradingConfig {
   bloomGlow: number;       // 0 to 100 (Diffusion glow)
 }
 
-export type CardStyle = 'vinyl' | 'glass-card' | 'circular-badge' | 'rotating-badge' | 'logo-badge' | 'minimal-tag' | 'hidden';
+export type CardStyle = 
+  | 'vinyl' 
+  | 'glass-card' 
+  | 'circular-badge' 
+  | 'rotating-badge' 
+  | 'logo-badge' 
+  | 'minimal-tag' 
+  | 'horizontal-rounded-card' // Thẻ Bo Góc Viền Đậm 3 Dòng (Bìa bo góc bên trái, Subtitle, Title, Artist bên phải)
+  | 'hidden';
 
 export type LogoPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'badge-center';
 
@@ -282,9 +307,23 @@ export type BadgeBeatJumpStyle = 'pulse' | 'bounce-up' | 'scale-rotate' | 'jelly
 
 export type TrackLayerOrder = 'behind-visualizer' | 'front-visualizer' | 'back-all' | 'front-all';
 
+export type TrackDetailElement = 'subtitle' | 'title' | 'artist';
+
+export type TrackFontStyle = 'normal' | 'italic' | 'bold' | 'bold-italic' | 'uppercase';
+
+export type TrackFontEffect = 
+  | 'none' 
+  | 'neon-glow' 
+  | 'double-stroke' 
+  | '3d-shadow' 
+  | 'gradient' 
+  | 'comic-pop' 
+  | 'metallic-chrome';
+
 export interface TrackMetadata {
   title: string;
   artist: string;
+  subtitle?: string;         // Phụ đề / thông điệp nằm trên tiêu đề chính (hoặc theo thứ tự tùy chọn)
   album?: string;
   coverUrl: string;
   badgePngUrl?: string;      // Dedicated PNG badge image (independent of Brand Logo)
@@ -302,16 +341,48 @@ export interface TrackMetadata {
   showTrackCard: boolean;
   showTitle: boolean;
   showArtist: boolean;
+  showSubtitle?: boolean;     // Bật/tắt hiển thị Phụ đề (Subtitle)
   cardStyle: CardStyle;
   positionX: number; // 0 to 100% (default 50)
   positionY: number; // 0 to 100% (default 30)
   scale: number;     // 0.4 to 2.5 (default 1.0)
-  fontFamily: string;
-  titleFontSize: number;
-  artistFontSize: number;
-  textColor: string;
-  artistColor: string;
-  accentColor: string;
+  fontFamily: string; // Base / default font family
+  
+  // Custom font names for each of the 3 elements
+  subtitleFontFamily?: string;
+  titleFontFamily?: string;
+  artistFontFamily?: string;
+
+  // Custom font styles for each element
+  subtitleFontStyle?: TrackFontStyle;
+  titleFontStyle?: TrackFontStyle;
+  artistFontStyle?: TrackFontStyle;
+
+  // Font sizes for each element
+  subtitleFontSize?: number;  // px (default 13)
+  titleFontSize: number;      // px (default 22)
+  artistFontSize: number;     // px (default 15)
+
+  // Font effects for each element
+  subtitleFontEffect?: TrackFontEffect;
+  titleFontEffect?: TrackFontEffect;
+  artistFontEffect?: TrackFontEffect;
+
+  // Colors
+  subtitleColor?: string;     // Color for subtitle
+  textColor: string;          // Color for main title
+  artistColor: string;        // Color for artist
+  accentColor: string;        // Accent / highlight color (e.g. orange #f97316)
+
+  // Layout order of the 3 elements (Default: ['subtitle', 'title', 'artist'])
+  trackDetailsOrder?: TrackDetailElement[];
+
+  // Options for Horizontal Rounded Card (Badge Style)
+  badgeBorderColor?: string;   // Màu viền bo góc (mặc định theo accentColor hoặc #f97316)
+  badgeBorderWidth?: number;   // Độ dày viền (mặc định 6px)
+  badgeBorderRadius?: number;  // Bán kính bo góc viền (mặc định 24px)
+  badgeTextGap?: number;       // Khoảng cách giữa ảnh bìa và khối chữ (mặc định 24px)
+
   rotateVinyl: boolean;
   alignment: 'center' | 'left' | 'right';
   boxBackground: boolean;

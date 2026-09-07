@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { TrackMetadata, CardStyle, LogoPosition, BadgeBeatJumpStyle, TrackLayerOrder } from '../types';
+import React, { useRef, useState } from 'react';
+import { TrackMetadata, CardStyle, LogoPosition, BadgeBeatJumpStyle, TrackLayerOrder, TrackFontEffect } from '../types';
 import { AVAILABLE_FONTS, DEFAULT_TRACK } from '../utils/presets';
 import { 
   Disc, 
@@ -19,7 +19,12 @@ import {
   Zap,
   Image as ImageIcon,
   CheckCircle2,
-  Trash2
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  MoveVertical,
+  Sliders,
+  Palette
 } from 'lucide-react';
 
 import { Language, TRANSLATIONS } from '../utils/i18n';
@@ -31,6 +36,7 @@ interface TrackTabProps {
 }
 
 const CARD_STYLES: { id: CardStyle; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'horizontal-rounded-card', nameVi: 'Thẻ Ngang Bo Tròn (Badge Mới)', nameEn: 'Horizontal Rounded Card Badge', descVi: 'Khung ảnh bo tròn viền dày nổi bật bên trái + 3 dòng phụ đề, tên bài và ca sĩ bên phải', descEn: 'Modern horizontal card with thick rounded cover frame on left and 3-tier track details on right', icon: CreditCard },
   { id: 'vinyl', nameVi: 'Đĩa Than Vinyl Xoay 360°', nameEn: '360° Spinning Vinyl', descVi: 'Đĩa vinyl chân thực với vân bóng và ảnh bìa xoay 360°', descEn: 'Photorealistic vinyl grooves with spinning center label artwork', icon: Disc },
   { id: 'rotating-badge', nameVi: 'Huy Hiệu Tròn Xoay (Rotating Badge)', nameEn: 'Rotating Vinyl Badge 360°', descVi: 'Huy hiệu tròn xoay 360° với viền chữ uốn cong xoay tròn và tâm ảnh đĩa', descEn: 'Rotating circular badge with continuous circular curved text ribbon and center album artwork', icon: Disc },
   { id: 'glass-card', nameVi: 'Thẻ Kính Mờ (Glass Card)', nameEn: 'Frosted Glass Badge', descVi: 'Thẻ bo góc phủ kính hiện đại kèm ảnh bìa & tên ca sĩ', descEn: 'Translucent frosted glass card with artwork, title and singer', icon: CreditCard },
@@ -55,8 +61,27 @@ const LAYER_ORDERS: { id: TrackLayerOrder; name: string; desc: string }[] = [
   { id: 'front-all', name: 'Lớp Trên Cùng (Topmost)', desc: 'Hiển thị trên cùng đè lên tất cả các lớp' },
 ];
 
+const TRACK_FONT_EFFECTS: { id: TrackFontEffect; nameVi: string; nameEn: string }[] = [
+  { id: 'none', nameVi: 'Mặc định (Không hiệu ứng)', nameEn: 'None (Clean)' },
+  { id: 'neon-glow', nameVi: 'Hào quang Neon phát sáng', nameEn: 'Neon Glow' },
+  { id: 'double-stroke', nameVi: 'Viền nét đôi tương phản', nameEn: 'Double Stroke' },
+  { id: '3d-shadow', nameVi: 'Bóng đổ 3D chiều sâu', nameEn: '3D Depth Shadow' },
+  { id: 'gradient', nameVi: 'Chuyển sắc Gradient', nameEn: 'Gradient Color' },
+  { id: 'metallic-chrome', nameVi: 'Kim loại Chrome ánh kim', nameEn: 'Metallic Chrome' },
+  { id: 'comic-pop', nameVi: 'Hoạt họa Comic Pop', nameEn: 'Comic Pop' },
+];
+
+const TRACK_FONT_STYLES: { id: 'normal' | 'italic' | 'bold' | 'bold-italic' | 'uppercase'; nameVi: string; nameEn: string }[] = [
+  { id: 'normal', nameVi: 'Bình thường (Normal)', nameEn: 'Normal' },
+  { id: 'bold', nameVi: 'Đậm nét (Bold)', nameEn: 'Bold' },
+  { id: 'italic', nameVi: 'Nghiêng (Italic)', nameEn: 'Italic' },
+  { id: 'bold-italic', nameVi: 'Đậm & Nghiêng (Bold Italic)', nameEn: 'Bold Italic' },
+  { id: 'uppercase', nameVi: 'VIẾT HOA (ALL CAPS)', nameEn: 'Uppercase' },
+];
+
 export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, language = 'vi' }) => {
   const track = rawTrack || DEFAULT_TRACK;
+  const [selectedDetailTab, setSelectedDetailTab] = useState<'subtitle' | 'title' | 'artist'>('subtitle');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const badgePngInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -99,10 +124,36 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
           </label>
         </div>
 
-        {/* Title Input & Toggle */}
+        {/* 1. Subtitle Input & Toggle (Positioned above main title) */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-neutral-400">Tên bài hát (Title)</span>
+            <span className="text-xs text-neutral-400">Tiêu đề phụ / Thể loại (Subtitle - Phía trên)</span>
+            <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-neutral-400 hover:text-white">
+              <input
+                type="checkbox"
+                checked={track.showSubtitle !== false}
+                onChange={(e) => update({ showSubtitle: e.target.checked })}
+                className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
+              />
+              <span>Hiển thị</span>
+            </label>
+          </div>
+          <div className="relative">
+            <Sparkles className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={track.subtitle || ''}
+              onChange={(e) => update({ subtitle: e.target.value })}
+              placeholder="VD: Official Audio, Acoustic Version, Remake, Lofi Chill..."
+              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 font-medium"
+            />
+          </div>
+        </div>
+
+        {/* 2. Title Input & Toggle (Main title in middle) */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-neutral-400">Tên bài hát chính (Main Title - Ở giữa)</span>
             <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-neutral-400 hover:text-white">
               <input
                 type="checkbox"
@@ -125,10 +176,10 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
           </div>
         </div>
 
-        {/* Artist Input & Toggle */}
+        {/* 3. Artist Input & Toggle (Artist information positioned below main title) */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-neutral-400">Tên ca sĩ / Nghệ sĩ (Artist)</span>
+            <span className="text-xs text-neutral-400">Tên ca sĩ / Nghệ sĩ (Artist - Phía dưới)</span>
             <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-neutral-400 hover:text-white">
               <input
                 type="checkbox"
@@ -168,9 +219,9 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
 
         <div className="flex items-center gap-3 bg-neutral-900/70 border border-neutral-800 p-3 rounded-2xl">
           <div className="w-14 h-14 rounded-xl border border-neutral-700/80 shrink-0 bg-neutral-950 overflow-hidden shadow-inner flex items-center justify-center">
-            {track.coverUrl ? (
+            {track?.coverUrl ? (
               <img
-                src={track.coverUrl}
+                src={track?.coverUrl}
                 alt="Cover preview"
                 className="w-full h-full object-cover"
               />
@@ -269,9 +320,9 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                   alt="PNG Badge preview"
                   className="max-w-full max-h-full object-contain"
                 />
-              ) : track.coverUrl ? (
+              ) : track?.coverUrl ? (
                 <img
-                  src={track.coverUrl}
+                  src={track?.coverUrl}
                   alt="Badge fallback preview"
                   className="max-w-full max-h-full object-contain opacity-70"
                 />
@@ -302,6 +353,141 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
               <p className="text-[10px] text-neutral-400">
                 {track.badgePngUrl ? 'Đang dùng ảnh PNG tùy chỉnh' : 'Chưa tải ảnh riêng (đang dùng tạm ảnh bìa cover)'}
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4b. Dedicated Settings for Horizontal Rounded Card Badge (Style Mới) */}
+      {track.cardStyle === 'horizontal-rounded-card' && (
+        <div className="space-y-3.5 pt-2 border-t border-neutral-800/80 bg-gradient-to-br from-orange-500/10 via-neutral-900/60 to-neutral-900/80 p-3.5 rounded-2xl border border-orange-500/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center">
+                <CreditCard className="w-4 h-4 text-orange-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+                    {language === 'vi' ? 'Khung Bo Tròn Ảnh Bìa (Badge Style Mới)' : 'Cover Frame Options (New Badge)'}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30">
+                    Mới
+                  </span>
+                </div>
+                <span className="text-[10px] text-neutral-400">
+                  {language === 'vi' 
+                    ? 'Tùy chỉnh góc bo, độ dày viền nổi bật và khoảng cách thông tin theo mẫu thiết kế'
+                    : 'Customize thick rounded cover frame border, color and metadata text gap'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-1">
+            {/* Quick Color Chips & Picker for Border */}
+            <div>
+              <div className="flex justify-between items-center text-xs mb-1.5">
+                <span className="text-neutral-400">{language === 'vi' ? 'Màu viền khung ảnh' : 'Frame Border Color'}</span>
+                <span className="font-mono text-[11px] text-orange-400">{track.badgeBorderColor || '#f97316'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={track.badgeBorderColor || '#f97316'}
+                  onChange={(e) => update({ badgeBorderColor: e.target.value })}
+                  className="w-8 h-8 rounded-lg bg-transparent border border-neutral-700 cursor-pointer"
+                />
+                <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                  {[
+                    { name: 'Cam Nổi Bật', hex: '#f97316' },
+                    { name: 'Hồng Neon', hex: '#ec4899' },
+                    { name: 'Xanh Cyan', hex: '#06b6d4' },
+                    { name: 'Trắng Sáng', hex: '#ffffff' },
+                    { name: 'Vàng Kim', hex: '#eab308' },
+                    { name: 'Tím Cyber', hex: '#a855f7' },
+                    { name: 'Xanh Ngọc', hex: '#10b981' },
+                  ].map((col) => (
+                    <button
+                      key={col.hex}
+                      type="button"
+                      onClick={() => update({ badgeBorderColor: col.hex })}
+                      style={{ backgroundColor: col.hex }}
+                      className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${
+                        (track.badgeBorderColor || '#f97316').toLowerCase() === col.hex.toLowerCase()
+                          ? 'border-white scale-110 shadow-md ring-2 ring-orange-500/50'
+                          : 'border-transparent opacity-80 hover:opacity-100'
+                      }`}
+                      title={col.name}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Sliders: Radius, Width, Text Gap */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">{language === 'vi' ? 'Bo góc viền (Radius)' : 'Border Radius'}</span>
+                  <span className="text-orange-400 font-mono">{track.badgeBorderRadius ?? 24}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={6}
+                  max={48}
+                  step={2}
+                  value={track.badgeBorderRadius ?? 24}
+                  onChange={(e) => update({ badgeBorderRadius: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">{language === 'vi' ? 'Độ dày viền (Width)' : 'Border Width'}</span>
+                  <span className="text-orange-400 font-mono">{track.badgeBorderWidth ?? 6}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={16}
+                  step={1}
+                  value={track.badgeBorderWidth ?? 6}
+                  onChange={(e) => update({ badgeBorderWidth: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">{language === 'vi' ? 'Khoảng cách chữ' : 'Text Gap'}</span>
+                  <span className="text-orange-400 font-mono">{track.badgeTextGap ?? 20}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={8}
+                  max={48}
+                  step={2}
+                  value={track.badgeTextGap ?? 20}
+                  onChange={(e) => update({ badgeTextGap: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                />
+              </div>
+
+              <div className="flex items-center pt-3">
+                <label className="flex items-center justify-between w-full cursor-pointer p-2 rounded-xl bg-neutral-900/80 border border-neutral-800">
+                  <span className="text-[11px] font-medium text-neutral-300">
+                    {language === 'vi' ? 'Hào quang viền nảy theo Bass' : 'Beat Glow Pulse'}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={track.badgeBeatGlow !== false}
+                    onChange={(e) => update({ badgeBeatGlow: e.target.checked })}
+                    className="rounded text-orange-500 focus:ring-orange-500 bg-neutral-800 border-neutral-700 ml-2"
+                  />
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -576,157 +762,415 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
         )}
       </div>
 
-      {/* 8. Font, Resize Scale, and Typography Customization */}
+      {/* 8. Font, Resize Scale, Layout Order, and Typography Customization */}
       {track.cardStyle !== 'hidden' && (
         <div className="space-y-4 pt-2 border-t border-neutral-800/80">
-          <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
-            Phông Chữ & Kích Thước (Font & Resize)
-          </label>
-
-          {/* Font Selector */}
-          <div>
-            <span className="text-xs text-neutral-400 block mb-1.5">Phông chữ tiêu đề & ca sĩ</span>
-            <div className="relative">
-              <Type className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <select
-                value={track.fontFamily || 'Be Vietnam Pro'}
-                onChange={(e) => update({ fontFamily: e.target.value })}
-                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-9 pr-8 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer appearance-none"
-              >
-                {AVAILABLE_FONTS.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
+              {language === 'vi' ? 'Bố Cục & Phông Chữ Thông Tin Bài Hát' : 'Track Details Layout & Typography'}
+            </label>
+            <span className="text-[10px] text-neutral-400 font-medium">
+              {language === 'vi' ? 'Đổi thứ tự & hiệu ứng từng dòng' : 'Order & font styling per line'}
+            </span>
           </div>
 
-          {/* Resize Scale Slider */}
-          <div>
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-neutral-400">Kích thước tổng thể (Resize Scale)</span>
-              <span className="text-rose-400 font-mono">{(track.scale || 1.0).toFixed(2)}x</span>
-            </div>
-            <input
-              type="range"
-              min={0.5}
-              max={2.2}
-              step={0.05}
-              value={track.scale || 1.0}
-              onChange={(e) => update({ scale: parseFloat(e.target.value) })}
-              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
-            />
-          </div>
-
-          {/* Title Size & Artist Size */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-neutral-400">Cỡ chữ Tên bài</span>
-                <span className="text-rose-400 font-mono">{track.titleFontSize || 24}px</span>
-              </div>
-              <input
-                type="range"
-                min={12}
-                max={56}
-                value={track.titleFontSize || 24}
-                onChange={(e) => update({ titleFontSize: parseInt(e.target.value) })}
-                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
-              />
+          {/* A. Reorder Layout Section */}
+          <div className="space-y-2.5 p-3 bg-neutral-900/70 border border-neutral-800 rounded-2xl">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-neutral-200">
+                {language === 'vi' ? 'Thứ tự sắp xếp dòng (Layout Order)' : 'Element Layout Order'}
+              </span>
+              <span className="text-[10px] text-neutral-400">
+                {language === 'vi' ? 'Nhấn ▲ ▼ để đảo thứ tự hiển thị' : 'Click ▲ ▼ to rearrange'}
+              </span>
             </div>
 
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-neutral-400">Cỡ chữ Ca sĩ</span>
-                <span className="text-rose-400 font-mono">{track.artistFontSize || 15}px</span>
-              </div>
-              <input
-                type="range"
-                min={10}
-                max={36}
-                value={track.artistFontSize || 15}
-                onChange={(e) => update({ artistFontSize: parseInt(e.target.value) })}
-                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
-              />
-            </div>
-          </div>
+            {/* List of current order items */}
+            <div className="space-y-1.5">
+              {(track.trackDetailsOrder && track.trackDetailsOrder.length === 3
+                ? track.trackDetailsOrder
+                : (['subtitle', 'title', 'artist'] as const)
+              ).map((key, idx, arr) => {
+                const isSub = key === 'subtitle';
+                const isTitle = key === 'title';
+                const label = isSub
+                  ? { vi: '1. Tiêu đề phụ / Thể loại (Subtitle)', en: '1. Subtitle', color: 'text-sky-400' }
+                  : isTitle
+                  ? { vi: '2. Tên bài hát chính (Main Title)', en: '2. Main Title', color: 'text-rose-400' }
+                  : { vi: '3. Tên ca sĩ / Nghệ sĩ (Artist)', en: '3. Artist Info', color: 'text-amber-400' };
 
-          {/* Text Alignment */}
-          <div>
-            <span className="text-xs text-neutral-400 block mb-1.5">Căn chỉnh lề chữ</span>
-            <div className="grid grid-cols-3 gap-2">
-              {(
-                [
-                  { id: 'left', name: 'Căn Trái', icon: AlignLeft },
-                  { id: 'center', name: 'Căn Giữa', icon: AlignCenter },
-                  { id: 'right', name: 'Căn Phải', icon: AlignRight },
-                ] as const
-              ).map((al) => {
-                const Icon = al.icon;
-                const isSelected = (track.alignment || 'center') === al.id;
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between p-2 rounded-xl bg-neutral-950/80 border border-neutral-800/80 text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center text-[10px] font-mono text-neutral-400 font-bold">
+                        {idx + 1}
+                      </span>
+                      <span className={`font-semibold ${label.color}`}>
+                        {language === 'vi' ? label.vi : label.en}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={idx === 0}
+                        onClick={() => {
+                          const next = [...arr];
+                          const [item] = next.splice(idx, 1);
+                          next.splice(idx - 1, 0, item);
+                          update({ trackDetailsOrder: next as any });
+                        }}
+                        className="p-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-neutral-300 transition-colors"
+                        title={language === 'vi' ? 'Di chuyển lên' : 'Move up'}
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={idx === arr.length - 1}
+                        onClick={() => {
+                          const next = [...arr];
+                          const [item] = next.splice(idx, 1);
+                          next.splice(idx + 1, 0, item);
+                          update({ trackDetailsOrder: next as any });
+                        }}
+                        className="p-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer text-neutral-300 transition-colors"
+                        title={language === 'vi' ? 'Di chuyển xuống' : 'Move down'}
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Quick Layout Presets */}
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
+              {[
+                { labelVi: 'Phụ đề > Tên bài > Ca sĩ', labelEn: 'Subtitle > Title > Artist', order: ['subtitle', 'title', 'artist'] },
+                { labelVi: 'Tên bài > Ca sĩ > Phụ đề', labelEn: 'Title > Artist > Subtitle', order: ['title', 'artist', 'subtitle'] },
+                { labelVi: 'Tên bài > Phụ đề > Ca sĩ', labelEn: 'Title > Subtitle > Artist', order: ['title', 'subtitle', 'artist'] },
+                { labelVi: 'Ca sĩ > Tên bài > Phụ đề', labelEn: 'Artist > Title > Subtitle', order: ['artist', 'title', 'subtitle'] },
+              ].map((pst, pIdx) => {
+                const currentStr = JSON.stringify(
+                  track.trackDetailsOrder && track.trackDetailsOrder.length === 3
+                    ? track.trackDetailsOrder
+                    : ['subtitle', 'title', 'artist']
+                );
+                const isMatch = currentStr === JSON.stringify(pst.order);
                 return (
                   <button
-                    key={al.id}
-                    onClick={() => update({ alignment: al.id })}
-                    className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-rose-600 text-white border-rose-500 shadow-sm'
-                        : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                    key={pIdx}
+                    type="button"
+                    onClick={() => update({ trackDetailsOrder: pst.order as any })}
+                    className={`py-1.5 px-2 rounded-xl text-[10px] font-medium border transition-all cursor-pointer truncate ${
+                      isMatch
+                        ? 'bg-rose-500/20 border-rose-500 text-rose-300 font-semibold shadow-sm'
+                        : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-neutral-200'
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{al.name}</span>
+                    {language === 'vi' ? pst.labelVi : pst.labelEn}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Color Pickers: Title, Artist, Accent */}
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <span className="text-[10px] text-neutral-400 block mb-1">Màu Tên bài</span>
-              <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 p-1.5 rounded-xl">
-                <input
-                  type="color"
-                  value={track.textColor || '#ffffff'}
-                  onChange={(e) => update({ textColor: e.target.value })}
-                  className="w-5 h-5 rounded border-0 cursor-pointer bg-transparent"
-                />
-                <span className="text-[10px] font-mono text-neutral-300 truncate">
-                  {track.textColor || '#ffffff'}
+          {/* B. Sub-tabs to customize each element (Subtitle, Title, Artist) */}
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-neutral-300">
+                {language === 'vi' ? 'Tùy chỉnh chi tiết từng thành phần' : 'Customize Element Styles'}
+              </span>
+            </div>
+
+            {/* Tab switch buttons */}
+            <div className="grid grid-cols-3 gap-1.5 p-1 bg-neutral-900 rounded-xl border border-neutral-800">
+              {[
+                { id: 'subtitle', labelVi: 'Tiêu đề phụ', labelEn: 'Subtitle', activeColor: 'border-sky-500 text-sky-400 bg-sky-500/10' },
+                { id: 'title', labelVi: 'Tên bài hát', labelEn: 'Main Title', activeColor: 'border-rose-500 text-rose-400 bg-rose-500/10' },
+                { id: 'artist', labelVi: 'Ca sĩ / Artist', labelEn: 'Artist', activeColor: 'border-amber-500 text-amber-400 bg-amber-500/10' },
+              ].map((tab) => {
+                const isActive = selectedDetailTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSelectedDetailTab(tab.id as any)}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer truncate ${
+                      isActive
+                        ? tab.activeColor
+                        : 'border-transparent text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    {language === 'vi' ? tab.labelVi : tab.labelEn}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Customization controls for active element */}
+            <div className="p-3.5 bg-neutral-900/60 border border-neutral-800 rounded-2xl space-y-3">
+              {/* 1. Font Name (Font Family) */}
+              <div>
+                <span className="text-xs text-neutral-400 block mb-1">
+                  {language === 'vi' ? 'Phông chữ riêng' : 'Font Family'}
                 </span>
+                <div className="relative">
+                  <Type className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <select
+                    value={
+                      selectedDetailTab === 'subtitle'
+                        ? track.subtitleFontFamily || track.fontFamily || 'Be Vietnam Pro'
+                        : selectedDetailTab === 'title'
+                        ? track.titleFontFamily || track.fontFamily || 'Be Vietnam Pro'
+                        : track.artistFontFamily || track.fontFamily || 'Be Vietnam Pro'
+                    }
+                    onChange={(e) => {
+                      if (selectedDetailTab === 'subtitle') update({ subtitleFontFamily: e.target.value });
+                      else if (selectedDetailTab === 'title') update({ titleFontFamily: e.target.value });
+                      else update({ artistFontFamily: e.target.value });
+                    }}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-9 pr-8 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer appearance-none"
+                  >
+                    {AVAILABLE_FONTS.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* 2. Font Style & Font Effect in 2 columns */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Font Style */}
+                <div>
+                  <span className="text-xs text-neutral-400 block mb-1">
+                    {language === 'vi' ? 'Kiểu chữ (Style)' : 'Font Style'}
+                  </span>
+                  <select
+                    value={
+                      selectedDetailTab === 'subtitle'
+                        ? track.subtitleFontStyle || 'normal'
+                        : selectedDetailTab === 'title'
+                        ? track.titleFontStyle || 'bold'
+                        : track.artistFontStyle || 'normal'
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value as any;
+                      if (selectedDetailTab === 'subtitle') update({ subtitleFontStyle: val });
+                      else if (selectedDetailTab === 'title') update({ titleFontStyle: val });
+                      else update({ artistFontStyle: val });
+                    }}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer"
+                  >
+                    {TRACK_FONT_STYLES.map((st) => (
+                      <option key={st.id} value={st.id}>
+                        {language === 'vi' ? st.nameVi : st.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Font Effect */}
+                <div>
+                  <span className="text-xs text-neutral-400 block mb-1">
+                    {language === 'vi' ? 'Hiệu ứng chữ (Effect)' : 'Font Effect'}
+                  </span>
+                  <select
+                    value={
+                      selectedDetailTab === 'subtitle'
+                        ? track.subtitleFontEffect || 'none'
+                        : selectedDetailTab === 'title'
+                        ? track.titleFontEffect || 'none'
+                        : track.artistFontEffect || 'none'
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value as any;
+                      if (selectedDetailTab === 'subtitle') update({ subtitleFontEffect: val });
+                      else if (selectedDetailTab === 'title') update({ titleFontEffect: val });
+                      else update({ artistFontEffect: val });
+                    }}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer"
+                  >
+                    {TRACK_FONT_EFFECTS.map((ef) => (
+                      <option key={ef.id} value={ef.id}>
+                        {language === 'vi' ? ef.nameVi : ef.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* 3. Font Size Slider & Color Picker */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                {/* Font Size */}
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-400">
+                      {language === 'vi' ? 'Cỡ chữ' : 'Font Size'}
+                    </span>
+                    <span className="text-rose-400 font-mono font-bold">
+                      {selectedDetailTab === 'subtitle'
+                        ? (track.subtitleFontSize || 13)
+                        : selectedDetailTab === 'title'
+                        ? (track.titleFontSize || 24)
+                        : (track.artistFontSize || 15)}px
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={selectedDetailTab === 'subtitle' ? 8 : selectedDetailTab === 'title' ? 12 : 10}
+                    max={selectedDetailTab === 'subtitle' ? 42 : selectedDetailTab === 'title' ? 64 : 44}
+                    value={
+                      selectedDetailTab === 'subtitle'
+                        ? (track.subtitleFontSize || 13)
+                        : selectedDetailTab === 'title'
+                        ? (track.titleFontSize || 24)
+                        : (track.artistFontSize || 15)
+                    }
+                    onChange={(e) => {
+                      const sz = parseInt(e.target.value);
+                      if (selectedDetailTab === 'subtitle') update({ subtitleFontSize: sz });
+                      else if (selectedDetailTab === 'title') update({ titleFontSize: sz });
+                      else update({ artistFontSize: sz });
+                    }}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                  />
+                </div>
+
+                {/* Color Picker */}
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-400">
+                      {language === 'vi' ? 'Màu sắc' : 'Color'}
+                    </span>
+                    <span className="text-neutral-300 font-mono text-[11px]">
+                      {selectedDetailTab === 'subtitle'
+                        ? (track.subtitleColor || '#a3a3a3')
+                        : selectedDetailTab === 'title'
+                        ? (track.textColor || '#ffffff')
+                        : (track.artistColor || '#cccccc')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 p-1 rounded-xl">
+                    <input
+                      type="color"
+                      value={
+                        selectedDetailTab === 'subtitle'
+                          ? (track.subtitleColor || '#a3a3a3')
+                          : selectedDetailTab === 'title'
+                          ? (track.textColor || '#ffffff')
+                          : (track.artistColor || '#cccccc')
+                      }
+                      onChange={(e) => {
+                        const col = e.target.value;
+                        if (selectedDetailTab === 'subtitle') update({ subtitleColor: col });
+                        else if (selectedDetailTab === 'title') update({ textColor: col });
+                        else update({ artistColor: col });
+                      }}
+                      className="w-7 h-7 rounded-lg border-0 cursor-pointer bg-transparent"
+                    />
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {['#ffffff', '#f87171', '#facc15', '#38bdf8', '#fb923c', '#e879f9', '#a3a3a3'].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => {
+                            if (selectedDetailTab === 'subtitle') update({ subtitleColor: c });
+                            else if (selectedDetailTab === 'title') update({ textColor: c });
+                            else update({ artistColor: c });
+                          }}
+                          style={{ backgroundColor: c }}
+                          className="w-4 h-4 rounded-full border border-neutral-700 hover:scale-110 transition-transform cursor-pointer"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* C. Global Typography Controls: Scale, Alignment, Accent Color */}
+          <div className="space-y-3 pt-2 border-t border-neutral-800/60">
+            {/* Resize Scale Slider */}
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-neutral-400">Kích thước tổng thể (Resize Scale)</span>
+                <span className="text-rose-400 font-mono">{(track.scale || 1.0).toFixed(2)}x</span>
+              </div>
+              <input
+                type="range"
+                min={0.5}
+                max={2.2}
+                step={0.05}
+                value={track.scale || 1.0}
+                onChange={(e) => update({ scale: parseFloat(e.target.value) })}
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+              />
+            </div>
+
+            {/* Text Alignment */}
+            <div>
+              <span className="text-xs text-neutral-400 block mb-1.5">Căn chỉnh lề chữ</span>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    { id: 'left', name: 'Căn Trái', icon: AlignLeft },
+                    { id: 'center', name: 'Căn Giữa', icon: AlignCenter },
+                    { id: 'right', name: 'Căn Phải', icon: AlignRight },
+                  ] as const
+                ).map((al) => {
+                  const Icon = al.icon;
+                  const isSelected = (track.alignment || 'center') === al.id;
+                  return (
+                    <button
+                      key={al.id}
+                      onClick={() => update({ alignment: al.id })}
+                      className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-rose-600 text-white border-rose-500 shadow-sm'
+                          : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span>{al.name}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
+            {/* Accent Color Picker */}
             <div>
-              <span className="text-[10px] text-neutral-400 block mb-1">Màu Ca sĩ</span>
-              <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 p-1.5 rounded-xl">
-                <input
-                  type="color"
-                  value={track.artistColor || '#cccccc'}
-                  onChange={(e) => update({ artistColor: e.target.value })}
-                  className="w-5 h-5 rounded border-0 cursor-pointer bg-transparent"
-                />
-                <span className="text-[10px] font-mono text-neutral-300 truncate">
-                  {track.artistColor || '#cccccc'}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <span className="text-[10px] text-neutral-400 block mb-1">Màu Điểm nhấn</span>
-              <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 p-1.5 rounded-xl">
+              <span className="text-[10px] text-neutral-400 block mb-1">Màu Điểm nhấn (Accent / Glow)</span>
+              <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 p-1.5 rounded-xl">
                 <input
                   type="color"
                   value={track.accentColor || '#ec4899'}
                   onChange={(e) => update({ accentColor: e.target.value })}
-                  className="w-5 h-5 rounded border-0 cursor-pointer bg-transparent"
+                  className="w-6 h-6 rounded-lg border-0 cursor-pointer bg-transparent"
                 />
-                <span className="text-[10px] font-mono text-neutral-300 truncate">
+                <span className="text-[10px] font-mono text-neutral-300">
                   {track.accentColor || '#ec4899'}
                 </span>
+                <div className="flex items-center gap-1.5 ml-auto">
+                  {['#ec4899', '#f97316', '#06b6d4', '#8b5cf6', '#10b981', '#f59e0b'].map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => update({ accentColor: c })}
+                      style={{ backgroundColor: c }}
+                      className="w-4 h-4 rounded-full border border-neutral-700 cursor-pointer hover:scale-110 transition-transform"
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>

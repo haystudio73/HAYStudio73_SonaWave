@@ -15,6 +15,9 @@ import {
   SnowFlakeType,
   RainDropType,
   KaraokeSweepMode,
+  TrackDetailElement,
+  TrackFontStyle,
+  TrackFontEffect,
 } from '../types';
 import { getActiveLyricInfo } from './lyricsParser';
 
@@ -72,13 +75,15 @@ export class VisualizerRenderer {
   private bgShakeX = 0;
   private bgShakeY = 0;
 
-  // Visualizer Chromatic Aberration Offscreen Buffers
+  // Visualizer Chromatic Aberration & Reflection Offscreen Buffers
   private visBufferCanvas: HTMLCanvasElement | null = null;
   private visBufferCtx: CanvasRenderingContext2D | null = null;
   private visRedCanvas: HTMLCanvasElement | null = null;
   private visRedCtx: CanvasRenderingContext2D | null = null;
   private visCyanCanvas: HTMLCanvasElement | null = null;
   private visCyanCtx: CanvasRenderingContext2D | null = null;
+  private visReflectCanvas: HTMLCanvasElement | null = null;
+  private visReflectCtx: CanvasRenderingContext2D | null = null;
 
   // Global Color Grading Offscreen Buffers & Grain Cache
   private gradingCanvas: HTMLCanvasElement | null = null;
@@ -273,7 +278,7 @@ export class VisualizerRenderer {
     };
 
     // 1. Render Background (Image / Video / Gradient)
-    this.renderBackground(sceneCtx, width, height, background, bassIntensity, beatIntensity, isPlaying);
+    this.renderBackground(sceneCtx, width, height, background, bassIntensity, beatIntensity, isPlaying, currentTime, track);
 
     // 1.2 Render Track Card if configured 'back-all'
     renderTrackCardIfSlot('back-all');
@@ -651,7 +656,9 @@ export class VisualizerRenderer {
     bg: BackgroundConfig,
     bassIntensity: number,
     beatIntensity: number,
-    isPlaying: boolean
+    isPlaying: boolean,
+    currentTime: number = 0,
+    track?: TrackMetadata
   ) {
     ctx.save();
 
@@ -818,9 +825,101 @@ export class VisualizerRenderer {
       ctx.fillRect(0, 0, width, height);
     }
 
+    // Circle Ripple Effect in Background
+    if (bg.circleRipple) {
+      this.renderCircleRipple(ctx, width, height, bg, bassIntensity, beatIntensity, currentTime, track);
+    }
+
     // Glitch Effect in Background
     if (bg.glitchEffect) {
       this.applyBackgroundGlitch(ctx, width, height, bg, bassIntensity, beatIntensity, isPlaying);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Circle Ripple Effect for background (Gợn sóng tròn đồng tâm phản ứng nhịp nhạc)
+   */
+  private renderCircleRipple(
+    ctx: CanvasContext2D,
+    width: number,
+    height: number,
+    bg: BackgroundConfig,
+    bassIntensity: number,
+    beatIntensity: number,
+    currentTime: number,
+    track?: TrackMetadata
+  ) {
+    if (!bg.circleRipple) return;
+
+    ctx.save();
+    const count = Math.max(1, Math.min(12, bg.circleRippleCount || 4));
+    const speed = bg.circleRippleSpeed !== undefined ? bg.circleRippleSpeed : 1.0;
+    const baseOpacity = bg.circleRippleOpacity !== undefined ? bg.circleRippleOpacity : 0.4;
+    const lineWidth = bg.circleRippleLineWidth !== undefined ? bg.circleRippleLineWidth : 2.5;
+    const color = bg.circleRippleColor || '#ffffff';
+    const isReactive = bg.circleRippleReactive !== false;
+    const glow = bg.circleRippleGlow !== false;
+    const origin = bg.circleRippleOrigin || 'center';
+
+    let originX = width / 2;
+    let originY = height / 2;
+
+    if (origin === 'bottom') {
+      originX = width / 2;
+      originY = height;
+    } else if (origin === 'cover' && track) {
+      originX = (width * (track.positionX !== undefined ? track.positionX : 50)) / 100;
+      originY = (height * (track.positionY !== undefined ? track.positionY : 28)) / 100;
+    }
+
+    // Maximum ripple propagation radius
+    const maxRadius = Math.sqrt(width * width + height * height) * 0.65;
+    const reactiveKick = isReactive ? Math.max(bassIntensity * 1.3, beatIntensity * 1.1) : 0;
+    const t = currentTime > 0 ? currentTime : performance.now() / 1000;
+
+    for (let i = 0; i < count; i++) {
+      // Stagger phases between rings
+      const phaseOffset = i / count;
+      const progress = ((t * 0.22 * speed) + phaseOffset) % 1.0;
+
+      // Expansion radius with non-linear ease-out and audio reactive bounce
+      const easeRadius = Math.pow(progress, 0.85);
+      const radius = Math.max(8, easeRadius * maxRadius + reactiveKick * 40 * (1 - progress));
+
+      // Opacity fades out smoothly towards outer perimeter
+      const alphaFade = Math.sin(progress * Math.PI);
+      const ringAlpha = Math.max(0, Math.min(1.0, alphaFade * baseOpacity * (isReactive ? (0.75 + reactiveKick * 0.5) : 1.0)));
+
+      if (ringAlpha <= 0.01) continue;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(originX, originY, radius, 0, Math.PI * 2);
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(1, lineWidth * (1 - progress * 0.4) + (isReactive ? reactiveKick * 2.2 : 0));
+      ctx.globalAlpha = ringAlpha;
+
+      if (glow) {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 14 + reactiveKick * 20;
+      }
+
+      ctx.stroke();
+
+      // Delicate inner specular ring
+      if (glow && ringAlpha > 0.15) {
+        ctx.beginPath();
+        ctx.arc(originX, originY, Math.max(4, radius - 2), 0, Math.PI * 2);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(0.8, lineWidth * 0.35);
+        ctx.globalAlpha = ringAlpha * 0.6;
+        ctx.stroke();
+      }
+
+      ctx.restore();
     }
 
     ctx.restore();
@@ -2364,72 +2463,427 @@ export class VisualizerRenderer {
       }
 
       ctx.restore();
+    } else if (track.cardStyle === 'horizontal-rounded-card') {
+      // --- NEW BADGE STYLE: Horizontal Card with Thick Rounded Cover Frame & 3-Tier Track Details ---
+      const items = this.getTrackDetailItems(track, userScale);
+      const boxSize = Math.min(width, height) * 0.20 * cardScale;
+      const radius = Math.min(boxSize * 0.38, (track.badgeBorderRadius !== undefined ? track.badgeBorderRadius : 26) * userScale);
+      const borderW = Math.max(2, (track.badgeBorderWidth !== undefined ? track.badgeBorderWidth : 6) * userScale);
+      const borderColor = track.badgeBorderColor || track.accentColor || '#f97316';
+      const gap = (track.badgeTextGap !== undefined ? track.badgeTextGap : 24) * userScale;
+
+      ctx.save();
+      ctx.translate(centerX, centerY + offsetY);
+      if (tiltAngle !== 0) ctx.rotate(tiltAngle);
+      ctx.scale(scaleBoostX, scaleBoostY);
+
+      // Measure max text width and calculate heights
+      let maxTextW = 0;
+      let totalTextH = 0;
+      const itemSpacings: number[] = [];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        ctx.font = `${item.fontStyle.includes('bold') ? 'bold' : 'normal'} ${item.fontSize}px '${item.fontFamily}', sans-serif`;
+        const m = ctx.measureText(item.text).width;
+        if (m > maxTextW) maxTextW = m;
+
+        const lineH = item.fontSize * 1.25;
+        totalTextH += lineH;
+        if (i < items.length - 1) {
+          const spacing = 8 * userScale;
+          totalTextH += spacing;
+          itemSpacings.push(spacing);
+        }
+      }
+
+      const totalCardW = boxSize + gap + Math.max(maxTextW, 80 * userScale);
+      const startX = -totalCardW / 2;
+
+      // Optional backdrop container if boxBackground is enabled
+      if (track.boxBackground) {
+        const padX = 18 * userScale;
+        const padY = 16 * userScale;
+        const bgW = totalCardW + padX * 2;
+        const bgH = Math.max(boxSize, totalTextH) + padY * 2;
+        ctx.beginPath();
+        ctx.roundRect(startX - padX, -bgH / 2, bgW, bgH, 18 * userScale);
+        ctx.fillStyle = track.boxBgColor || 'rgba(0, 0, 0, 0.65)';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 16;
+        ctx.fill();
+      }
+
+      // 1. Cover Box on the Left
+      const coverX = startX;
+      const coverY = -boxSize / 2;
+
+      // Outer glow for beat jump / accent
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(coverX, coverY, boxSize, boxSize, radius);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowColor = borderColor;
+      ctx.shadowBlur = track.badgeBeatGlow ? 28 + beatIntensity * 32 : 20 + beatIntensity * 14;
+      ctx.fill();
+      ctx.restore();
+
+      // Clipped Cover Image
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(coverX, coverY, boxSize, boxSize, radius);
+      ctx.clip();
+
+      const activeImg = (this.coverImage && this.coverImage.complete && this.coverImage.naturalWidth > 0)
+        ? this.coverImage
+        : ((this.badgePngImage && this.badgePngImage.complete && this.badgePngImage.naturalWidth > 0) ? this.badgePngImage : null);
+
+      if (activeImg) {
+        ctx.drawImage(activeImg, coverX, coverY, boxSize, boxSize);
+      } else {
+        const grad = ctx.createLinearGradient(coverX, coverY, coverX + boxSize, coverY + boxSize);
+        grad.addColorStop(0, borderColor);
+        grad.addColorStop(1, '#1e1b4b');
+        ctx.fillStyle = grad;
+        ctx.fillRect(coverX, coverY, boxSize, boxSize);
+
+        // Placeholder icon
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `bold ${28 * userScale}px sans-serif`;
+        ctx.fillText('♪', coverX + boxSize / 2, coverY + boxSize / 2);
+      }
+      ctx.restore();
+
+      // Outer Rounded Border
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(coverX, coverY, boxSize, boxSize, radius);
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = borderW;
+      ctx.stroke();
+      ctx.restore();
+
+      // 2. Track Details on the Right (Left-aligned, vertically centered with the cover)
+      const textX = coverX + boxSize + gap;
+      let curY = -totalTextH / 2;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const lineH = item.fontSize * 1.25;
+        const lineCenterY = curY + lineH / 2;
+
+        this.renderTrackTextLine(
+          ctx,
+          item.text,
+          textX,
+          lineCenterY,
+          width * 0.6,
+          {
+            fontFamily: item.fontFamily,
+            fontStyle: item.fontStyle,
+            fontSize: item.fontSize,
+            fontEffect: item.fontEffect,
+            color: item.color,
+            accentColor: track.accentColor || borderColor,
+            beatIntensity,
+            alignment: 'left',
+          }
+        );
+
+        curY += lineH + (itemSpacings[i] || 0);
+      }
+
+      ctx.restore();
     }
 
-    // Render Title & Artist for vinyl, circular badge, rotating badge, logo badge, or minimal tag
+    // Render Title, Subtitle, & Artist for vinyl, circular badge, rotating badge, logo badge, or minimal tag
     if (track.cardStyle === 'vinyl' || track.cardStyle === 'circular-badge' || track.cardStyle === 'rotating-badge' || track.cardStyle === 'logo-badge' || track.cardStyle === 'minimal-tag') {
-      const offsetBelow = track.cardStyle === 'minimal-tag' 
-        ? 0 
-        : (track.cardStyle === 'vinyl' 
-            ? Math.min(width, height) * 0.18 * cardScale + 30 * userScale 
-            : (track.cardStyle === 'rotating-badge'
-                ? Math.min(width, height) * 0.16 * cardScale + 28 * userScale
-                : (track.cardStyle === 'logo-badge'
-                    ? Math.min(width, height) * 0.14 * cardScale + 30 * userScale
-                    : Math.min(width, height) * 0.14 * cardScale + 26 * userScale)));
+      const items = this.getTrackDetailItems(track, userScale);
 
-      const textY = centerY + offsetBelow + (jumpStyle === 'bounce-up' ? offsetY * 0.45 : 0);
-      const alignment = track.alignment || 'center';
-      ctx.textAlign = alignment;
-      ctx.textBaseline = 'middle';
+      if (items.length > 0) {
+        const offsetBelow = track.cardStyle === 'minimal-tag' 
+          ? 0 
+          : (track.cardStyle === 'vinyl' 
+              ? Math.min(width, height) * 0.18 * cardScale + 30 * userScale 
+              : (track.cardStyle === 'rotating-badge'
+                  ? Math.min(width, height) * 0.16 * cardScale + 28 * userScale
+                  : (track.cardStyle === 'logo-badge'
+                      ? Math.min(width, height) * 0.14 * cardScale + 30 * userScale
+                      : Math.min(width, height) * 0.14 * cardScale + 26 * userScale)));
 
-      const titleSize = (track.titleFontSize || 22) * userScale;
-      const artistSize = (track.artistFontSize || 15) * userScale;
+        const textY = centerY + offsetBelow + (jumpStyle === 'bounce-up' ? offsetY * 0.45 : 0);
+        const alignment = track.alignment || 'center';
 
-      let drawX = centerX;
-      if (alignment === 'left') drawX = centerX - (width * 0.4);
-      if (alignment === 'right') drawX = centerX + (width * 0.4);
+        let drawX = centerX;
+        if (alignment === 'left') drawX = centerX - (width * 0.38);
+        if (alignment === 'right') drawX = centerX + (width * 0.38);
 
-      // Optional Frosted Background Box for minimal tag or texts
-      if (track.boxBackground) {
-        ctx.save();
-        ctx.font = `bold ${titleSize}px '${track.fontFamily}', sans-serif`;
-        const tWidth = ctx.measureText(track.title).width;
-        ctx.font = `500 ${artistSize}px '${track.fontFamily}', sans-serif`;
-        const aWidth = ctx.measureText(track.artist).width;
-        const maxW = Math.max(tWidth, aWidth) + 36 * userScale;
-        const totalBoxH = (titleSize + artistSize + 24) * userScale;
+        // Measure heights & widths for layout
+        let maxW = 0;
+        let totalH = 0;
+        const lineHeights: number[] = [];
+        const gaps: number[] = [];
 
-        let boxLeft = drawX - maxW / 2;
-        if (alignment === 'left') boxLeft = drawX - 16 * userScale;
-        if (alignment === 'right') boxLeft = drawX - maxW + 16 * userScale;
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          ctx.font = `${item.fontStyle.includes('bold') ? 'bold' : 'normal'} ${item.fontSize}px '${item.fontFamily}', sans-serif`;
+          const w = ctx.measureText(item.text).width;
+          if (w > maxW) maxW = w;
 
-        ctx.beginPath();
-        ctx.roundRect(boxLeft, textY - totalBoxH * 0.4, maxW, totalBoxH, 12 * userScale);
-        ctx.fillStyle = track.boxBgColor || 'rgba(0, 0, 0, 0.6)';
-        ctx.shadowColor = 'rgba(0,0,0,0.5)';
-        ctx.shadowBlur = 12;
-        ctx.fill();
-        ctx.restore();
+          const lh = item.fontSize * 1.25;
+          lineHeights.push(lh);
+          totalH += lh;
+          if (i < items.length - 1) {
+            const g = 6 * userScale;
+            gaps.push(g);
+            totalH += g;
+          }
+        }
+
+        // Optional Frosted Background Box for minimal tag or texts
+        if (track.boxBackground) {
+          ctx.save();
+          const boxPadX = 32 * userScale;
+          const boxPadY = 16 * userScale;
+          const boxW = maxW + boxPadX;
+          const boxH = totalH + boxPadY;
+
+          let boxLeft = drawX - boxW / 2;
+          if (alignment === 'left') boxLeft = drawX - 16 * userScale;
+          if (alignment === 'right') boxLeft = drawX - boxW + 16 * userScale;
+
+          ctx.beginPath();
+          ctx.roundRect(boxLeft, textY - boxH / 2, boxW, boxH, 14 * userScale);
+          ctx.fillStyle = track.boxBgColor || 'rgba(0, 0, 0, 0.65)';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+          ctx.shadowBlur = 14;
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Render each item in order
+        let curY = textY - totalH / 2;
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const lh = lineHeights[i];
+          const lineCenterY = curY + lh / 2;
+
+          this.renderTrackTextLine(
+            ctx,
+            item.text,
+            drawX,
+            lineCenterY,
+            width * 0.85,
+            {
+              fontFamily: item.fontFamily,
+              fontStyle: item.fontStyle,
+              fontSize: item.fontSize,
+              fontEffect: item.fontEffect,
+              color: item.color,
+              accentColor: track.accentColor || '#f97316',
+              beatIntensity,
+              alignment,
+            }
+          );
+
+          curY += lh + (gaps[i] || 0);
+        }
+      }
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Helper to retrieve track detail items according to trackDetailsOrder
+   */
+  private getTrackDetailItems(track: TrackMetadata, userScale: number): {
+    key: TrackDetailElement;
+    text: string;
+    fontFamily: string;
+    fontStyle: TrackFontStyle;
+    fontSize: number;
+    fontEffect: TrackFontEffect;
+    color: string;
+  }[] {
+    const order: TrackDetailElement[] = track.trackDetailsOrder && track.trackDetailsOrder.length > 0
+      ? track.trackDetailsOrder
+      : ['subtitle', 'title', 'artist'];
+
+    const items: {
+      key: TrackDetailElement;
+      text: string;
+      fontFamily: string;
+      fontStyle: TrackFontStyle;
+      fontSize: number;
+      fontEffect: TrackFontEffect;
+      color: string;
+    }[] = [];
+
+    for (const key of order) {
+      if (key === 'subtitle' && track.showSubtitle !== false && track.subtitle) {
+        items.push({
+          key: 'subtitle',
+          text: track.subtitle,
+          fontFamily: track.subtitleFontFamily || track.fontFamily || 'Be Vietnam Pro',
+          fontStyle: track.subtitleFontStyle || 'normal',
+          fontSize: (track.subtitleFontSize || 13) * userScale,
+          fontEffect: track.subtitleFontEffect || 'none',
+          color: track.subtitleColor || track.accentColor || '#fb923c',
+        });
+      } else if (key === 'title' && track.showTitle !== false && track.title) {
+        items.push({
+          key: 'title',
+          text: track.title,
+          fontFamily: track.titleFontFamily || track.fontFamily || 'Be Vietnam Pro',
+          fontStyle: track.titleFontStyle || 'bold',
+          fontSize: (track.titleFontSize || 22) * userScale,
+          fontEffect: track.titleFontEffect || 'none',
+          color: track.textColor || '#ffffff',
+        });
+      } else if (key === 'artist' && track.showArtist !== false && track.artist) {
+        items.push({
+          key: 'artist',
+          text: track.artist,
+          fontFamily: track.artistFontFamily || track.fontFamily || 'Be Vietnam Pro',
+          fontStyle: track.artistFontStyle || 'normal',
+          fontSize: (track.artistFontSize || 15) * userScale,
+          fontEffect: track.artistFontEffect || 'none',
+          color: track.artistColor || 'rgba(255, 255, 255, 0.8)',
+        });
+      }
+    }
+
+    return items;
+  }
+
+  /**
+   * Helper to render a single track text line with custom font style, effect, and colors
+   */
+  private renderTrackTextLine(
+    ctx: CanvasContext2D,
+    text: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    options: {
+      fontFamily: string;
+      fontStyle: TrackFontStyle;
+      fontSize: number;
+      fontEffect: TrackFontEffect;
+      color: string;
+      accentColor: string;
+      beatIntensity: number;
+      alignment: 'left' | 'center' | 'right';
+    }
+  ) {
+    if (!text) return;
+    const { fontFamily, fontStyle, fontSize, fontEffect, color, accentColor, beatIntensity, alignment } = options;
+
+    ctx.save();
+    ctx.textAlign = alignment;
+    ctx.textBaseline = 'middle';
+
+    let displayText = text;
+    let stylePrefix = 'normal 400';
+    if (fontStyle === 'italic') {
+      stylePrefix = 'italic 400';
+    } else if (fontStyle === 'bold') {
+      stylePrefix = 'bold 700';
+    } else if (fontStyle === 'bold-italic') {
+      stylePrefix = 'italic bold 700';
+    } else if (fontStyle === 'uppercase') {
+      stylePrefix = 'bold 700';
+      displayText = displayText.toUpperCase();
+    }
+
+    ctx.font = `${stylePrefix} ${fontSize}px '${fontFamily}', sans-serif`;
+
+    switch (fontEffect) {
+      case 'neon-glow': {
+        ctx.shadowColor = accentColor || color;
+        ctx.shadowBlur = 14 + beatIntensity * 18;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(displayText, x, y, maxWidth);
+
+        ctx.shadowBlur = 26 + beatIntensity * 22;
+        ctx.fillStyle = color;
+        ctx.fillText(displayText, x, y, maxWidth);
+        break;
       }
 
-      // Title Text
-      if (track.showTitle !== false) {
-        ctx.font = `bold ${titleSize}px '${track.fontFamily}', sans-serif`;
-        ctx.fillStyle = track.textColor || '#ffffff';
-        ctx.shadowColor = 'rgba(0,0,0,0.85)';
-        ctx.shadowBlur = 10;
-        ctx.fillText(track.title, drawX, textY, width * 0.85);
+      case 'double-stroke': {
+        ctx.lineWidth = Math.max(3.5, fontSize * 0.22);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.lineJoin = 'round';
+        ctx.strokeText(displayText, x, y, maxWidth);
+
+        ctx.lineWidth = Math.max(1.6, fontSize * 0.09);
+        ctx.strokeStyle = accentColor || '#f97316';
+        ctx.strokeText(displayText, x, y, maxWidth);
+
+        ctx.fillStyle = color;
+        ctx.fillText(displayText, x, y, maxWidth);
+        break;
       }
 
-      // Artist Text
-      if (track.showArtist !== false) {
-        const gap = track.showTitle !== false ? titleSize * 0.9 + 6 * userScale : 0;
-        ctx.font = `500 ${artistSize}px '${track.fontFamily}', sans-serif`;
-        ctx.fillStyle = track.artistColor || 'rgba(255, 255, 255, 0.8)';
+      case '3d-shadow': {
+        const shadowSteps = 5;
+        for (let s = shadowSteps; s >= 1; s--) {
+          ctx.fillStyle = s === 1 ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.22)';
+          ctx.fillText(displayText, x + s * 1.5, y + s * 1.5, maxWidth);
+        }
+        ctx.fillStyle = color;
+        ctx.fillText(displayText, x, y, maxWidth);
+        break;
+      }
+
+      case 'gradient': {
+        const grad = ctx.createLinearGradient(0, y - fontSize * 0.5, 0, y + fontSize * 0.5);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.45, color);
+        grad.addColorStop(1, accentColor || '#f97316');
+        ctx.fillStyle = grad;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
         ctx.shadowBlur = 8;
-        ctx.fillText(track.artist, drawX, textY + gap, width * 0.85);
-        ctx.shadowBlur = 0;
+        ctx.fillText(displayText, x, y, maxWidth);
+        break;
+      }
+
+      case 'comic-pop': {
+        ctx.lineJoin = 'miter';
+        ctx.miterLimit = 2;
+        ctx.lineWidth = Math.max(4, fontSize * 0.24);
+        ctx.strokeStyle = '#000000';
+        ctx.strokeText(displayText, x, y, maxWidth);
+        ctx.fillStyle = color;
+        ctx.fillText(displayText, x, y, maxWidth);
+        break;
+      }
+
+      case 'metallic-chrome': {
+        const chromeGrad = ctx.createLinearGradient(0, y - fontSize * 0.55, 0, y + fontSize * 0.45);
+        chromeGrad.addColorStop(0, '#ffffff');
+        chromeGrad.addColorStop(0.45, '#94a3b8');
+        chromeGrad.addColorStop(0.52, '#0f172a');
+        chromeGrad.addColorStop(1, '#e2e8f0');
+        ctx.lineWidth = Math.max(2, fontSize * 0.12);
+        ctx.strokeStyle = '#0f172a';
+        ctx.strokeText(displayText, x, y, maxWidth);
+        ctx.fillStyle = chromeGrad;
+        ctx.fillText(displayText, x, y, maxWidth);
+        break;
+      }
+
+      case 'none':
+      default: {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = color;
+        ctx.fillText(displayText, x, y, maxWidth);
+        break;
       }
     }
 
@@ -2718,10 +3172,19 @@ export class VisualizerRenderer {
       this.visCyanCanvas.width = width;
       this.visCyanCanvas.height = height;
     }
+
+    if (!this.visReflectCanvas) {
+      this.visReflectCanvas = document.createElement('canvas');
+      this.visReflectCtx = this.visReflectCanvas.getContext('2d', { willReadFrequently: false });
+    }
+    if (this.visReflectCanvas.width !== width || this.visReflectCanvas.height !== height) {
+      this.visReflectCanvas.width = width;
+      this.visReflectCanvas.height = height;
+    }
   }
 
   /**
-   * Audio Visualizer Renderer with Chromatic Aberration & Frequency Glitch
+   * Audio Visualizer Renderer with Chromatic Aberration & Vertical Reflection
    */
   private renderVisualizer(
     ctx: CanvasContext2D,
@@ -2735,7 +3198,11 @@ export class VisualizerRenderer {
     beatIntensity: number,
     currentTime: number
   ) {
-    if (!v.chromaticAberration) {
+    const hasAberration = !!v.chromaticAberration;
+    const hasReflection = !!v.verticalReflection;
+
+    // Fast path: direct draw if neither chromatic aberration nor reflection is enabled
+    if (!hasAberration && !hasReflection) {
       this.renderVisualizerCore(
         ctx,
         width,
@@ -2752,7 +3219,7 @@ export class VisualizerRenderer {
     }
 
     this.ensureVisBuffers(width, height);
-    if (!this.visBufferCtx || !this.visRedCtx || !this.visCyanCtx || !this.visBufferCanvas || !this.visRedCanvas || !this.visCyanCanvas) {
+    if (!this.visBufferCtx || !this.visBufferCanvas) {
       this.renderVisualizerCore(
         ctx,
         width,
@@ -2768,82 +3235,151 @@ export class VisualizerRenderer {
       return;
     }
 
-    // 1. Clear intermediate offscreen buffers
+    // 1. Clear primary offscreen buffer
     this.visBufferCtx.clearRect(0, 0, width, height);
-    this.visRedCtx.clearRect(0, 0, width, height);
-    this.visCyanCtx.clearRect(0, 0, width, height);
 
-    // 2. Render the primary visualizer onto the offscreen buffer
-    this.renderVisualizerCore(
-      this.visBufferCtx,
-      width,
-      height,
-      v,
-      freqData,
-      timeData,
-      bassIntensity,
-      trebleIntensity,
-      beatIntensity,
-      currentTime
-    );
+    // 2. Render visualizer (with or without chromatic aberration) into visBufferCanvas
+    if (hasAberration && this.visRedCtx && this.visCyanCtx && this.visRedCanvas && this.visCyanCanvas) {
+      this.visRedCtx.clearRect(0, 0, width, height);
+      this.visCyanCtx.clearRect(0, 0, width, height);
 
-    // 3. Calculate dynamic frequency-reactive shift
-    const intensity = v.chromaticAberrationIntensity !== undefined ? v.chromaticAberrationIntensity : 0.55;
-    const freqEnergy = (bassIntensity * 0.65 + trebleIntensity * 0.35);
-    const beatKick = beatIntensity > 0.28 ? Math.pow(beatIntensity, 1.4) * 14 * intensity : 0;
-    const randomJitter = beatIntensity > 0.45 && Math.random() < 0.4 ? (Math.random() - 0.5) * 18 * intensity : 0;
-    const baseOffset = 2.0 * intensity;
-    const shiftX = Math.max(1, baseOffset + freqEnergy * 20 * intensity + beatKick + randomJitter);
-    const shiftY = (Math.sin(currentTime * 10) * 1.5 + (Math.random() - 0.5) * 2) * intensity * (0.3 + freqEnergy * 0.7);
+      // Render the primary visualizer onto the offscreen buffer
+      this.renderVisualizerCore(
+        this.visBufferCtx,
+        width,
+        height,
+        v,
+        freqData,
+        timeData,
+        bassIntensity,
+        trebleIntensity,
+        beatIntensity,
+        currentTime
+      );
 
-    // 4. Generate pure Red channel pass
-    this.visRedCtx.drawImage(this.visBufferCanvas, 0, 0);
-    this.visRedCtx.globalCompositeOperation = 'source-in';
-    this.visRedCtx.fillStyle = '#ff0055';
-    this.visRedCtx.fillRect(0, 0, width, height);
-    this.visRedCtx.globalCompositeOperation = 'source-over';
+      // Calculate dynamic frequency-reactive shift
+      const intensity = v.chromaticAberrationIntensity !== undefined ? v.chromaticAberrationIntensity : 0.55;
+      const freqEnergy = (bassIntensity * 0.65 + trebleIntensity * 0.35);
+      const beatKick = beatIntensity > 0.28 ? Math.pow(beatIntensity, 1.4) * 14 * intensity : 0;
+      const randomJitter = beatIntensity > 0.45 && Math.random() < 0.4 ? (Math.random() - 0.5) * 18 * intensity : 0;
+      const baseOffset = 2.0 * intensity;
+      const shiftX = Math.max(1, baseOffset + freqEnergy * 20 * intensity + beatKick + randomJitter);
+      const shiftY = (Math.sin(currentTime * 10) * 1.5 + (Math.random() - 0.5) * 2) * intensity * (0.3 + freqEnergy * 0.7);
 
-    // 5. Generate pure Cyan channel pass
-    this.visCyanCtx.drawImage(this.visBufferCanvas, 0, 0);
-    this.visCyanCtx.globalCompositeOperation = 'source-in';
-    this.visCyanCtx.fillStyle = '#00f0ff';
-    this.visCyanCtx.fillRect(0, 0, width, height);
-    this.visCyanCtx.globalCompositeOperation = 'source-over';
+      // Generate pure Red channel pass
+      this.visRedCtx.drawImage(this.visBufferCanvas, 0, 0);
+      this.visRedCtx.globalCompositeOperation = 'source-in';
+      this.visRedCtx.fillStyle = '#ff0055';
+      this.visRedCtx.fillRect(0, 0, width, height);
+      this.visRedCtx.globalCompositeOperation = 'source-over';
 
-    // 6. Draw primary visualizer layer
-    ctx.save();
-    ctx.drawImage(this.visBufferCanvas, 0, 0);
+      // Generate pure Cyan channel pass
+      this.visCyanCtx.drawImage(this.visBufferCanvas, 0, 0);
+      this.visCyanCtx.globalCompositeOperation = 'source-in';
+      this.visCyanCtx.fillStyle = '#00f0ff';
+      this.visCyanCtx.fillRect(0, 0, width, height);
+      this.visCyanCtx.globalCompositeOperation = 'source-over';
 
-    // 7. Composite Red & Cyan shifted layers with screen blend mode
-    ctx.globalCompositeOperation = 'screen';
-    const splitAlpha = Math.min(0.95, 0.45 + intensity * 0.5 + freqEnergy * 0.3);
-    ctx.globalAlpha = splitAlpha;
-    ctx.drawImage(this.visRedCanvas, -shiftX, -shiftY);
-    ctx.drawImage(this.visCyanCanvas, shiftX, shiftY);
+      // Composite RGB into visBufferCtx
+      this.visBufferCtx.save();
+      this.visBufferCtx.globalCompositeOperation = 'screen';
+      const splitAlpha = Math.min(0.95, 0.45 + intensity * 0.5 + freqEnergy * 0.3);
+      this.visBufferCtx.globalAlpha = splitAlpha;
+      this.visBufferCtx.drawImage(this.visRedCanvas, -shiftX, -shiftY);
+      this.visBufferCtx.drawImage(this.visCyanCanvas, shiftX, shiftY);
 
-    // 8. Dynamic glitch horizontal slice displacement on peak beat/frequency spikes
-    if (beatIntensity > 0.4 && Math.random() < 0.45 && intensity > 0.2) {
-      const posY = (height * v.positionY) / 100;
-      const numSlices = Math.min(4, Math.floor(2 + intensity * 3));
-      for (let i = 0; i < numSlices; i++) {
-        const sliceY = Math.max(0, posY - 100 + Math.random() * 200);
-        const sliceH = Math.min(30, 6 + Math.random() * 18);
-        const sliceShift = (Math.random() - 0.5) * 28 * intensity * beatIntensity;
-        ctx.drawImage(
-          this.visBufferCanvas,
-          0,
-          sliceY,
-          width,
-          sliceH,
-          sliceShift,
-          sliceY,
-          width,
-          sliceH
-        );
+      // Dynamic glitch horizontal slice displacement
+      if (beatIntensity > 0.4 && Math.random() < 0.45 && intensity > 0.2) {
+        const posY = (height * v.positionY) / 100;
+        const numSlices = Math.min(4, Math.floor(2 + intensity * 3));
+        for (let i = 0; i < numSlices; i++) {
+          const sliceY = Math.max(0, posY - 100 + Math.random() * 200);
+          const sliceH = Math.min(30, 6 + Math.random() * 18);
+          const sliceShift = (Math.random() - 0.5) * 28 * intensity * beatIntensity;
+          this.visBufferCtx.drawImage(
+            this.visBufferCanvas,
+            0,
+            sliceY,
+            width,
+            sliceH,
+            sliceShift,
+            sliceY,
+            width,
+            sliceH
+          );
+        }
       }
+      this.visBufferCtx.restore();
+    } else {
+      this.renderVisualizerCore(
+        this.visBufferCtx,
+        width,
+        height,
+        v,
+        freqData,
+        timeData,
+        bassIntensity,
+        trebleIntensity,
+        beatIntensity,
+        currentTime
+      );
     }
 
+    // 3. Draw primary visualizer to main canvas
+    ctx.save();
+    ctx.drawImage(this.visBufferCanvas, 0, 0);
     ctx.restore();
+
+    // 4. Render Vertical Reflection if enabled
+    if (hasReflection) {
+      const axisY = (height * (v.reflectionPositionY !== undefined ? v.reflectionPositionY : v.positionY)) / 100;
+      const opacity = Math.max(0.05, Math.min(1.0, v.reflectionOpacity !== undefined ? v.reflectionOpacity : 0.35));
+      const useFade = v.reflectionFade !== false;
+
+      if (this.visReflectCtx && this.visReflectCanvas && useFade) {
+        this.visReflectCtx.clearRect(0, 0, width, height);
+
+        // Draw flipped vertically across axisY
+        this.visReflectCtx.save();
+        this.visReflectCtx.translate(0, 2 * axisY);
+        this.visReflectCtx.scale(1, -1);
+        this.visReflectCtx.drawImage(this.visBufferCanvas, 0, 0);
+        this.visReflectCtx.restore();
+
+        // Clear anything above reflection axis
+        this.visReflectCtx.save();
+        this.visReflectCtx.globalCompositeOperation = 'destination-out';
+        this.visReflectCtx.fillRect(0, 0, width, axisY);
+
+        // Apply smooth linear gradient fade downwards from axis
+        this.visReflectCtx.globalCompositeOperation = 'destination-in';
+        const fadeDist = Math.max(80, height * 0.35);
+        const grad = this.visReflectCtx.createLinearGradient(0, axisY, 0, Math.min(height, axisY + fadeDist));
+        grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+        grad.addColorStop(0.35, 'rgba(0, 0, 0, 0.6)');
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        this.visReflectCtx.fillStyle = grad;
+        this.visReflectCtx.fillRect(0, axisY, width, height - axisY);
+        this.visReflectCtx.restore();
+
+        // Draw reflection buffer to main canvas
+        ctx.save();
+        ctx.globalAlpha = (ctx.globalAlpha || 1.0) * opacity;
+        ctx.drawImage(this.visReflectCanvas, 0, 0);
+        ctx.restore();
+      } else {
+        // Direct clipped flipped draw
+        ctx.save();
+        ctx.globalAlpha = (ctx.globalAlpha || 1.0) * opacity;
+        ctx.beginPath();
+        ctx.rect(0, axisY, width, height - axisY);
+        ctx.clip();
+        ctx.translate(0, 2 * axisY);
+        ctx.scale(1, -1);
+        ctx.drawImage(this.visBufferCanvas, 0, 0);
+        ctx.restore();
+      }
+    }
   }
 
   /**
@@ -3149,32 +3685,126 @@ export class VisualizerRenderer {
         break;
       }
 
-      case 'bars':
+      // 1. Classic Hardware Audio Equalizer (Mọc từ đáy lên trên, LED phân tầng cổ điển)
+      case 'bars': {
+        const totalW = barCount * (v.barWidth + v.barGap) - v.barGap;
+        const startX = centerX - totalW / 2;
+
+        // Glowing base rail / ground line at bottom
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(startX - 6, posY + 1, totalW + 12, 3, 1.5);
+        ctx.fillStyle = v.primaryColor || '#ec4899';
+        ctx.globalAlpha = 0.55;
+        ctx.shadowColor = v.primaryColor || '#ec4899';
+        ctx.shadowBlur = 8;
+        ctx.fill();
+        ctx.restore();
+
+        for (let i = 0; i < barCount; i++) {
+          const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.35) * (dataLength * 0.75)));
+          const rawVal = freqData[dataIndex] || 0;
+          const barHeight = Math.max(4, (rawVal / 255) * 185 * amp * v.scale);
+
+          const x = startX + i * (v.barWidth + v.barGap);
+          const topY = posY - barHeight;
+
+          // Vertical gradient for authentic hardware VU meter look
+          const barGrad = ctx.createLinearGradient(0, posY, 0, topY);
+          barGrad.addColorStop(0, v.primaryColor || '#ec4899');
+          barGrad.addColorStop(0.7, v.secondaryColor || '#8b5cf6');
+          barGrad.addColorStop(1, v.tertiaryColor || '#38bdf8');
+
+          // Segmented classic LED ladder effect
+          const segH = Math.max(3.5, Math.min(7, v.barWidth * 0.95));
+          const segGap = 1.5;
+          const totalSegStep = segH + segGap;
+          const numSegments = Math.max(1, Math.floor(barHeight / totalSegStep));
+
+          if (numSegments > 1 && v.barWidth >= 4) {
+            for (let s = 0; s < numSegments; s++) {
+              const segY = posY - (s + 1) * totalSegStep;
+              const isPeakSeg = s === numSegments - 1;
+              ctx.save();
+              if (isPeakSeg) {
+                // Bright accented top peak LED
+                ctx.fillStyle = v.tertiaryColor || '#ffffff';
+                ctx.shadowColor = v.tertiaryColor || v.secondaryColor || '#ffffff';
+                ctx.shadowBlur = 9;
+              } else {
+                ctx.fillStyle = barGrad;
+              }
+              ctx.beginPath();
+              ctx.roundRect(x, segY, v.barWidth, segH, Math.min(v.barRoundness, 2.5));
+              ctx.fill();
+              ctx.restore();
+            }
+          } else {
+            // Smooth solid bar with rounded top corners
+            ctx.fillStyle = barGrad;
+            ctx.beginPath();
+            ctx.roundRect(x, topY, v.barWidth, barHeight, [v.barRoundness, v.barRoundness, 1, 1]);
+            ctx.fill();
+
+            // Accent peak cap line
+            ctx.save();
+            ctx.fillStyle = v.tertiaryColor || '#ffffff';
+            ctx.shadowColor = v.tertiaryColor || v.secondaryColor || '#ffffff';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.roundRect(x, topY, v.barWidth, Math.max(2, Math.min(4, v.barWidth * 0.5)), 1.5);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+        break;
+      }
+
+      // 2. Symmetrical Dual-Sided Waveform (Sóng cột đối xứng trên dưới từ đường tâm)
       case 'bars-mirrored': {
         const totalW = barCount * (v.barWidth + v.barGap) - v.barGap;
         const startX = centerX - totalW / 2;
-        const isMirrored = v.type === 'bars-mirrored' || v.mirror;
 
-        ctx.fillStyle = strokeOrFillStyle;
+        // Glowing center waistline running across the symmetry axis
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(startX - 8, posY - 1, totalW + 16, 2, 1);
+        ctx.fillStyle = v.primaryColor || '#ec4899';
+        ctx.globalAlpha = 0.4;
+        ctx.shadowColor = v.primaryColor || '#ec4899';
+        ctx.shadowBlur = 6;
+        ctx.fill();
+        ctx.restore();
 
         for (let i = 0; i < barCount; i++) {
-          const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.4) * (dataLength * 0.75)));
+          const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.35) * (dataLength * 0.75)));
           const rawVal = freqData[dataIndex] || 0;
-          const barHeight = Math.max(4, (rawVal / 255) * 160 * amp * v.scale);
+          const barHeight = Math.max(6, (rawVal / 255) * 175 * amp * v.scale);
 
           const x = startX + i * (v.barWidth + v.barGap);
+          const topY = posY - barHeight / 2;
 
-          if (isMirrored) {
-            const topY = posY - barHeight / 2;
-            ctx.beginPath();
-            ctx.roundRect(x, topY, v.barWidth, barHeight, v.barRoundness);
-            ctx.fill();
-          } else {
-            const topY = posY - barHeight;
-            ctx.beginPath();
-            ctx.roundRect(x, topY, v.barWidth, barHeight, v.barRoundness);
-            ctx.fill();
-          }
+          // Gradient radiating outwards from center posY
+          const mirGrad = ctx.createLinearGradient(0, posY, 0, topY);
+          mirGrad.addColorStop(0, v.primaryColor || '#ec4899');
+          mirGrad.addColorStop(1, v.secondaryColor || '#8b5cf6');
+
+          ctx.fillStyle = mirGrad;
+
+          // Symmetrical rounded capsule
+          const pillRoundness = Math.max(v.barRoundness, v.barWidth / 2);
+          ctx.beginPath();
+          ctx.roundRect(x, topY, v.barWidth, barHeight, pillRoundness);
+          ctx.fill();
+
+          // Center luminous core dot at symmetry axis
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.globalAlpha = 0.75;
+          ctx.beginPath();
+          ctx.arc(x + v.barWidth / 2, posY, Math.max(1, v.barWidth * 0.28), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
         }
         break;
       }

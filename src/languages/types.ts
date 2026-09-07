@@ -263,6 +263,13 @@ export interface TranslationDictionary {
   snapToPrevLine: string;
   snapToNextLine: string;
   doneBtn: string;
+  karaokeTimingTitle: string;
+  karaokeTimingDesc: string;
+  karaokeSweepDuration: string;
+  karaokeSingingEndTime: string;
+  karaokeSingingStartTime: string;
+  resetKaraokeDefault: string;
+  holdVisibleAfterSinging: string;
   styleKaraokeSingle: string;
   styleKaraokeSingleDesc: string;
   styleTeleprompter4Lines: string;

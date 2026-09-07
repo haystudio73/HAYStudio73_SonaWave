@@ -5,7 +5,9 @@ import {
   exportToSRT, 
   formatTimeSub,
   validateLyricsTimings,
-  autoFixLyricsOverlaps
+  autoFixLyricsOverlaps,
+  splitLyricLineByChars,
+  splitAllLyricsByChars
 } from '../utils/lyricsParser';
 import { AVAILABLE_FONTS } from '../utils/presets';
 import { Language, TRANSLATIONS } from '../utils/i18n';
@@ -35,7 +37,10 @@ import {
   Volume2,
   Calendar,
   Star,
-  CircleDot
+  CircleDot,
+  Scissors,
+  Mic2,
+  Sliders
 } from 'lucide-react';
 
 interface LyricsTabProps {
@@ -153,6 +158,8 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
     return lyrics[editingIndex + 1];
   }, [lyrics, editingIndex]);
 
+  const isKaraokeMode = config.style === 'karaoke' || config.style === 'karaoke-single' || config.style === 'teleprompter-4lines';
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -205,11 +212,20 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
   };
 
   const handleDuplicateLine = (line: LyricLine) => {
+    const hasKaraoke = line.karaokeEndTime !== undefined || line.karaokeStartTime !== undefined;
+    const kStartOffset = line.karaokeStartTime !== undefined ? line.karaokeStartTime - line.startTime : 0;
+    const kEndOffset = line.karaokeEndTime !== undefined ? line.karaokeEndTime - line.startTime : (line.endTime - line.startTime);
+    const newStart = parseFloat((line.endTime + 0.1).toFixed(2));
+    const newEnd = parseFloat((line.endTime + (line.endTime - line.startTime) + 0.1).toFixed(2));
     const newLine: LyricLine = {
       ...line,
       id: `line_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-      startTime: parseFloat((line.endTime + 0.1).toFixed(2)),
-      endTime: parseFloat((line.endTime + (line.endTime - line.startTime) + 0.1).toFixed(2)),
+      startTime: newStart,
+      endTime: newEnd,
+      ...(hasKaraoke ? {
+        karaokeStartTime: parseFloat((newStart + kStartOffset).toFixed(2)),
+        karaokeEndTime: parseFloat((newStart + kEndOffset).toFixed(2)),
+      } : {}),
     };
     const updated = [...lyrics, newLine].sort((a, b) => a.startTime - b.startTime);
     onLyricsChange(updated);
@@ -225,11 +241,19 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
     onLyricsChange(
       lyrics.map((l) => {
         if (l.id !== id) return l;
-        return {
+        const newEnd = l.endTime <= clamped ? parseFloat((clamped + 2.0).toFixed(2)) : l.endTime;
+        const updated: LyricLine = {
           ...l,
           startTime: clamped,
-          endTime: l.endTime <= clamped ? parseFloat((clamped + 2.0).toFixed(2)) : l.endTime,
+          endTime: newEnd,
         };
+        if (updated.karaokeStartTime !== undefined && updated.karaokeStartTime < clamped) {
+          updated.karaokeStartTime = clamped;
+        }
+        if (updated.karaokeEndTime !== undefined && updated.karaokeEndTime > newEnd) {
+          updated.karaokeEndTime = newEnd;
+        }
+        return updated;
       })
     );
   };
@@ -237,7 +261,95 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
   const handleUpdateLineEndTime = (id: string, newEnd: number) => {
     const clamped = Math.max(0, parseFloat(newEnd.toFixed(2)));
     onLyricsChange(
-      lyrics.map((l) => (l.id === id ? { ...l, endTime: clamped } : l))
+      lyrics.map((l) => {
+        if (l.id !== id) return l;
+        const updated: LyricLine = { ...l, endTime: clamped };
+        if (updated.karaokeEndTime !== undefined && updated.karaokeEndTime > clamped) {
+          updated.karaokeEndTime = clamped;
+        }
+        return updated;
+      })
+    );
+  };
+
+  const handleUpdateKaraokeStartTime = (id: string, newKStart: number) => {
+    const clamped = Math.max(0, parseFloat(newKStart.toFixed(2)));
+    onLyricsChange(
+      lyrics.map((l) => {
+        if (l.id !== id) return l;
+        const currentKEnd = l.karaokeEndTime !== undefined ? l.karaokeEndTime : l.endTime;
+        const validKStart = Math.min(clamped, Math.max(l.startTime, currentKEnd - 0.1));
+        return {
+          ...l,
+          karaokeStartTime: validKStart,
+        };
+      })
+    );
+  };
+
+  const handleUpdateKaraokeEndTime = (id: string, newKEnd: number) => {
+    const clamped = Math.max(0, parseFloat(newKEnd.toFixed(2)));
+    onLyricsChange(
+      lyrics.map((l) => {
+        if (l.id !== id) return l;
+        const currentKStart = l.karaokeStartTime !== undefined ? l.karaokeStartTime : l.startTime;
+        const validKEnd = Math.min(l.endTime, Math.max(currentKStart + 0.1, clamped));
+        return {
+          ...l,
+          karaokeEndTime: validKEnd,
+        };
+      })
+    );
+  };
+
+  const handleUpdateKaraokeDuration = (id: string, newDuration: number) => {
+    onLyricsChange(
+      lyrics.map((l) => {
+        if (l.id !== id) return l;
+        const kStart = l.karaokeStartTime !== undefined ? l.karaokeStartTime : l.startTime;
+        const maxDuration = Math.max(0.1, l.endTime - kStart);
+        const clampedDuration = Math.min(maxDuration, Math.max(0.1, newDuration));
+        const newKEnd = parseFloat((kStart + clampedDuration).toFixed(2));
+        return {
+          ...l,
+          karaokeEndTime: newKEnd,
+        };
+      })
+    );
+  };
+
+  const handleResetKaraokeTiming = (id: string) => {
+    onLyricsChange(
+      lyrics.map((l) => {
+        if (l.id !== id) return l;
+        const { karaokeStartTime, karaokeEndTime, ...rest } = l;
+        return rest;
+      })
+    );
+    showToast(language === 'vi' ? 'Đã khôi phục Karaoke theo thời gian câu!' : 'Reset karaoke timing to match line!');
+  };
+
+  const handleBatchAdjustKaraokeDuration = (offsetSeconds: number) => {
+    onLyricsChange(
+      lyrics.map((l) => {
+        const lineDuration = l.endTime - l.startTime;
+        if (offsetSeconds === 0) {
+          const { karaokeStartTime, karaokeEndTime, ...rest } = l;
+          return rest;
+        }
+        const targetDuration = Math.max(0.4, lineDuration - offsetSeconds);
+        const newKEnd = parseFloat((l.startTime + targetDuration).toFixed(2));
+        return {
+          ...l,
+          karaokeStartTime: l.startTime,
+          karaokeEndTime: newKEnd,
+        };
+      })
+    );
+    showToast(
+      offsetSeconds === 0
+        ? (language === 'vi' ? 'Đã đặt lại thời gian Karaoke tất cả câu = 100%' : 'Reset all karaoke timing to 100%')
+        : (language === 'vi' ? `Đã rút ngắn thời gian hát Karaoke toàn bộ câu đi ${offsetSeconds}s!` : `Shortened all karaoke singing by ${offsetSeconds}s!`)
     );
   };
 
@@ -264,6 +376,48 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
     const sorted = [...lyrics].sort((a, b) => a.startTime - b.startTime);
     onLyricsChange(sorted);
     showToast(language === 'vi' ? 'Đã sắp xếp danh sách theo thời gian!' : 'Sorted lyrics by start time!');
+  };
+
+  // Split all lyrics lines containing ',' or '.' into shorter proportional lines
+  const handleSplitAllLyrics = () => {
+    const beforeCount = lyrics.length;
+    const split = splitAllLyricsByChars(lyrics, [',', '.']);
+    if (split.length === beforeCount) {
+      showToast(
+        language === 'vi' 
+          ? 'Không tìm thấy câu nào có dấu phẩy (,) hoặc chấm (.) để tách!' 
+          : 'No lines with commas (,) or periods (.) found to split!'
+      );
+      return;
+    }
+    onLyricsChange(split);
+    showToast(
+      language === 'vi'
+        ? `Đã tách từ ${beforeCount} câu thành ${split.length} câu theo dấu phẩy & chấm!`
+        : `Split ${beforeCount} lines into ${split.length} lines by commas and periods!`
+    );
+  };
+
+  // Split a single line by ',' or '.'
+  const handleSplitSingleLine = (line: LyricLine) => {
+    const split = splitLyricLineByChars(line, [',', '.']);
+    if (split.length <= 1) {
+      showToast(
+        language === 'vi'
+          ? 'Câu này không có dấu phẩy (,) hoặc chấm (.) để tách!'
+          : 'This line has no commas or periods to split!'
+      );
+      return;
+    }
+    const idx = lyrics.findIndex((l) => l.id === line.id);
+    if (idx === -1) return;
+    const newLyrics = [...lyrics.slice(0, idx), ...split, ...lyrics.slice(idx + 1)];
+    onLyricsChange(newLyrics);
+    showToast(
+      language === 'vi'
+        ? `Đã tách câu thành ${split.length} câu nhỏ!`
+        : `Split line into ${split.length} segments!`
+    );
   };
 
   const handleExportSRT = () => {
@@ -729,6 +883,52 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
             </button>
 
             <button
+              onClick={handleSplitAllLyrics}
+              title={language === 'vi' ? 'Tách câu theo dấu phẩy (,) hoặc chấm (.) thành các câu ngắn' : 'Split lyrics lines by comma (,) or period (.)'}
+              className="p-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:text-amber-200 text-xs transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <Scissors className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[11px] font-semibold hidden sm:inline">
+                {language === 'vi' ? 'Tách câu (, .)' : 'Split (, .)'}
+              </span>
+            </button>
+
+            {/* Quick Batch Karaoke Sweep Adjuster */}
+            {isKaraokeMode && lyrics.length > 0 && (
+              <div 
+                className="flex items-center bg-amber-500/10 border border-amber-500/30 rounded-xl px-2 py-0.5 text-xs text-amber-300"
+                title="Căn chỉnh thời gian quét Karaoke cho toàn bộ các câu"
+              >
+                <Mic2 className="w-3 h-3 text-amber-400 mr-1.5 shrink-0" />
+                <span className="text-[10px] font-bold mr-1.5 hidden md:inline">Karaoke:</span>
+                <button
+                  type="button"
+                  onClick={() => handleBatchAdjustKaraokeDuration(0.5)}
+                  title="Rút ngắn thời gian quét Karaoke của tất cả câu sớm hơn 0.5s để chữ giữ lại sau khi hát"
+                  className="px-1.5 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500 hover:text-neutral-950 text-[10px] font-mono text-amber-200 transition-colors cursor-pointer"
+                >
+                  -0.5s
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBatchAdjustKaraokeDuration(1.0)}
+                  title="Rút ngắn thời gian quét Karaoke của tất cả câu sớm hơn 1.0s để chữ giữ lại sau khi hát"
+                  className="px-1.5 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500 hover:text-neutral-950 text-[10px] font-mono text-amber-200 ml-1 transition-colors cursor-pointer"
+                >
+                  -1.0s
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleBatchAdjustKaraokeDuration(0)}
+                  title="Khôi phục thời gian quét Karaoke của tất cả câu khớp 100% thời gian hiển thị"
+                  className="px-1.5 py-0.5 rounded bg-neutral-800 hover:bg-neutral-700 text-[10px] text-neutral-400 hover:text-white ml-1 transition-colors cursor-pointer"
+                >
+                  ↺ 100%
+                </button>
+              </div>
+            )}
+
+            <button
               onClick={handleAddLine}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-sm"
             >
@@ -853,8 +1053,19 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                       className="flex-1 bg-neutral-950/60 border border-neutral-800 rounded-xl px-2.5 py-1 text-xs text-neutral-200 focus:outline-none focus:border-purple-500 focus:text-white font-medium"
                     />
 
-                    {/* Duplicate & Delete Action Buttons */}
+                    {/* Duplicate, Split & Delete Action Buttons */}
                     <div className="flex items-center gap-1 shrink-0">
+                      {(line.text.includes(',') || line.text.includes('.')) && (
+                        <button
+                          type="button"
+                          onClick={() => handleSplitSingleLine(line)}
+                          title={language === 'vi' ? 'Tách câu này theo dấu phẩy (,) hoặc chấm (.)' : 'Split this line by comma or period'}
+                          className="p-1 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-neutral-800 transition-colors cursor-pointer"
+                        >
+                          <Scissors className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => handleDuplicateLine(line)}
@@ -886,6 +1097,38 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                         <span className="text-rose-300 font-semibold">{formatTimeSub(line.endTime)}</span>
                         <span className="text-neutral-400 text-[10px] pl-1 font-sans">({lineDuration.toFixed(1)}s)</span>
                       </div>
+
+                      {/* Karaoke Timing Badge (when in karaoke mode or customized) */}
+                      {(isKaraokeMode || line.karaokeEndTime !== undefined || line.karaokeStartTime !== undefined) && (() => {
+                        const kStart = line.karaokeStartTime !== undefined ? line.karaokeStartTime : line.startTime;
+                        const kEnd = line.karaokeEndTime !== undefined ? line.karaokeEndTime : line.endTime;
+                        const kDur = Math.max(0, kEnd - kStart);
+                        const isCustom = line.karaokeEndTime !== undefined || line.karaokeStartTime !== undefined;
+                        return (
+                          <div 
+                            title={isCustom ? `Thời gian quét Karaoke: ${formatTimeSub(kStart)} ➔ ${formatTimeSub(kEnd)} (${kDur.toFixed(1)}s)` : 'Thời gian quét Karaoke theo thời gian câu'}
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-mono border transition-colors ${
+                              isCustom 
+                                ? 'bg-amber-500/15 border-amber-500/50 text-amber-300 shadow-sm' 
+                                : 'bg-neutral-950/60 border-neutral-800 text-neutral-400'
+                            }`}
+                          >
+                            <Mic2 className={`w-3 h-3 shrink-0 ${isCustom ? 'text-amber-400' : 'text-neutral-500'}`} />
+                            <span className="text-[10px] font-sans font-medium text-neutral-400">Karaoke:</span>
+                            <span className={isCustom ? 'text-amber-200 font-bold' : 'text-neutral-300'}>{formatTimeSub(kStart)}</span>
+                            <span className="text-neutral-500">➔</span>
+                            <span className={isCustom ? 'text-amber-200 font-bold' : 'text-neutral-300'}>{formatTimeSub(kEnd)}</span>
+                            <span className={`text-[10px] font-sans font-semibold pl-0.5 ${isCustom ? 'text-amber-300' : 'text-neutral-400'}`}>
+                              ({kDur.toFixed(1)}s)
+                            </span>
+                            {isCustom && line.endTime > kEnd && (
+                              <span className="text-[9px] font-sans bg-amber-500/25 text-amber-300 px-1 rounded ml-0.5">
+                                giữ {(line.endTime - kEnd).toFixed(1)}s
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* Overlap / Inverted Warning Chip */}
                       {issue && (
@@ -1174,6 +1417,221 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                 )}
               </div>
             </div>
+
+            {/* KARAOKE SWEEP TIMING CONTROLLER (Chỉnh thời gian quét màu Karaoke của câu) */}
+            {(() => {
+              const curKStart = editingLine.karaokeStartTime !== undefined ? editingLine.karaokeStartTime : editingLine.startTime;
+              const curKEnd = editingLine.karaokeEndTime !== undefined ? editingLine.karaokeEndTime : editingLine.endTime;
+              const curKDuration = Math.max(0.1, curKEnd - curKStart);
+              const lineDuration = Math.max(0.1, editingLine.endTime - editingLine.startTime);
+              const hasCustomKaraoke = editingLine.karaokeEndTime !== undefined || editingLine.karaokeStartTime !== undefined;
+              const holdTailSeconds = Math.max(0, editingLine.endTime - curKEnd);
+
+              return (
+                <div className="p-4 rounded-2xl bg-gradient-to-b from-neutral-950/90 to-amber-950/20 border border-amber-500/40 space-y-3.5 shadow-lg relative overflow-hidden">
+                  {/* Header */}
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shadow-sm">
+                        <Mic2 className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                          {t.karaokeTimingTitle || 'Thời Gian Quét Màu Karaoke'}
+                          <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            Karaoke Timing
+                          </span>
+                        </h4>
+                        <p className="text-[11px] text-neutral-400">
+                          {t.karaokeTimingDesc || 'Thời gian ca sĩ hát xong câu (chữ sẽ quét màu xong và giữ hiển thị trên màn hình cho tới hết câu)'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {hasCustomKaraoke && (
+                      <button
+                        type="button"
+                        onClick={() => handleResetKaraokeTiming(editingLine.id)}
+                        className="px-2.5 py-1 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-[11px] font-medium text-neutral-300 hover:text-white transition-colors cursor-pointer border border-neutral-700"
+                        title="Khôi phục thời gian quét Karaoke theo thời gian hiển thị câu"
+                      >
+                        ↺ {t.resetKaraokeDefault || 'Đặt lại theo câu'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Side-by-Side Comparison Box */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-xl bg-neutral-900/80 border border-neutral-800 text-xs">
+                    <div className="space-y-1">
+                      <div className="text-[10px] uppercase text-neutral-400 font-bold flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-purple-400" />
+                        <span>Hiển thị trên màn hình:</span>
+                      </div>
+                      <div className="font-mono text-purple-300 font-bold text-xs flex items-center gap-1.5">
+                        <span>{formatTimeSub(editingLine.startTime)}</span>
+                        <span className="text-neutral-500">➔</span>
+                        <span className="text-rose-300">{formatTimeSub(editingLine.endTime)}</span>
+                        <span className="text-neutral-400 font-normal text-[11px]">({lineDuration.toFixed(1)}s)</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 sm:border-l sm:border-neutral-800 sm:pl-3">
+                      <div className="text-[10px] uppercase text-amber-300 font-bold flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        <span>Quét chữ Karaoke:</span>
+                      </div>
+                      <div className="font-mono text-amber-300 font-bold text-xs flex items-center gap-1.5">
+                        <span>{formatTimeSub(curKStart)}</span>
+                        <span className="text-neutral-500">➔</span>
+                        <span>{formatTimeSub(curKEnd)}</span>
+                        <span className="text-amber-400 font-bold bg-amber-500/20 px-1.5 py-0.2 rounded text-[11px]">
+                          ({curKDuration.toFixed(1)}s)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Duration Slider + Presets */}
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-neutral-300 font-medium">
+                        {t.karaokeSweepDuration || 'Thời lượng quét chữ Karaoke'}:
+                      </span>
+                      <span className="font-mono font-bold text-amber-300 text-sm">
+                        {curKDuration.toFixed(1)}s / {(editingLine.endTime - curKStart).toFixed(1)}s
+                      </span>
+                    </div>
+
+                    <input
+                      type="range"
+                      min={0.2}
+                      max={Math.max(0.4, editingLine.endTime - curKStart)}
+                      step={0.1}
+                      value={curKDuration}
+                      onChange={(e) => handleUpdateKaraokeDuration(editingLine.id, parseFloat(e.target.value))}
+                      className="w-full h-2 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                    />
+
+                    {/* Quick Presets */}
+                    <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                      <span className="text-[10px] text-neutral-400 mr-1">Nhanh:</span>
+                      {[
+                        { label: '100% (Hết câu)', dur: editingLine.endTime - curKStart },
+                        { label: '-0.5s', dur: Math.max(0.3, editingLine.endTime - curKStart - 0.5) },
+                        { label: '-1.0s', dur: Math.max(0.3, editingLine.endTime - curKStart - 1.0) },
+                        { label: '-1.5s', dur: Math.max(0.3, editingLine.endTime - curKStart - 1.5) },
+                        { label: '-2.0s', dur: Math.max(0.3, editingLine.endTime - curKStart - 2.0) },
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleUpdateKaraokeDuration(editingLine.id, preset.dur)}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold transition-all cursor-pointer border ${
+                            Math.abs(curKDuration - preset.dur) < 0.05
+                              ? 'bg-amber-500 text-neutral-950 border-amber-400 font-bold shadow-sm'
+                              : 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700 hover:text-white'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Precise Karaoke End Time Input + Steppers + Set to Current Playhead */}
+                  <div className="space-y-2 pt-2 border-t border-neutral-800/80">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-neutral-300">
+                        {t.karaokeSingingEndTime || 'Thời điểm hát xong (Karaoke End Time)'}:
+                      </span>
+                      <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+                        {formatTimeSub(curKEnd)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          step="0.05"
+                          min={curKStart}
+                          max={editingLine.endTime}
+                          value={curKEnd}
+                          onChange={(e) => handleUpdateKaraokeEndTime(editingLine.id, parseFloat(e.target.value) || curKStart)}
+                          className="w-full bg-neutral-900 border border-amber-500/50 rounded-xl px-3 py-2 text-sm font-mono font-bold text-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-neutral-400">giây</span>
+                      </div>
+
+                      {/* Sync with current playing song */}
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateKaraokeEndTime(editingLine.id, currentTime)}
+                        className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-md cursor-pointer"
+                        title="Gán thời điểm ca sĩ hát xong = vị trí bài hát đang phát"
+                      >
+                        <Zap className="w-3.5 h-3.5 fill-current" />
+                        <span>= Hiện tại ({formatTimeSub(currentTime)})</span>
+                      </button>
+                    </div>
+
+                    {/* Fast Steppers */}
+                    <div className="flex items-center justify-between gap-1.5 pt-0.5 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateKaraokeEndTime(editingLine.id, curKEnd - 1.0)}
+                          className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs font-mono text-neutral-300"
+                        >
+                          -1.0s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateKaraokeEndTime(editingLine.id, curKEnd - 0.2)}
+                          className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs font-mono text-neutral-300"
+                        >
+                          -0.2s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateKaraokeEndTime(editingLine.id, curKEnd - 0.05)}
+                          className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs font-mono text-neutral-300"
+                        >
+                          -0.05s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateKaraokeEndTime(editingLine.id, curKEnd + 0.05)}
+                          className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs font-mono text-neutral-300"
+                        >
+                          +0.05s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateKaraokeEndTime(editingLine.id, curKEnd + 0.2)}
+                          className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs font-mono text-neutral-300"
+                        >
+                          +0.2s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateKaraokeEndTime(editingLine.id, curKEnd + 1.0)}
+                          className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-xs font-mono text-neutral-300"
+                        >
+                          +1.0s
+                        </button>
+                      </div>
+
+                      {holdTailSeconds > 0.05 && (
+                        <span className="text-[11px] text-amber-300 font-medium">
+                          ✓ {t.holdVisibleAfterSinging || 'Chữ giữ hiển thị sau khi hát'}: <strong>{holdTailSeconds.toFixed(1)}s</strong>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Overlap & Status Alerts in Modal */}
             {timingValidation.issueMap[editingLine.id] && (

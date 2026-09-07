@@ -513,7 +513,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
                     >
                       {p.track?.coverUrl ? (
                         <img
-                          src={p.track.coverUrl}
+                          src={p.track?.coverUrl || ''}
                           alt=""
                           className="w-full h-full object-cover"
                           onError={(e) => ((e.target as HTMLElement).style.display = 'none')}

@@ -155,6 +155,14 @@ export function autoFixLyricsOverlaps(lyrics: LyricLine[], bufferSeconds = 0.05)
       }
     }
 
+    // Clamp karaoke timing if present
+    if (cur.karaokeEndTime !== undefined && cur.karaokeEndTime > cur.endTime) {
+      cur.karaokeEndTime = cur.endTime;
+    }
+    if (cur.karaokeStartTime !== undefined && cur.karaokeStartTime < cur.startTime) {
+      cur.karaokeStartTime = cur.startTime;
+    }
+
     result.push(cur);
   }
 
@@ -353,9 +361,19 @@ export function getActiveLyricInfo(lyrics: LyricLine[], currentTime: number) {
   // Calculate progress of current line (0 to 1)
   let lineProgress = 0;
   if (activeLine) {
-    const duration = activeLine.endTime - activeLine.startTime;
-    if (duration > 0) {
-      lineProgress = Math.min(1, Math.max(0, (currentTime - activeLine.startTime) / duration));
+    const kStart = activeLine.karaokeStartTime !== undefined ? activeLine.karaokeStartTime : activeLine.startTime;
+    const kEnd = activeLine.karaokeEndTime !== undefined ? activeLine.karaokeEndTime : activeLine.endTime;
+    const kDuration = kEnd - kStart;
+    if (kDuration > 0) {
+      if (currentTime < kStart) {
+        lineProgress = 0;
+      } else if (currentTime >= kEnd) {
+        lineProgress = 1;
+      } else {
+        lineProgress = Math.min(1, Math.max(0, (currentTime - kStart) / kDuration));
+      }
+    } else {
+      lineProgress = currentTime >= kStart ? 1 : 0;
     }
   }
 
@@ -370,3 +388,96 @@ export function getActiveLyricInfo(lyrics: LyricLine[], currentTime: number) {
     lineProgress,
   };
 }
+
+/**
+ * Tách một câu lời bài hát thành các phân đoạn nhỏ dựa trên ký tự ngăn cách (mặc định là dấu phẩy ',' hoặc chấm '.')
+ * Tự động phân bổ thời lượng (Start Time, End Time) tỷ lệ thuận theo độ dài số ký tự của từng đoạn.
+ */
+export function splitLyricLineByChars(
+  line: LyricLine, 
+  delimiters: string[] = [',', '.']
+): LyricLine[] {
+  if (!line || !line.text) return line ? [line] : [];
+
+  const escaped = delimiters.map((d) => (d === '.' ? '\\.' : d === ',' ? '\\,' : '\\' + d)).join('');
+  const regex = new RegExp(`[${escaped}]`);
+
+  if (!regex.test(line.text)) {
+    return [line];
+  }
+
+  // Tách câu theo dấu ngăn cách
+  const splitRegex = new RegExp(`[${escaped}]+`);
+  const rawSegments = line.text.split(splitRegex);
+  const segments = rawSegments.map((s) => s.trim()).filter((s) => s.length > 0);
+
+  if (segments.length <= 1) {
+    return [line];
+  }
+
+  const totalDuration = Math.max(0.4, line.endTime - line.startTime);
+  const totalChars = segments.reduce((sum, s) => sum + s.length, 0);
+
+  const hasKaraoke = line.karaokeEndTime !== undefined || line.karaokeStartTime !== undefined;
+  const kStart = line.karaokeStartTime !== undefined ? line.karaokeStartTime : line.startTime;
+  const kEnd = line.karaokeEndTime !== undefined ? line.karaokeEndTime : line.endTime;
+  const totalKDuration = Math.max(0.2, kEnd - kStart);
+
+  const result: LyricLine[] = [];
+  let currentStart = line.startTime;
+  let currentKStart = kStart;
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const fraction = totalChars > 0 ? seg.length / totalChars : 1 / segments.length;
+    const isLast = i === segments.length - 1;
+    const segDuration = isLast 
+      ? Math.max(0.2, line.endTime - currentStart) 
+      : Math.max(0.2, totalDuration * fraction);
+    const segEnd = isLast ? Math.max(currentStart + 0.2, line.endTime) : currentStart + segDuration;
+
+    let segKStartOut: number | undefined;
+    let segKEndOut: number | undefined;
+    if (hasKaraoke) {
+      const segKDuration = isLast 
+        ? Math.max(0.2, kEnd - currentKStart) 
+        : Math.max(0.2, totalKDuration * fraction);
+      const segKEnd = isLast ? Math.max(currentKStart + 0.2, kEnd) : currentKStart + segKDuration;
+      segKStartOut = Math.round(currentKStart * 1000) / 1000;
+      segKEndOut = Math.round(segKEnd * 1000) / 1000;
+      currentKStart = segKEnd;
+    }
+
+    result.push({
+      id: `${line.id}_split_${i}_${Date.now()}`,
+      startTime: Math.round(currentStart * 1000) / 1000,
+      endTime: Math.round(segEnd * 1000) / 1000,
+      text: seg,
+      ...(hasKaraoke && segKStartOut !== undefined && segKEndOut !== undefined ? {
+        karaokeStartTime: segKStartOut,
+        karaokeEndTime: segKEndOut,
+      } : {}),
+    });
+
+    currentStart = segEnd;
+  }
+
+  return result;
+}
+
+/**
+ * Tách toàn bộ danh sách câu lời bài hát theo các ký tự ngăn cách đã chọn (ví dụ: [',', '.'])
+ */
+export function splitAllLyricsByChars(
+  lyrics: LyricLine[], 
+  delimiters: string[] = [',', '.']
+): LyricLine[] {
+  if (!lyrics || lyrics.length === 0) return [];
+  const result: LyricLine[] = [];
+  for (const line of lyrics) {
+    const splitLines = splitLyricLineByChars(line, delimiters);
+    result.push(...splitLines);
+  }
+  return result;
+}
+

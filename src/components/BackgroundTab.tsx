@@ -730,6 +730,233 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
             </div>
           )}
         </div>
+
+        {/* NEW: Circle Ripple Effect (Gợn Sóng Tròn Đồng Tâm) */}
+        <div className="p-3.5 rounded-2xl bg-neutral-900/80 border border-neutral-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-teal-500/15 border border-teal-500/30 flex items-center justify-center">
+                <Radio className="w-4 h-4 text-teal-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+                    {isVi ? 'Hiệu Ứng Sóng Gợn Tròn (Circle Ripple)' : 'Circle Ripple Effect'}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                    {isVi ? 'Mới' : 'New'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-400">
+                  {isVi 
+                    ? 'Các vòng tròn đồng tâm lan tỏa mượt mà từ tâm hoặc đĩa nhạc, co giãn theo nhịp bass'
+                    : 'Smooth concentric ripple waves expanding outward and pulsing to bass kicks'}
+                </p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={background.circleRipple === true}
+                onChange={(e) => updateBg({ circleRipple: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-500"></div>
+            </label>
+          </div>
+
+          {background.circleRipple && (
+            <div className="space-y-3 pt-1 border-t border-neutral-800/80">
+              {/* Origin Selection */}
+              <div>
+                <label className="block text-[11px] font-medium text-neutral-400 mb-1.5">
+                  {isVi ? 'Tâm Điểm Lan Tỏa Sóng (Origin Point)' : 'Ripple Center Origin'}
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: 'center', labelVi: 'Giữa màn hình', labelEn: 'Canvas Center' },
+                    { id: 'cover', labelVi: 'Tâm Đĩa / Badge', labelEn: 'Cover Art / Badge' },
+                    { id: 'bottom', labelVi: 'Chân màn hình', labelEn: 'Bottom Canvas' },
+                  ].map((org) => (
+                    <button
+                      key={org.id}
+                      type="button"
+                      onClick={() => updateBg({ circleRippleOrigin: org.id as any })}
+                      className={`py-1.5 px-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer truncate ${
+                        (background.circleRippleOrigin || 'center') === org.id
+                          ? 'bg-teal-500/20 border-teal-500 text-teal-300 shadow-sm'
+                          : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {isVi ? org.labelVi : org.labelEn}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { nameVi: 'Mặt nước êm', nameEn: 'Gentle', count: 3, speed: 0.8, op: 0.3, width: 2, glow: false },
+                  { nameVi: 'Radar âm nhạc', nameEn: 'Sonar', count: 4, speed: 1.1, op: 0.45, width: 2.5, glow: true },
+                  { nameVi: 'EDM Pulse', nameEn: 'EDM', count: 6, speed: 1.6, op: 0.65, width: 3.5, glow: true },
+                  { nameVi: 'Mega Bass', nameEn: 'Bass Wave', count: 8, speed: 2.2, op: 0.85, width: 4.5, glow: true },
+                ].map((p, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => updateBg({ 
+                      circleRippleCount: p.count, 
+                      circleRippleSpeed: p.speed, 
+                      circleRippleOpacity: p.op, 
+                      circleRippleLineWidth: p.width,
+                      circleRippleGlow: p.glow
+                    })}
+                    className="py-1 px-1 rounded-lg text-[10px] font-medium bg-neutral-950/60 border border-neutral-800 text-neutral-400 hover:text-teal-300 hover:border-teal-500/40 transition-all cursor-pointer truncate"
+                  >
+                    {isVi ? p.nameVi : p.nameEn}
+                  </button>
+                ))}
+              </div>
+
+              {/* Color Picker & Quick Palette */}
+              <div>
+                <div className="flex justify-between items-center text-xs mb-1.5">
+                  <span className="text-neutral-400">{isVi ? 'Màu gợn sóng' : 'Ripple Color'}</span>
+                  <span className="font-mono text-[11px] text-teal-400">{background.circleRippleColor || '#ffffff'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={background.circleRippleColor || '#ffffff'}
+                    onChange={(e) => updateBg({ circleRippleColor: e.target.value })}
+                    className="w-8 h-8 rounded-lg bg-transparent border border-neutral-700 cursor-pointer"
+                  />
+                  <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                    {[
+                      { name: 'Trắng', hex: '#ffffff' },
+                      { name: 'Xanh Cyan', hex: '#06b6d4' },
+                      { name: 'Xanh Teal', hex: '#14b8a6' },
+                      { name: 'Hồng Neon', hex: '#f43f5e' },
+                      { name: 'Vàng Kim', hex: '#fbbf24' },
+                      { name: 'Tím Cyber', hex: '#a855f7' },
+                      { name: 'Cam Lửa', hex: '#f97316' },
+                    ].map((col) => (
+                      <button
+                        key={col.hex}
+                        type="button"
+                        onClick={() => updateBg({ circleRippleColor: col.hex })}
+                        style={{ backgroundColor: col.hex }}
+                        className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${
+                          (background.circleRippleColor || '#ffffff').toLowerCase() === col.hex.toLowerCase()
+                            ? 'border-white scale-110 shadow-md ring-2 ring-teal-500/50'
+                            : 'border-transparent opacity-80 hover:opacity-100'
+                        }`}
+                        title={col.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sliders: Opacity, Count, Speed, Line Width */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-400">{isVi ? 'Độ mờ đục' : 'Opacity'}</span>
+                    <span className="text-teal-400 font-mono">
+                      {Math.round((background.circleRippleOpacity ?? 0.4) * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.05}
+                    max={1.0}
+                    step={0.05}
+                    value={background.circleRippleOpacity ?? 0.4}
+                    onChange={(e) => updateBg({ circleRippleOpacity: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-400">{isVi ? 'Số lượng vòng' : 'Ring Count'}</span>
+                    <span className="text-teal-400 font-mono">{background.circleRippleCount ?? 4}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={background.circleRippleCount ?? 4}
+                    onChange={(e) => updateBg({ circleRippleCount: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-400">{isVi ? 'Tốc độ lan tỏa' : 'Expansion Speed'}</span>
+                    <span className="text-teal-400 font-mono">{(background.circleRippleSpeed ?? 1.0).toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.2}
+                    max={3.0}
+                    step={0.1}
+                    value={background.circleRippleSpeed ?? 1.0}
+                    onChange={(e) => updateBg({ circleRippleSpeed: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-400">{isVi ? 'Độ dày nét viền' : 'Line Width'}</span>
+                    <span className="text-teal-400 font-mono">{(background.circleRippleLineWidth ?? 2.5).toFixed(1)}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    step={0.5}
+                    value={background.circleRippleLineWidth ?? 2.5}
+                    onChange={(e) => updateBg({ circleRippleLineWidth: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
+                  />
+                </div>
+              </div>
+
+              {/* Toggles: Audio Reactive & Neon Glow */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/60 border border-neutral-800 cursor-pointer">
+                  <span className="text-[11px] font-medium text-neutral-300">
+                    {isVi ? 'Nảy nở theo nhịp Bass' : 'Bass Beat Reactive'}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={background.circleRippleReactive !== false}
+                    onChange={(e) => updateBg({ circleRippleReactive: e.target.checked })}
+                    className="rounded text-teal-500 focus:ring-teal-500 bg-neutral-800 border-neutral-700 ml-2"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/60 border border-neutral-800 cursor-pointer">
+                  <span className="text-[11px] font-medium text-neutral-300">
+                    {isVi ? 'Hào quang Neon phát sáng' : 'Neon Luminous Glow'}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={background.circleRippleGlow !== false}
+                    onChange={(e) => updateBg({ circleRippleGlow: e.target.checked })}
+                    className="rounded text-teal-500 focus:ring-teal-500 bg-neutral-800 border-neutral-700 ml-2"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 3. Particle Overlays */}

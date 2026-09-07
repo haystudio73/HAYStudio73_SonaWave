@@ -410,6 +410,10 @@ export const DEFAULT_VISUALIZER: VisualizerConfig = {
   bpm: 120,
   chromaticAberration: false,
   chromaticAberrationIntensity: 0.55,
+  verticalReflection: false,
+  reflectionOpacity: 0.35,
+  reflectionPositionY: 78,
+  reflectionFade: true,
   lineThickness: 3,
   fillOpacity: 0.85,
 };
@@ -464,6 +468,15 @@ export const DEFAULT_BACKGROUND: BackgroundConfig = {
   glitchStyle: 'rgb-shift',
   glitchColorSplit: true,
   filmGrain: true,
+  circleRipple: false,
+  circleRippleColor: '#ffffff',
+  circleRippleOpacity: 0.4,
+  circleRippleCount: 4,
+  circleRippleSpeed: 1.0,
+  circleRippleLineWidth: 2.5,
+  circleRippleReactive: true,
+  circleRippleGlow: true,
+  circleRippleOrigin: 'center',
 };
 
 export const DEFAULT_PARTICLES: ParticleConfig = {
@@ -996,13 +1009,15 @@ export const LUT_PRESET_ITEMS: LUTPresetItem[] = [
 ];
 
 export const DEFAULT_TRACK: TrackMetadata = {
-  title: 'Đêm Lặng (Chill Vibes)',
-  artist: 'SonaWave Sessions ft. Mây',
+  title: 'TITLE OF MUSIC VIDEO',
+  artist: 'Artist name / Album ...',
+  subtitle: 'Official Music Video',
   album: 'Midnight Echoes',
   coverUrl: 'https://images.pexels.com/photos/1435895/pexels-photo-1435895.jpeg?auto=compress&cs=tinysrgb&w=400',
   showTrackCard: true,
   showTitle: true,
   showArtist: true,
+  showSubtitle: true,
   cardStyle: 'vinyl',
   positionX: 50,
   positionY: 26,
@@ -1010,9 +1025,22 @@ export const DEFAULT_TRACK: TrackMetadata = {
   fontFamily: 'Be Vietnam Pro',
   titleFontSize: 24,
   artistFontSize: 15,
+  subtitleFontSize: 13,
+  titleFontStyle: 'bold',
+  subtitleFontStyle: 'normal',
+  artistFontStyle: 'normal',
+  titleFontEffect: 'none',
+  subtitleFontEffect: 'none',
+  artistFontEffect: 'none',
   textColor: '#ffffff',
   artistColor: 'rgba(255, 255, 255, 0.8)',
-  accentColor: '#ec4899',
+  subtitleColor: '#fb923c',
+  accentColor: '#f97316',
+  trackDetailsOrder: ['subtitle', 'title', 'artist'],
+  badgeBorderColor: '#f97316',
+  badgeBorderWidth: 6,
+  badgeBorderRadius: 26,
+  badgeTextGap: 24,
   rotateVinyl: true,
   badgeBeatJump: true,
   badgeBeatJumpIntensity: 0.18,
@@ -1382,7 +1410,7 @@ export function saveUserPreset(preset: PresetTheme): PresetTheme[] {
 export function deleteUserPreset(id: string): PresetTheme[] {
   const current = getUserPresets();
   const targetId = String(id).trim();
-  const filtered = current.filter((p) => String(p.id).trim() !== targetId);
+  const filtered = current.filter((p) => p && String(p.id).trim() !== targetId && p.id !== id);
   try {
     localStorage.setItem(USER_PRESETS_STORAGE_KEY, JSON.stringify(filtered));
   } catch (e) {

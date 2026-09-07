@@ -304,20 +304,20 @@ export function App() {
   }, [isPlaying]);
 
   useEffect(() => {
-    if (rendererRef.current && track) {
-      rendererRef.current.setCoverImage(track.coverUrl || DEFAULT_TRACK.coverUrl);
+    if (rendererRef.current) {
+      rendererRef.current.setCoverImage(track?.coverUrl || DEFAULT_TRACK.coverUrl);
     }
   }, [track?.coverUrl]);
 
   useEffect(() => {
-    if (rendererRef.current && track) {
-      rendererRef.current.setBadgeImage(track.badgePngUrl || '');
+    if (rendererRef.current) {
+      rendererRef.current.setBadgeImage(track?.badgePngUrl || '');
     }
   }, [track?.badgePngUrl]);
 
   useEffect(() => {
-    if (rendererRef.current && track) {
-      rendererRef.current.setLogoImage(track.logoUrl || '');
+    if (rendererRef.current) {
+      rendererRef.current.setLogoImage(track?.logoUrl || '');
     }
   }, [track?.logoUrl]);
 

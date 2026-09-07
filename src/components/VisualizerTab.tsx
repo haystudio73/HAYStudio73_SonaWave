@@ -19,7 +19,8 @@ import {
   Orbit,
   Sun,
   Grid3X3,
-  Split
+  Split,
+  FlipVertical
 } from 'lucide-react';
 
 interface VisualizerTabProps {
@@ -717,6 +718,128 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                 <span className="flex items-center gap-1 text-cyan-400 font-mono">◀ Cyan (+X)</span>
                 <span className="text-neutral-500 text-[10px]">{isVi ? 'Tần số Bass & Treble' : 'Bass & Treble Frequencies'}</span>
                 <span className="flex items-center gap-1 text-rose-400 font-mono">Red (-X) ▶</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* NEW: Vertical Reflection of Visualizer */}
+        <div className="p-3.5 rounded-2xl bg-neutral-900/80 border border-neutral-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-sky-500/15 border border-sky-500/30 flex items-center justify-center">
+                <FlipVertical className="w-4 h-4 text-sky-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+                    {isVi ? 'Bóng Phản Chiếu Dọc (Vertical Reflection)' : 'Vertical Reflection'}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                    {isVi ? 'Mới' : 'New'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-400">
+                  {isVi 
+                    ? 'Hiệu ứng bóng lật ngược theo phương dọc như phản chiếu trên mặt nước hoặc sàn kính'
+                    : 'Flipped vertical reflection effect on glass floor or water surface'}
+                </p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={config.verticalReflection === true}
+                onChange={(e) => update({ verticalReflection: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
+            </label>
+          </div>
+
+          {config.verticalReflection && (
+            <div className="space-y-3 pt-1 border-t border-neutral-800/80">
+              {/* Quick Reflection Presets */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { nameVi: 'Mờ nhẹ', nameEn: 'Subtle', op: 0.2, pos: config.positionY },
+                  { nameVi: 'Mặt nước', nameEn: 'Water', op: 0.35, pos: config.positionY },
+                  { nameVi: 'Sàn gương', nameEn: 'Mirror', op: 0.55, pos: config.positionY },
+                  { nameVi: 'Rực rỡ', nameEn: 'Vivid', op: 0.8, pos: config.positionY },
+                ].map((p, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => update({ reflectionOpacity: p.op, reflectionPositionY: p.pos })}
+                    className={`py-1 px-1 rounded-lg text-[10px] font-medium border transition-all cursor-pointer truncate ${
+                      Math.abs((config.reflectionOpacity ?? 0.35) - p.op) < 0.08
+                        ? 'bg-sky-500/20 border-sky-500 text-sky-300 font-semibold'
+                        : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
+                    }`}
+                  >
+                    {isVi ? p.nameVi : p.nameEn}
+                  </button>
+                ))}
+              </div>
+
+              {/* Reflection Opacity Slider */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">
+                    {isVi ? 'Độ mờ phản chiếu (Reflection Opacity)' : 'Reflection Opacity'}
+                  </span>
+                  <span className="text-sky-400 font-mono">
+                    {Math.round((config.reflectionOpacity ?? 0.35) * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.05}
+                  max={1.0}
+                  step={0.05}
+                  value={config.reflectionOpacity ?? 0.35}
+                  onChange={(e) => update({ reflectionOpacity: parseFloat(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                />
+              </div>
+
+              {/* Reflection Vertical Position Slider */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">
+                    {isVi ? 'Vị trí trục phản chiếu dọc (Reflection Vertical Position)' : 'Reflection Vertical Position'}
+                  </span>
+                  <span className="text-sky-400 font-mono">
+                    {config.reflectionPositionY !== undefined ? config.reflectionPositionY : config.positionY}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  step={1}
+                  value={config.reflectionPositionY !== undefined ? config.reflectionPositionY : config.positionY}
+                  onChange={(e) => update({ reflectionPositionY: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                />
+              </div>
+
+              {/* Gradient Fade Toggle */}
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="text-neutral-400">
+                  {isVi ? 'Làm mờ dần theo chiều sâu (Gradient Fade)' : 'Depth Gradient Fade Out'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => update({ reflectionFade: config.reflectionFade === false ? true : false })}
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                    config.reflectionFade !== false
+                      ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                      : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+                  }`}
+                >
+                  {config.reflectionFade !== false ? (isVi ? 'Bật (Fade)' : 'Enabled') : (isVi ? 'Tắt (Sắc nét)' : 'Disabled')}
+                </button>
               </div>
             </div>
           )}

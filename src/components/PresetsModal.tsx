@@ -37,6 +37,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
   const [presetDesc, setPresetDesc] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmDeletePreset, setConfirmDeletePreset] = useState<{ id: string; name: string } | null>(null);
+  const [inlineConfirmId, setInlineConfirmId] = useState<string | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,6 +47,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
       setUserPresets(getUserPresets());
       setIsCreating(false);
       setConfirmDeletePreset(null);
+      setInlineConfirmId(null);
       setConfirmClearAll(false);
     }
   }, [isOpen]);
@@ -100,6 +102,17 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
     showToast(t.presetSavedSuccess || (language === 'vi' ? 'Đã lưu Preset thành công!' : 'Preset saved successfully!'));
   };
 
+  const handleDirectDelete = (id: string, name: string) => {
+    const updated = deleteUserPreset(id);
+    setUserPresets(updated);
+    setInlineConfirmId(null);
+    setConfirmDeletePreset(null);
+    showToast(
+      t.presetDeletedSuccess ||
+        (language === 'vi' ? `Đã xóa Preset "${name}"!` : `Preset "${name}" deleted!`)
+    );
+  };
+
   const handleDeleteClick = (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation();
     setConfirmDeletePreset({ id, name });
@@ -108,13 +121,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
   const executeDelete = () => {
     if (!confirmDeletePreset) return;
     const { id, name } = confirmDeletePreset;
-    const updated = deleteUserPreset(id);
-    setUserPresets(updated);
-    setConfirmDeletePreset(null);
-    showToast(
-      t.presetDeletedSuccess ||
-        (language === 'vi' ? `Đã xóa Preset "${name}"!` : `Preset "${name}" deleted!`)
-    );
+    handleDirectDelete(id, name);
   };
 
   const executeClearAll = () => {
@@ -459,14 +466,45 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
                         </div>
 
                         <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteClick(e, theme.id, theme.name)}
-                            title={language === 'vi' ? 'Xóa preset này' : 'Delete this preset'}
-                            className="p-1.5 rounded-lg bg-neutral-900 hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 border border-neutral-800 transition-all cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {inlineConfirmId === theme.id ? (
+                            <div className="flex items-center gap-1 bg-neutral-900 border border-rose-500/50 rounded-xl p-1 animate-in fade-in zoom-in-95 duration-100">
+                              <span className="text-[10px] text-rose-400 font-semibold px-1">
+                                {language === 'vi' ? 'Xóa?' : 'Delete?'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDirectDelete(theme.id, theme.name);
+                                }}
+                                className="px-2 py-0.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-bold cursor-pointer transition-colors shadow-sm"
+                              >
+                                {language === 'vi' ? 'Có' : 'Yes'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInlineConfirmId(null);
+                                }}
+                                className="px-1.5 py-0.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[10px] cursor-pointer transition-colors"
+                              >
+                                {language === 'vi' ? 'Hủy' : 'No'}
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInlineConfirmId(theme.id);
+                              }}
+                              title={language === 'vi' ? 'Xóa preset này' : 'Delete this preset'}
+                              className="p-1.5 rounded-lg bg-neutral-900 hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 border border-neutral-800 transition-all cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
                           <button
                             type="button"
@@ -542,7 +580,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
 
         {/* Delete Single Preset Confirmation Dialog (No window.confirm to support sandboxed iframes) */}
         {confirmDeletePreset && (
-          <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
             <div className="w-full max-w-sm bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
@@ -582,7 +620,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
 
         {/* Clear All Custom Presets Confirmation Dialog */}
         {confirmClearAll && (
-          <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
             <div className="w-full max-w-sm bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
