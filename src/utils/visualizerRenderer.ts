@@ -263,7 +263,7 @@ export class VisualizerRenderer {
 
     // Helper function to render text boxes assigned to a specific layer slot
     const renderTextBoxesForLayer = (layer: TextBoxLayerOrder) => {
-      const filtered = textBoxes.filter((b) => (b.layerOrder || 'front-all') === layer);
+      const filtered = textBoxes.filter((b) => (b.layerOrder || 'front-all') === layer && b.visible !== false);
       if (filtered.length > 0) {
         this.renderTextBoxes(sceneCtx, width, height, filtered, beatIntensity);
       }
@@ -2194,8 +2194,17 @@ export class VisualizerRenderer {
       ctx.restore();
 
     } else if (track.cardStyle === 'glass-card') {
-      const cardW = Math.min(width * 0.85, 420) * cardScale;
-      const cardH = 90 * cardScale;
+      const items = this.getTrackDetailItems(track, userScale);
+      let totalTextHeight = 0;
+      const lineHeights: number[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const lh = items[i].fontSize * 1.25;
+        lineHeights.push(lh);
+        totalTextHeight += lh + (i < items.length - 1 ? 4 * userScale : 0);
+      }
+
+      const cardH = Math.max(90 * cardScale, totalTextHeight + 24 * cardScale);
+      const cardW = Math.min(width * 0.85, 440) * cardScale;
       const radius = 16 * cardScale;
 
       ctx.save();
@@ -2209,7 +2218,7 @@ export class VisualizerRenderer {
       // Glass background
       ctx.beginPath();
       ctx.roundRect(cardX, cardY, cardW, cardH, radius);
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
       ctx.shadowColor = track.badgeBeatGlow ? (track.accentColor || 'rgba(0, 0, 0, 0.5)') : 'rgba(0, 0, 0, 0.5)';
       ctx.shadowBlur = track.badgeBeatGlow ? 22 + beatIntensity * 26 : 20;
       ctx.fill();
@@ -2237,22 +2246,30 @@ export class VisualizerRenderer {
 
       // Texts
       const textX = imgX + imgSize + 16 * cardScale;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
+      const maxTextW = cardW - imgSize - 30 * cardScale;
+      let curTextY = cardY + (cardH - totalTextHeight) / 2;
 
-      const titleSize = (track.titleFontSize || 18) * userScale;
-      const artistSize = (track.artistFontSize || 14) * userScale;
-
-      if (track.showTitle !== false) {
-        ctx.font = `bold ${titleSize}px '${track.fontFamily}', sans-serif`;
-        ctx.fillStyle = track.textColor || '#ffffff';
-        ctx.fillText(track.title, textX, cardY + cardH * 0.38, cardW - imgSize - 30 * cardScale);
-      }
-
-      if (track.showArtist !== false) {
-        ctx.font = `500 ${artistSize}px '${track.fontFamily}', sans-serif`;
-        ctx.fillStyle = track.artistColor || 'rgba(255, 255, 255, 0.7)';
-        ctx.fillText(track.artist, textX, cardY + cardH * 0.68, cardW - imgSize - 30 * cardScale);
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const lh = lineHeights[i];
+        this.renderTrackTextLine(
+          ctx,
+          item.text,
+          textX,
+          curTextY + lh / 2,
+          maxTextW,
+          {
+            fontFamily: item.fontFamily,
+            fontStyle: item.fontStyle,
+            fontSize: item.fontSize,
+            fontEffect: item.fontEffect,
+            color: item.color,
+            accentColor: track.accentColor || '#f97316',
+            beatIntensity,
+            alignment: 'left',
+          }
+        );
+        curTextY += lh + 4 * userScale;
       }
 
       ctx.restore();
@@ -2484,8 +2501,10 @@ export class VisualizerRenderer {
 
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        ctx.font = `${item.fontStyle.includes('bold') ? 'bold' : 'normal'} ${item.fontSize}px '${item.fontFamily}', sans-serif`;
-        const m = ctx.measureText(item.text).width;
+        const { font, isUpper } = this.getCanvasFont(item.fontStyle, item.fontSize, item.fontFamily);
+        ctx.font = font;
+        const measureText = isUpper ? item.text.toUpperCase() : item.text;
+        const m = ctx.measureText(measureText).width;
         if (m > maxTextW) maxTextW = m;
 
         const lineH = item.fontSize * 1.25;
@@ -2628,8 +2647,10 @@ export class VisualizerRenderer {
 
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
-          ctx.font = `${item.fontStyle.includes('bold') ? 'bold' : 'normal'} ${item.fontSize}px '${item.fontFamily}', sans-serif`;
-          const w = ctx.measureText(item.text).width;
+          const { font, isUpper } = this.getCanvasFont(item.fontStyle, item.fontSize, item.fontFamily);
+          ctx.font = font;
+          const measureText = isUpper ? item.text.toUpperCase() : item.text;
+          const w = ctx.measureText(measureText).width;
           if (w > maxW) maxW = w;
 
           const lh = item.fontSize * 1.25;
@@ -2739,7 +2760,7 @@ export class VisualizerRenderer {
           text: track.title,
           fontFamily: track.titleFontFamily || track.fontFamily || 'Be Vietnam Pro',
           fontStyle: track.titleFontStyle || 'bold',
-          fontSize: (track.titleFontSize || 22) * userScale,
+          fontSize: (track.titleFontSize || 24) * userScale,
           fontEffect: track.titleFontEffect || 'none',
           color: track.textColor || '#ffffff',
         });
@@ -2757,6 +2778,49 @@ export class VisualizerRenderer {
     }
 
     return items;
+  }
+
+  /**
+   * Helper to construct valid CSS font string for canvas 2D context
+   * Ensures 100% compliance with CSS font shorthand standard
+   */
+  private getCanvasFont(
+    fontStyle: TrackFontStyle | string | undefined,
+    fontSize: number,
+    fontFamily: string
+  ): { font: string; isUpper: boolean; weight: string; style: string } {
+    let style = 'normal';
+    let weight = '400';
+    let isUpper = false;
+
+    switch (fontStyle) {
+      case 'italic':
+        style = 'italic';
+        weight = '400';
+        break;
+      case 'bold':
+        style = 'normal';
+        weight = '700';
+        break;
+      case 'bold-italic':
+        style = 'italic';
+        weight = '700';
+        break;
+      case 'uppercase':
+        style = 'normal';
+        weight = '700';
+        isUpper = true;
+        break;
+      default:
+        style = 'normal';
+        weight = '400';
+        break;
+    }
+
+    const safeSize = Math.max(6, Math.round(fontSize));
+    const safeFamily = fontFamily || 'Be Vietnam Pro';
+    const font = `${style} ${weight} ${safeSize}px '${safeFamily}', sans-serif`;
+    return { font, isUpper, weight, style };
   }
 
   /**
@@ -2786,20 +2850,10 @@ export class VisualizerRenderer {
     ctx.textAlign = alignment;
     ctx.textBaseline = 'middle';
 
-    let displayText = text;
-    let stylePrefix = 'normal 400';
-    if (fontStyle === 'italic') {
-      stylePrefix = 'italic 400';
-    } else if (fontStyle === 'bold') {
-      stylePrefix = 'bold 700';
-    } else if (fontStyle === 'bold-italic') {
-      stylePrefix = 'italic bold 700';
-    } else if (fontStyle === 'uppercase') {
-      stylePrefix = 'bold 700';
-      displayText = displayText.toUpperCase();
-    }
+    const { font, isUpper } = this.getCanvasFont(fontStyle, fontSize, fontFamily);
+    const displayText = isUpper ? text.toUpperCase() : text;
 
-    ctx.font = `${stylePrefix} ${fontSize}px '${fontFamily}', sans-serif`;
+    ctx.font = font;
 
     switch (fontEffect) {
       case 'neon-glow': {
@@ -2916,7 +2970,12 @@ export class VisualizerRenderer {
     let x = margin;
     let y = margin;
 
-    if (pos === 'top-left') {
+    if (pos === 'custom' || (track.logoPositionX !== undefined && track.logoPositionY !== undefined)) {
+      const posX = track.logoPositionX !== undefined ? track.logoPositionX : 10;
+      const posY = track.logoPositionY !== undefined ? track.logoPositionY : 10;
+      x = (width * posX) / 100 - logoW / 2;
+      y = (height * posY) / 100 - logoH / 2;
+    } else if (pos === 'top-left') {
       x = margin;
       y = margin;
     } else if (pos === 'top-right') {
@@ -2954,6 +3013,7 @@ export class VisualizerRenderer {
   ) {
     ctx.save();
     for (const box of textBoxes) {
+      if (box.visible === false) continue;
       if (!box.text || !box.text.trim()) continue;
 
       const posX = (width * box.positionX) / 100;
@@ -3685,74 +3745,99 @@ export class VisualizerRenderer {
         break;
       }
 
-      // 1. Classic Hardware Audio Equalizer (Mọc từ đáy lên trên, LED phân tầng cổ điển)
+      // 1. Classic Hardware Audio Equalizer (Mọc từ đáy lên trên, LED phân tầng cổ điển Studio Rack)
       case 'bars': {
         const totalW = barCount * (v.barWidth + v.barGap) - v.barGap;
         const startX = centerX - totalW / 2;
 
-        // Glowing base rail / ground line at bottom
+        // Glowing base ground rail with rack-mount look
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(startX - 6, posY + 1, totalW + 12, 3, 1.5);
+        ctx.roundRect(startX - 10, posY, totalW + 20, 3, 1.5);
         ctx.fillStyle = v.primaryColor || '#ec4899';
-        ctx.globalAlpha = 0.55;
         ctx.shadowColor = v.primaryColor || '#ec4899';
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 10;
+        ctx.fill();
+
+        // Floor reflection baseline (subtle mirror ground)
+        ctx.beginPath();
+        ctx.roundRect(startX - 4, posY + 4, totalW + 8, 1.5, 1);
+        ctx.fillStyle = v.secondaryColor || '#8b5cf6';
+        ctx.globalAlpha = 0.35;
         ctx.fill();
         ctx.restore();
+
+        const pColor = v.primaryColor || '#10b981'; // Classic green/teal base
+        const sColor = v.secondaryColor || '#f59e0b'; // Amber/yellow mid
+        const tColor = v.tertiaryColor || '#ef4444'; // Red/crimson peak
 
         for (let i = 0; i < barCount; i++) {
           const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.35) * (dataLength * 0.75)));
           const rawVal = freqData[dataIndex] || 0;
-          const barHeight = Math.max(4, (rawVal / 255) * 185 * amp * v.scale);
+          const barHeight = Math.max(5, (rawVal / 255) * 190 * amp * v.scale);
+
+          // Update peak bar animation
+          if (barHeight >= this.peakBars[i]) {
+            this.peakBars[i] = barHeight;
+            this.peakVelocities[i] = 0;
+          } else {
+            this.peakVelocities[i] += 0.38;
+            this.peakBars[i] = Math.max(0, this.peakBars[i] - this.peakVelocities[i]);
+          }
 
           const x = startX + i * (v.barWidth + v.barGap);
-          const topY = posY - barHeight;
 
-          // Vertical gradient for authentic hardware VU meter look
-          const barGrad = ctx.createLinearGradient(0, posY, 0, topY);
-          barGrad.addColorStop(0, v.primaryColor || '#ec4899');
-          barGrad.addColorStop(0.7, v.secondaryColor || '#8b5cf6');
-          barGrad.addColorStop(1, v.tertiaryColor || '#38bdf8');
-
-          // Segmented classic LED ladder effect
-          const segH = Math.max(3.5, Math.min(7, v.barWidth * 0.95));
+          // Authentic Segmented LED Ladder effect
+          const segH = Math.max(3, Math.min(6, v.barWidth * 0.9));
           const segGap = 1.5;
           const totalSegStep = segH + segGap;
           const numSegments = Math.max(1, Math.floor(barHeight / totalSegStep));
 
-          if (numSegments > 1 && v.barWidth >= 4) {
-            for (let s = 0; s < numSegments; s++) {
-              const segY = posY - (s + 1) * totalSegStep;
-              const isPeakSeg = s === numSegments - 1;
-              ctx.save();
-              if (isPeakSeg) {
-                // Bright accented top peak LED
-                ctx.fillStyle = v.tertiaryColor || '#ffffff';
-                ctx.shadowColor = v.tertiaryColor || v.secondaryColor || '#ffffff';
-                ctx.shadowBlur = 9;
-              } else {
-                ctx.fillStyle = barGrad;
-              }
-              ctx.beginPath();
-              ctx.roundRect(x, segY, v.barWidth, segH, Math.min(v.barRoundness, 2.5));
-              ctx.fill();
-              ctx.restore();
-            }
-          } else {
-            // Smooth solid bar with rounded top corners
-            ctx.fillStyle = barGrad;
-            ctx.beginPath();
-            ctx.roundRect(x, topY, v.barWidth, barHeight, [v.barRoundness, v.barRoundness, 1, 1]);
-            ctx.fill();
+          for (let s = 0; s < numSegments; s++) {
+            const segY = posY - (s + 1) * totalSegStep;
+            const progress = s / Math.max(1, numSegments);
 
-            // Accent peak cap line
             ctx.save();
-            ctx.fillStyle = v.tertiaryColor || '#ffffff';
-            ctx.shadowColor = v.tertiaryColor || v.secondaryColor || '#ffffff';
+            if (progress > 0.82) {
+              ctx.fillStyle = tColor;
+              ctx.shadowColor = tColor;
+              ctx.shadowBlur = 6;
+            } else if (progress > 0.48) {
+              ctx.fillStyle = sColor;
+            } else {
+              ctx.fillStyle = pColor;
+            }
+
+            ctx.beginPath();
+            ctx.roundRect(x, segY, v.barWidth, segH, Math.min(v.barRoundness, 1.5));
+            ctx.fill();
+            ctx.restore();
+          }
+
+          // Subtle reflection below ground
+          const reflH = Math.min(barHeight * 0.35, 24);
+          if (reflH > 3) {
+            ctx.save();
+            const reflGrad = ctx.createLinearGradient(0, posY, 0, posY + reflH);
+            reflGrad.addColorStop(0, pColor);
+            reflGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = reflGrad;
+            ctx.globalAlpha = 0.22;
+            ctx.beginPath();
+            ctx.roundRect(x, posY + 3, v.barWidth, reflH, 1);
+            ctx.fill();
+            ctx.restore();
+          }
+
+          // Floating Peak Cap Line
+          if (this.peakBars[i] > 6) {
+            const peakY = posY - this.peakBars[i] - 4;
+            ctx.save();
+            ctx.fillStyle = tColor || '#ffffff';
+            ctx.shadowColor = tColor || '#ffffff';
             ctx.shadowBlur = 8;
             ctx.beginPath();
-            ctx.roundRect(x, topY, v.barWidth, Math.max(2, Math.min(4, v.barWidth * 0.5)), 1.5);
+            ctx.roundRect(x, peakY, v.barWidth, 2.5, 1);
             ctx.fill();
             ctx.restore();
           }
@@ -3760,49 +3845,71 @@ export class VisualizerRenderer {
         break;
       }
 
-      // 2. Symmetrical Dual-Sided Waveform (Sóng cột đối xứng trên dưới từ đường tâm)
+      // 2. Symmetrical Dual-Sided Waveform (Sóng cột đối xứng trên dưới tách đôi từ trục phát quang)
       case 'bars-mirrored': {
         const totalW = barCount * (v.barWidth + v.barGap) - v.barGap;
         const startX = centerX - totalW / 2;
+        const centerGap = 6; // Distinct separation gap between upper and lower halves
 
-        // Glowing center waistline running across the symmetry axis
+        // Glowing center symmetry axis beam running across the middle
         ctx.save();
         ctx.beginPath();
-        ctx.roundRect(startX - 8, posY - 1, totalW + 16, 2, 1);
-        ctx.fillStyle = v.primaryColor || '#ec4899';
-        ctx.globalAlpha = 0.4;
-        ctx.shadowColor = v.primaryColor || '#ec4899';
-        ctx.shadowBlur = 6;
+        ctx.roundRect(startX - 12, posY - 1.5, totalW + 24, 3, 1.5);
+        ctx.fillStyle = v.secondaryColor || '#38bdf8';
+        ctx.shadowColor = v.secondaryColor || '#38bdf8';
+        ctx.shadowBlur = 12 + beatIntensity * 10;
+        ctx.fill();
+
+        // Inner laser core wire
+        ctx.beginPath();
+        ctx.roundRect(startX - 6, posY - 0.5, totalW + 12, 1, 0.5);
+        ctx.fillStyle = '#ffffff';
         ctx.fill();
         ctx.restore();
 
         for (let i = 0; i < barCount; i++) {
           const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.35) * (dataLength * 0.75)));
           const rawVal = freqData[dataIndex] || 0;
-          const barHeight = Math.max(6, (rawVal / 255) * 175 * amp * v.scale);
+          const halfHeight = Math.max(3, (rawVal / 255) * 110 * amp * v.scale);
 
           const x = startX + i * (v.barWidth + v.barGap);
-          const topY = posY - barHeight / 2;
 
-          // Gradient radiating outwards from center posY
-          const mirGrad = ctx.createLinearGradient(0, posY, 0, topY);
-          mirGrad.addColorStop(0, v.primaryColor || '#ec4899');
-          mirGrad.addColorStop(1, v.secondaryColor || '#8b5cf6');
+          // 1. Upper Mirrored Bar (Extending upward from center gap)
+          const upperTopY = posY - centerGap / 2 - halfHeight;
+          const upperGrad = ctx.createLinearGradient(0, posY - centerGap / 2, 0, upperTopY);
+          upperGrad.addColorStop(0, v.primaryColor || '#ec4899');
+          upperGrad.addColorStop(0.65, v.secondaryColor || '#8b5cf6');
+          upperGrad.addColorStop(1, v.tertiaryColor || '#38bdf8');
 
-          ctx.fillStyle = mirGrad;
-
-          // Symmetrical rounded capsule
-          const pillRoundness = Math.max(v.barRoundness, v.barWidth / 2);
+          ctx.save();
+          ctx.fillStyle = upperGrad;
           ctx.beginPath();
-          ctx.roundRect(x, topY, v.barWidth, barHeight, pillRoundness);
+          // Top rounded, bottom flat towards center axis
+          ctx.roundRect(x, upperTopY, v.barWidth, halfHeight, [v.barRoundness, v.barRoundness, 1, 1]);
           ctx.fill();
+          ctx.restore();
 
-          // Center luminous core dot at symmetry axis
+          // 2. Lower Mirrored Bar (Extending downward from center gap)
+          const lowerStartY = posY + centerGap / 2;
+          const lowerGrad = ctx.createLinearGradient(0, lowerStartY, 0, lowerStartY + halfHeight);
+          lowerGrad.addColorStop(0, v.primaryColor || '#ec4899');
+          lowerGrad.addColorStop(0.65, v.secondaryColor || '#8b5cf6');
+          lowerGrad.addColorStop(1, v.tertiaryColor || '#38bdf8');
+
+          ctx.save();
+          ctx.fillStyle = lowerGrad;
+          ctx.beginPath();
+          // Bottom rounded, top flat towards center axis
+          ctx.roundRect(x, lowerStartY, v.barWidth, halfHeight, [1, 1, v.barRoundness, v.barRoundness]);
+          ctx.fill();
+          ctx.restore();
+
+          // Center symmetry node pulse
           ctx.save();
           ctx.fillStyle = '#ffffff';
-          ctx.globalAlpha = 0.75;
+          ctx.globalAlpha = 0.85;
           ctx.beginPath();
-          ctx.arc(x + v.barWidth / 2, posY, Math.max(1, v.barWidth * 0.28), 0, Math.PI * 2);
+          ctx.arc(x + v.barWidth / 2, posY, Math.max(1.2, Math.min(2.5, v.barWidth * 0.3)), 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }

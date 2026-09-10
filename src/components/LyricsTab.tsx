@@ -1156,6 +1156,73 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                       <span>{t.editTimeBtn || 'Sửa Time'}</span>
                     </button>
                   </div>
+
+                  {/* Inline Karaoke Timing Editor Bar (khi chọn chế độ Karaoke) */}
+                  {isKaraokeMode && (() => {
+                    const kStart = line.karaokeStartTime !== undefined ? line.karaokeStartTime : line.startTime;
+                    const kEnd = line.karaokeEndTime !== undefined ? line.karaokeEndTime : line.endTime;
+                    const kDur = Math.max(0.1, kEnd - kStart);
+                    const isCustom = line.karaokeEndTime !== undefined || line.karaokeStartTime !== undefined;
+                    const holdSecs = Math.max(0, line.endTime - kEnd);
+
+                    return (
+                      <div className="mt-2 pt-2 border-t border-amber-500/20 flex items-center justify-between gap-2 flex-wrap bg-amber-950/20 p-2 rounded-xl border">
+                        <div className="flex items-center gap-1.5 text-xs text-amber-300 flex-wrap">
+                          <Mic2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span className="font-bold text-[11px] text-amber-200">Karaoke Timing:</span>
+                          <span className="font-mono font-bold bg-amber-500/20 px-1.5 py-0.5 rounded text-amber-300 text-[11px]">
+                            {formatTimeSub(kStart)} ➔ {formatTimeSub(kEnd)}
+                          </span>
+                          <span className="font-mono text-amber-400 text-[11px] font-bold">
+                            ({kDur.toFixed(1)}s)
+                          </span>
+                          {holdSecs > 0.05 && (
+                            <span className="text-[10px] text-neutral-400 bg-neutral-900/80 px-1.5 py-0.5 rounded border border-neutral-800">
+                              giữ chữ {holdSecs.toFixed(1)}s
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateKaraokeEndTime(line.id, Math.max(kStart + 0.3, kEnd - 0.5))}
+                            title="Rút ngắn thời gian quét Karaoke 0.5s"
+                            className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500 hover:text-neutral-950 text-amber-200 text-[10px] font-mono font-bold transition-all cursor-pointer border border-amber-500/30"
+                          >
+                            -0.5s
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateKaraokeEndTime(line.id, Math.min(line.endTime, kEnd + 0.5))}
+                            title="Kéo dài thời gian quét Karaoke 0.5s"
+                            className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500 hover:text-neutral-950 text-amber-200 text-[10px] font-mono font-bold transition-all cursor-pointer border border-amber-500/30"
+                          >
+                            +0.5s
+                          </button>
+                          {isCustom && (
+                            <button
+                              type="button"
+                              onClick={() => handleResetKaraokeTiming(line.id)}
+                              title="Khôi phục khớp 100% thời gian câu"
+                              className="px-1.5 py-0.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white text-[10px] transition-colors cursor-pointer"
+                            >
+                              ↺
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setEditingLineId(line.id)}
+                            title="Chỉnh chi tiết thời gian Karaoke"
+                            className="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-neutral-950 text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                          >
+                            <Sparkles className="w-2.5 h-2.5" />
+                            <span>Chỉnh Timing</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })
@@ -1442,8 +1509,11 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                             Karaoke Timing
                           </span>
                         </h4>
-                        <p className="text-[11px] text-neutral-400">
-                          {t.karaokeTimingDesc || 'Thời gian ca sĩ hát xong câu (chữ sẽ quét màu xong và giữ hiển thị trên màn hình cho tới hết câu)'}
+                        <p className="text-[11px] text-neutral-300">
+                          {t.karaokeTimingDesc || 'Thời gian ca sĩ hát xong câu (chữ sẽ quét màu xong và giữ hiển thị trên màn hình cho tới hết câu).'}{' '}
+                          <span className="text-amber-300 font-medium">
+                            Ví dụ: time của câu 00:10.0 ➔ 00:14.8 (4.8s) thì karaoke timing 00:10.0 ➔ 00:12.8 (2.8s) — giữ chữ thêm 2.0s.
+                          </span>
                         </p>
                       </div>
                     </div>

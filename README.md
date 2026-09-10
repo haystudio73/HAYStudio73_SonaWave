@@ -42,7 +42,7 @@ These are planned enhancements and newly introduced features to improve workflow
   - TikTok: 1080x1920 (9:16)
   - YouTube Shorts: 1080x1920 (9:16)
   - Instagram Reels: 1080x1920 (9:16)
-
+  
 ### Visual Effects
 - Dynamic waveform animations & 17 visualizer styles
 - Customizable color schemes (Solid, Gradient 2/3, Rainbow, Neon)
@@ -69,8 +69,8 @@ These are planned enhancements and newly introduced features to improve workflow
 7. **Tia Laser Sân Khấu EDM (`laser-beams` - EDM Concert Lasers)**: Dàn chùm tia laser quét góc rộng bùng nổ theo nhịp kick drum sân khấu lễ hội âm nhạc.
 8. **Lõi Siêu Tân Tinh Tỏa Sáng (`starburst-core` - Starburst Nova Core)**: Vụ nổ hạt sao đa giác 360° với tâm phát quang năng lượng vũ trụ.
 9. **Ma Trận EQ Khối Nổi (`audio-equalizer-grid` - Cyber EQ Matrix Grid)**: Lưới tầng bậc LED đa sắc màu xếp chồng phản ứng cực nhạy theo từng dải tần số.
-10. **Sóng Cột Đối Xứng (`bars-mirrored` - Mirrored Bars)**: Thanh equalizer đối xứng trục giữa trên và dưới bắt mắt, cân đối.
-11. **Cột Cổ Điển EQ (`bars` - Classic Bars)**: Equalizer truyền thống dạng cột đứng vươn từ dưới lên trên.
+10. **Sóng Cột Đối Xứng (`bars-mirrored` - Twin Mirrored Beams)**: Chùm sóng đối xứng trục giữa 2 hướng trên - dưới với lõi laser phát sáng trung tâm (laser core), vạch phân tách trục rõ rệt và dải màu gradient đối xứng độc đáo, hoàn toàn phân biệt với các kiểu sóng khác.
+11. **Cột Cổ Điển EQ (`bars` - Classic Studio Hardware EQ)**: Dạng thang đèn LED ngắt tầng cổ điển (segmented LED ladder) của các thiết bị âm thanh phòng thu chuyên nghiệp, có bóng đổ phản chiếu mặt sàn (floor reflection) và vạch đỉnh (cap peak) riêng biệt.
 12. **Tia Tròn Tỏa Sáng (`circular-spikes` - Radial Spikes)**: Tia sóng xoay tròn quanh tâm đĩa phát sáng phong cách đĩa nhạc điện tử.
 13. **Sóng Nước Mềm Mại (`smooth-wave` - Liquid Wave)**: Dạng sóng dao động chất lỏng mềm mại, êm ái thích hợp cho bản nhạc Lofi & Acoustic.
 14. **Ma Trận LED Cyber (`cyber-matrix` - Cyber Matrix)**: Khối gạch LED kỹ thuật số nhảy theo từng quãng tần số âm thanh.
@@ -270,8 +270,13 @@ Cung cấp **8 phong cách hiển thị thẻ bài hát & bìa đĩa**:
   - Lớp Trên Cùng (Topmost - Hiển thị đè lên tất cả các lớp khác)
 - **Tùy biến Logo / Watermark thương hiệu cá nhân**:
   - Tải lên hình ảnh Logo PNG trong suốt.
-  - Đặt vị trí tùy ý (4 góc màn hình hoặc chính giữa tâm huy hiệu).
+  - Tự do di dời Logo theo tọa độ X, Y bất kỳ trên màn hình (0% - 100%) hoặc chọn nhanh các góc đặt sẵn (4 góc màn hình hoặc chính giữa tâm huy hiệu).
   - Tùy chỉnh kích thước (Scale), độ mờ (Opacity) và hiệu ứng vòng sáng Neon bao quanh Logo.
+- **Tùy chọn Ẩn / Hiện Hộp Chữ (Text & Titles Box Show/Hide)**:
+  - Cho phép bật/tắt hiển thị toàn bộ phần Text Box (Tiêu đề, Nghệ sĩ) theo nhu cầu.
+- **Bộ Công Cụ Cân Chỉnh Phông Chữ Chi Tiết (Typography Stepper & Preview)**:
+  - Chỉnh độc lập Phông chữ (Font Family), Kiểu chữ (Font Style: Thường, Nghiêng, Đậm, Đậm & Nghiêng, Viết Hoa), và Cỡ chữ (Font Size) cho từng dòng Sub Title, Main Title và Artist Info.
+  - Nút bấm tăng giảm cỡ chữ nhanh (+ / -), thanh trượt mượt mà và thẻ xem trước (Live Font Preview) trực quan ngay trên bảng điều khiển.
 
 ---
 

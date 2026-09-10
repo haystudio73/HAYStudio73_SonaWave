@@ -22,7 +22,9 @@ import {
   Disc,
   Activity,
   Music2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface TextBoxTabProps {
@@ -122,6 +124,7 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
       maxWidth: 80,
       lineHeight: 1.35,
       layerOrder: 'front-all',
+      visible: true,
     };
     const updated = [...textBoxes, newBox];
     onChange(updated);
@@ -146,6 +149,7 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
       ...box,
       id: 'tb-' + Date.now(),
       positionY: Math.min(95, box.positionY + 5),
+      visible: true,
     };
     const updated = [...textBoxes, newBox];
     onChange(updated);
@@ -209,32 +213,56 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
         </div>
       )}
 
-      {/* Text Box Tabs Selector with Reordering */}
+      {/* Text Box Tabs Selector with Visibility & Reordering */}
       {textBoxes.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
           {textBoxes.map((box, idx) => {
             const isSelected = activeBox?.id === box.id;
+            const isVisible = box.visible !== false;
             const currentLayer = LAYER_OPTIONS.find((l) => l.id === (box.layerOrder || 'front-all'));
             return (
               <div key={box.id} className="flex items-center gap-0.5 flex-shrink-0">
-                <button
-                  onClick={() => setSelectedId(box.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                <div
+                  className={`flex items-center rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
                     isSelected
-                      ? 'bg-rose-600 text-white shadow-sm'
-                      : 'bg-neutral-900/80 border border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                      ? 'bg-rose-600 border-rose-500 text-white shadow-sm'
+                      : isVisible
+                      ? 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                      : 'bg-neutral-950/60 border-neutral-900 text-neutral-500 opacity-60'
                   }`}
                 >
-                  <span>#{idx + 1}</span>
-                  <span className="max-w-[90px] truncate text-[11px] font-normal opacity-90">
-                    {box.text ? box.text.slice(0, 14) : (language === 'vi' ? 'Trống' : 'Empty')}
-                  </span>
-                  {currentLayer && (
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-black/30 text-rose-200 border border-white/10">
-                      {language === 'vi' ? currentLayer.nameVi.split(' ')[0] : currentLayer.nameEn.split(' ')[0]}
+                  <button
+                    onClick={() => setSelectedId(box.id)}
+                    className="px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>#{idx + 1}</span>
+                    <span className={`max-w-[80px] truncate text-[11px] font-normal ${!isVisible ? 'line-through' : ''}`}>
+                      {box.text ? box.text.slice(0, 14) : (language === 'vi' ? 'Trống' : 'Empty')}
                     </span>
-                  )}
-                </button>
+                    {currentLayer && (
+                      <span className="text-[9px] px-1 py-0.2 rounded bg-black/30 text-rose-200 border border-white/10">
+                        {language === 'vi' ? currentLayer.nameVi.split(' ')[0] : currentLayer.nameEn.split(' ')[0]}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUpdateBox(box.id, { visible: !isVisible });
+                    }}
+                    title={
+                      isVisible
+                        ? (language === 'vi' ? 'Nhấn để ẩn hộp chữ này' : 'Click to hide this text box')
+                        : (language === 'vi' ? 'Nhấn để hiện hộp chữ này' : 'Click to show this text box')
+                    }
+                    className={`pr-2 py-1.5 hover:scale-110 transition-transform cursor-pointer ${
+                      isSelected ? 'text-white/80 hover:text-white' : isVisible ? 'text-neutral-400 hover:text-rose-400' : 'text-neutral-600 hover:text-neutral-300'
+                    }`}
+                  >
+                    {isVisible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 text-neutral-500" />}
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -244,6 +272,34 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
       {/* Active Text Box Settings */}
       {activeBox && (
         <div className="space-y-4 pt-2 border-t border-neutral-800/80">
+          {/* Quick Visibility Toggle Card */}
+          <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-neutral-900/90 border border-neutral-800">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeBox.visible !== false ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-500'}`}>
+                {activeBox.visible !== false ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-neutral-200">
+                  {language === 'vi' ? 'Hiển thị Hộp Chữ (Show/Hide)' : 'Text Box Visibility (Show/Hide)'}
+                </div>
+                <div className="text-[10px] text-neutral-400">
+                  {activeBox.visible !== false
+                    ? (language === 'vi' ? 'Đang bật hiển thị trên video' : 'Currently shown on video')
+                    : (language === 'vi' ? 'Đang ẩn (Không vẽ lên canvas)' : 'Currently hidden (Not drawn on canvas)')}
+                </div>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={activeBox.visible !== false}
+                onChange={(e) => handleUpdateBox(activeBox.id, { visible: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
+          </div>
+
           {/* Text input & Actions */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">

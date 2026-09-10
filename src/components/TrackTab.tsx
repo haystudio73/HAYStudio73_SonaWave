@@ -700,24 +700,117 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
           <div className="space-y-3 bg-neutral-900/40 p-3 rounded-xl border border-neutral-800/80">
             {/* Logo Position */}
             <div>
-              <span className="text-xs text-neutral-400 block mb-1">Vị trí hiển thị Watermark</span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-neutral-400">
+                  {language === 'vi' ? 'Vị trí hiển thị Watermark' : 'Watermark Position'}
+                </span>
+                <span className="text-[11px] font-mono text-cyan-400">
+                  X: {Math.round(track.logoPositionX ?? 6)}% | Y: {Math.round(track.logoPositionY ?? 6)}%
+                </span>
+              </div>
               <select
                 value={track.logoPosition || 'top-left'}
-                onChange={(e) => update({ logoPosition: e.target.value as LogoPosition })}
-                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-cyan-500"
+                onChange={(e) => {
+                  const pos = e.target.value as LogoPosition;
+                  if (pos === 'top-left') update({ logoPosition: pos, logoPositionX: 6, logoPositionY: 6 });
+                  else if (pos === 'top-right') update({ logoPosition: pos, logoPositionX: 94, logoPositionY: 6 });
+                  else if (pos === 'bottom-left') update({ logoPosition: pos, logoPositionX: 6, logoPositionY: 94 });
+                  else if (pos === 'bottom-right') update({ logoPosition: pos, logoPositionX: 94, logoPositionY: 94 });
+                  else if (pos === 'badge-center') update({ logoPosition: pos, logoPositionX: 50, logoPositionY: 28 });
+                  else update({ logoPosition: 'custom' });
+                }}
+                className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-cyan-500 cursor-pointer"
               >
-                <option value="top-left">Góc trên cùng bên Trái (Top Left)</option>
-                <option value="top-right">Góc trên cùng bên Phải (Top Right)</option>
-                <option value="bottom-left">Góc dưới cùng bên Trái (Bottom Left)</option>
-                <option value="bottom-right">Góc dưới cùng bên Phải (Bottom Right)</option>
+                <option value="top-left">{language === 'vi' ? '↖ Góc trên cùng bên Trái (Top Left)' : '↖ Top Left Corner'}</option>
+                <option value="top-right">{language === 'vi' ? '↗ Góc trên cùng bên Phải (Top Right)' : '↗ Top Right Corner'}</option>
+                <option value="bottom-left">{language === 'vi' ? '↙ Góc dưới cùng bên Trái (Bottom Left)' : '↙ Bottom Left Corner'}</option>
+                <option value="bottom-right">{language === 'vi' ? '↘ Góc dưới cùng bên Phải (Bottom Right)' : '↘ Bottom Right Corner'}</option>
+                <option value="badge-center">{language === 'vi' ? '⦿ Chính Giữa Khung (Center)' : '⦿ Center'}</option>
+                <option value="custom">{language === 'vi' ? '✦ Tự do di chuyển (Tọa độ X, Y bất kỳ)' : '✦ Custom (Any X, Y Position)'}</option>
               </select>
+
+              {/* Quick Position Presets */}
+              <div className="flex items-center gap-1.5 mt-2">
+                {[
+                  { id: 'top-left', label: '↖ Trái-Trên', x: 6, y: 6 },
+                  { id: 'top-right', label: '↗ Phải-Trên', x: 94, y: 6 },
+                  { id: 'bottom-left', label: '↙ Trái-Dưới', x: 6, y: 94 },
+                  { id: 'bottom-right', label: '↘ Phải-Dưới', x: 94, y: 94 },
+                  { id: 'badge-center', label: '⦿ Giữa', x: 50, y: 50 },
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => update({ logoPosition: p.id as LogoPosition, logoPositionX: p.x, logoPositionY: p.y })}
+                    className={`flex-1 py-1 text-[10px] rounded-lg border transition-all cursor-pointer font-medium ${
+                      track.logoPosition === p.id
+                        ? 'bg-cyan-500/20 border-cyan-500/60 text-cyan-300 font-semibold'
+                        : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Arbitrary X & Y Sliders */}
+            <div className="p-2.5 rounded-xl bg-neutral-950/70 border border-neutral-800/80 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-neutral-300">
+                  {language === 'vi' ? 'Di dời vị trí tự do (X, Y Tùy ý)' : 'Free Position (X, Y Offset)'}
+                </span>
+                <span className="text-[10px] text-cyan-400/80 bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-800/50">
+                  {language === 'vi' ? '0% - 100% Canvas' : '0% - 100% Canvas'}
+                </span>
+              </div>
+
+              {/* Slider X */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">{language === 'vi' ? 'Vị trí ngang (Tọa độ X)' : 'Horizontal (X)'}</span>
+                  <span className="text-cyan-400 font-mono font-bold">{Math.round(track.logoPositionX ?? 6)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={track.logoPositionX ?? 6}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    update({ logoPositionX: val, logoPosition: 'custom' });
+                  }}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                />
+              </div>
+
+              {/* Slider Y */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">{language === 'vi' ? 'Vị trí dọc (Tọa độ Y)' : 'Vertical (Y)'}</span>
+                  <span className="text-cyan-400 font-mono font-bold">{Math.round(track.logoPositionY ?? 6)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={track.logoPositionY ?? 6}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    update({ logoPositionY: val, logoPosition: 'custom' });
+                  }}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                />
+              </div>
             </div>
 
             {/* Logo Scale & Opacity */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">Kích cỡ Logo</span>
+                  <span className="text-neutral-400">{language === 'vi' ? 'Kích cỡ Logo' : 'Logo Scale'}</span>
                   <span className="text-cyan-400 font-mono">{(track.logoScale || 1.0).toFixed(1)}x</span>
                 </div>
                 <input
@@ -733,7 +826,7 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
 
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">Độ trong suốt</span>
+                  <span className="text-neutral-400">{language === 'vi' ? 'Độ trong suốt' : 'Opacity'}</span>
                   <span className="text-cyan-400 font-mono">{Math.round((track.logoOpacity || 0.9) * 100)}%</span>
                 </div>
                 <input
@@ -750,7 +843,9 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
 
             {/* Logo Glow */}
             <label className="flex items-center justify-between cursor-pointer pt-1">
-              <span className="text-xs text-neutral-300">Phát sáng viền Logo theo tiếng Bass</span>
+              <span className="text-xs text-neutral-300">
+                {language === 'vi' ? 'Phát sáng viền Logo theo tiếng Bass' : 'Pulse Logo Glow on Beat'}
+              </span>
               <input
                 type="checkbox"
                 checked={!!track.logoGlow}
@@ -932,7 +1027,7 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                     }
                     onChange={(e) => {
                       if (selectedDetailTab === 'subtitle') update({ subtitleFontFamily: e.target.value });
-                      else if (selectedDetailTab === 'title') update({ titleFontFamily: e.target.value });
+                      else if (selectedDetailTab === 'title') update({ titleFontFamily: e.target.value, fontFamily: e.target.value });
                       else update({ artistFontFamily: e.target.value });
                     }}
                     className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-9 pr-8 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer appearance-none"
@@ -1007,7 +1102,7 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                 </div>
               </div>
 
-              {/* 3. Font Size Slider & Color Picker */}
+              {/* 3. Font Size Slider with Steppers & Color Picker */}
               <div className="grid grid-cols-2 gap-3 pt-1">
                 {/* Font Size */}
                 <div>
@@ -1023,25 +1118,53 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                         : (track.artistFontSize || 15)}px
                     </span>
                   </div>
-                  <input
-                    type="range"
-                    min={selectedDetailTab === 'subtitle' ? 8 : selectedDetailTab === 'title' ? 12 : 10}
-                    max={selectedDetailTab === 'subtitle' ? 42 : selectedDetailTab === 'title' ? 64 : 44}
-                    value={
-                      selectedDetailTab === 'subtitle'
-                        ? (track.subtitleFontSize || 13)
-                        : selectedDetailTab === 'title'
-                        ? (track.titleFontSize || 24)
-                        : (track.artistFontSize || 15)
-                    }
-                    onChange={(e) => {
-                      const sz = parseInt(e.target.value);
-                      if (selectedDetailTab === 'subtitle') update({ subtitleFontSize: sz });
-                      else if (selectedDetailTab === 'title') update({ titleFontSize: sz });
-                      else update({ artistFontSize: sz });
-                    }}
-                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = selectedDetailTab === 'subtitle' ? (track.subtitleFontSize || 13) : selectedDetailTab === 'title' ? (track.titleFontSize || 24) : (track.artistFontSize || 15);
+                        const next = Math.max(8, cur - 1);
+                        if (selectedDetailTab === 'subtitle') update({ subtitleFontSize: next });
+                        else if (selectedDetailTab === 'title') update({ titleFontSize: next });
+                        else update({ artistFontSize: next });
+                      }}
+                      className="w-6 h-6 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold flex items-center justify-center cursor-pointer active:scale-95"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="range"
+                      min={selectedDetailTab === 'subtitle' ? 8 : selectedDetailTab === 'title' ? 12 : 10}
+                      max={selectedDetailTab === 'subtitle' ? 42 : selectedDetailTab === 'title' ? 64 : 44}
+                      value={
+                        selectedDetailTab === 'subtitle'
+                          ? (track.subtitleFontSize || 13)
+                          : selectedDetailTab === 'title'
+                          ? (track.titleFontSize || 24)
+                          : (track.artistFontSize || 15)
+                      }
+                      onChange={(e) => {
+                        const sz = parseInt(e.target.value);
+                        if (selectedDetailTab === 'subtitle') update({ subtitleFontSize: sz });
+                        else if (selectedDetailTab === 'title') update({ titleFontSize: sz });
+                        else update({ artistFontSize: sz });
+                      }}
+                      className="flex-1 h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cur = selectedDetailTab === 'subtitle' ? (track.subtitleFontSize || 13) : selectedDetailTab === 'title' ? (track.titleFontSize || 24) : (track.artistFontSize || 15);
+                        const next = Math.min(64, cur + 1);
+                        if (selectedDetailTab === 'subtitle') update({ subtitleFontSize: next });
+                        else if (selectedDetailTab === 'title') update({ titleFontSize: next });
+                        else update({ artistFontSize: next });
+                      }}
+                      className="w-6 h-6 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold flex items-center justify-center cursor-pointer active:scale-95"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
 
                 {/* Color Picker */}
@@ -1094,6 +1217,56 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                   </div>
                 </div>
               </div>
+
+              {/* 4. Live Font Preview Card */}
+              {(() => {
+                const curFamily = selectedDetailTab === 'subtitle'
+                  ? (track.subtitleFontFamily || track.fontFamily || 'Be Vietnam Pro')
+                  : selectedDetailTab === 'title'
+                  ? (track.titleFontFamily || track.fontFamily || 'Be Vietnam Pro')
+                  : (track.artistFontFamily || track.fontFamily || 'Be Vietnam Pro');
+                const curStyle = selectedDetailTab === 'subtitle'
+                  ? (track.subtitleFontStyle || 'normal')
+                  : selectedDetailTab === 'title'
+                  ? (track.titleFontStyle || 'bold')
+                  : (track.artistFontStyle || 'normal');
+                const curSize = selectedDetailTab === 'subtitle'
+                  ? (track.subtitleFontSize || 13)
+                  : selectedDetailTab === 'title'
+                  ? (track.titleFontSize || 24)
+                  : (track.artistFontSize || 15);
+                const curColor = selectedDetailTab === 'subtitle'
+                  ? (track.subtitleColor || '#fb923c')
+                  : selectedDetailTab === 'title'
+                  ? (track.textColor || '#ffffff')
+                  : (track.artistColor || '#cccccc');
+                const sampleText = selectedDetailTab === 'subtitle'
+                  ? (track.subtitle || 'Audio Experience')
+                  : selectedDetailTab === 'title'
+                  ? (track.title || 'SonaWave Music Title')
+                  : (track.artist || 'Artist / Producer');
+
+                return (
+                  <div className="p-2.5 rounded-xl bg-neutral-950/80 border border-neutral-800/80 text-center overflow-hidden">
+                    <span className="text-[10px] text-neutral-500 uppercase tracking-wider block mb-1">
+                      {language === 'vi' ? 'Xem trước phông chữ & kiểu' : 'Live Font & Style Preview'}
+                    </span>
+                    <p
+                      style={{
+                        fontFamily: `'${curFamily}', sans-serif`,
+                        fontSize: `${Math.min(Math.max(curSize, 13), 26)}px`,
+                        fontWeight: curStyle === 'bold' || curStyle === 'bold-italic' || curStyle === 'uppercase' ? 700 : 400,
+                        fontStyle: curStyle === 'italic' || curStyle === 'bold-italic' ? 'italic' : 'normal',
+                        textTransform: curStyle === 'uppercase' ? 'uppercase' : 'none',
+                        color: curColor,
+                      }}
+                      className="truncate px-2"
+                    >
+                      {sampleText}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

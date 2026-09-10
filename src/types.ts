@@ -301,7 +301,7 @@ export type CardStyle =
   | 'horizontal-rounded-card' // Thẻ Bo Góc Viền Đậm 3 Dòng (Bìa bo góc bên trái, Subtitle, Title, Artist bên phải)
   | 'hidden';
 
-export type LogoPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'badge-center';
+export type LogoPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'badge-center' | 'custom';
 
 export type BadgeBeatJumpStyle = 'pulse' | 'bounce-up' | 'scale-rotate' | 'jelly' | 'shake';
 
@@ -329,7 +329,9 @@ export interface TrackMetadata {
   badgePngUrl?: string;      // Dedicated PNG badge image (independent of Brand Logo)
   logoUrl?: string;          // Custom uploaded transparent PNG logo
   showLogo?: boolean;         // Toggle logo watermark/brand
-  logoPosition?: LogoPosition; // Position corner / center
+  logoPosition?: LogoPosition; // Position corner / center / custom
+  logoPositionX?: number;     // 0 to 100% (horizontal position)
+  logoPositionY?: number;     // 0 to 100% (vertical position)
   logoScale?: number;         // 0.3 to 2.5
   logoOpacity?: number;       // 0.1 to 1.0
   logoGlow?: boolean;         // Neon halo around logo
@@ -420,6 +422,7 @@ export interface TextBoxItem {
   maxWidth?: number;      // Max width in % of stage (20 to 95, default 80)
   lineHeight?: number;    // Line height multiplier (1.1 to 2.0, default 1.35)
   layerOrder?: TextBoxLayerOrder; // Order layer: back/front of Wave, Lyrics, Title, etc.
+  visible?: boolean;      // Toggle hidden/show on canvas (default true)
 }
 
 export interface ExportSettings {
