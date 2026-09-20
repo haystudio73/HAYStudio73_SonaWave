@@ -40,8 +40,13 @@ import {
   CircleDot,
   Scissors,
   Mic2,
-  Sliders
+  Sliders,
+  ListMusic,
+  ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
+import { PlaylistConfig, AudioTrackItem } from '../types';
+import { matchLyricsFilesToTracks } from '../utils/playlistManager';
 
 interface LyricsTabProps {
   config: LyricsConfig;
@@ -52,6 +57,12 @@ interface LyricsTabProps {
   duration: number;
   onSeek?: (time: number) => void;
   language?: Language;
+  playlist?: PlaylistConfig;
+  onSelectTrackIndex?: (index: number) => void;
+  onUpdateTrackLyrics?: (trackId: string, lyrics: LyricLine[], rawLyrics?: string, fileName?: string) => void;
+  onBatchImportLyrics?: (files: { name: string; content: string }[]) => number | void;
+  onNavigateToPlaylistTab?: () => void;
+  onApplyLyricsToAllTracks?: (lyrics: LyricLine[]) => void;
 }
 
 const STYLES: { id: LyricsStyle; labelVi: string; labelEn: string; descVi: string; descEn: string; badge?: string }[] = [
@@ -106,17 +117,131 @@ const FONT_EFFECTS: { id: LyricsFontEffect; name: string; desc: string }[] = [
 export const LyricsTab: React.FC<LyricsTabProps> = ({
   config,
   onChange,
-  lyrics,
-  onLyricsChange,
+  lyrics: propLyrics,
+  onLyricsChange: propOnLyricsChange,
   currentTime,
-  duration,
+  duration: propDuration,
   onSeek,
   language = 'vi',
+  playlist,
+  onSelectTrackIndex,
+  onUpdateTrackLyrics,
+  onBatchImportLyrics,
+  onNavigateToPlaylistTab,
+  onApplyLyricsToAllTracks,
 }) => {
   const t = TRANSLATIONS[language] || TRANSLATIONS.vi;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const batchLyricsInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Playlist Track Selection State
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
+  const [isPasteModalOpen, setIsPasteModalOpen] = useState<boolean>(false);
+  const [pasteModalText, setPasteModalText] = useState<string>('');
+
+  const currentPlaylistIndex = playlist ? playlist.currentIndex : 0;
+  const currentPlayingTrack = playlist?.tracks?.[currentPlaylistIndex];
+  
+  // Track currently being viewed/edited in this tab
+  const viewedTrack = (selectedTrackId ? playlist?.tracks?.find((t) => t.id === selectedTrackId) : null) || currentPlayingTrack;
+  const isViewingCurrentTrack = !viewedTrack || viewedTrack.id === currentPlayingTrack?.id;
+
+  // Active lyrics & duration for the viewed track
+  const lyrics = useMemo(() => {
+    if (!isViewingCurrentTrack && viewedTrack) {
+      return viewedTrack.lyrics || [];
+    }
+    return propLyrics;
+  }, [isViewingCurrentTrack, viewedTrack, propLyrics]);
+
+  const duration = useMemo(() => {
+    if (!isViewingCurrentTrack && viewedTrack && viewedTrack.duration) {
+      return viewedTrack.duration;
+    }
+    return propDuration;
+  }, [isViewingCurrentTrack, viewedTrack, propDuration]);
+
+  // Unified onLyricsChange that routes to the viewed track or active track
+  const onLyricsChange = (newLyrics: LyricLine[]) => {
+    if (!isViewingCurrentTrack && viewedTrack) {
+      onUpdateTrackLyrics?.(viewedTrack.id, newLyrics, undefined, viewedTrack.lyricsFileName);
+    } else {
+      propOnLyricsChange(newLyrics);
+      if (currentPlayingTrack) {
+        onUpdateTrackLyrics?.(currentPlayingTrack.id, newLyrics, undefined, currentPlayingTrack.lyricsFileName);
+      }
+    }
+  };
+
+  // Handle batch lyrics import inside Lyrics Tab
+  const handleBatchLyricsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !playlist) return;
+
+    try {
+      const fileItems: { name: string; content: string }[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        const text = await f.text();
+        fileItems.push({ name: f.name, content: text });
+      }
+
+      if (onBatchImportLyrics) {
+        const count = onBatchImportLyrics(fileItems);
+        showToast(
+          language === 'vi'
+            ? `Đã ghép thành công lời cho ${count ?? fileItems.length} bài hát trong danh sách!`
+            : `Matched lyrics for tracks in playlist!`
+        );
+      }
+    } catch (err) {
+      console.error('Error importing batch lyrics in LyricsTab:', err);
+      showToast(language === 'vi' ? 'Lỗi khi đọc file lyrics!' : 'Failed to parse lyrics files!');
+    } finally {
+      if (batchLyricsInputRef.current) {
+        batchLyricsInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Handle paste lyrics for viewed track
+  const handleSavePastedLyrics = () => {
+    if (!pasteModalText.trim()) return;
+    const parsed = parseAnyLyrics(pasteModalText, duration || 60);
+    onLyricsChange(parsed);
+    setIsPasteModalOpen(false);
+    setPasteModalText('');
+    showToast(
+      language === 'vi'
+        ? `Đã nạp ${parsed.length} câu lời cho bài hát!`
+        : `Loaded ${parsed.length} lyric lines!`
+    );
+  };
+
+  // Handle apply current lyrics to all tracks
+  const handleApplyToAllTracks = () => {
+    if (!playlist || lyrics.length === 0) return;
+    if (onApplyLyricsToAllTracks) {
+      onApplyLyricsToAllTracks(lyrics);
+    } else if (onUpdateTrackLyrics) {
+      playlist.tracks.forEach((t) => {
+        onUpdateTrackLyrics(t.id, lyrics, undefined, 'Shared_Lyrics.lrc');
+      });
+    }
+    showToast(
+      language === 'vi'
+        ? `Đã sao chép lời này sang toàn bộ ${playlist.tracks.length} bài hát!`
+        : `Applied lyrics to all ${playlist.tracks.length} tracks!`
+    );
+  };
+
+  // Handle clear lyrics for viewed track
+  const handleClearViewedLyrics = () => {
+    onLyricsChange([]);
+    showToast(language === 'vi' ? 'Đã xóa toàn bộ câu hát!' : 'Cleared all lyric lines!');
+  };
 
   // ID of the line currently being edited in the Popup Modal
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
@@ -445,6 +570,244 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
         <div className="p-3 bg-emerald-500/20 border border-emerald-500/50 rounded-xl text-emerald-200 text-xs font-semibold flex items-center gap-2 shadow-lg animate-fade-in">
           <Check className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Hidden Batch Lyrics Input */}
+      <input
+        ref={batchLyricsInputRef}
+        type="file"
+        multiple
+        accept=".srt,.lrc,.txt"
+        className="hidden"
+        onChange={handleBatchLyricsUpload}
+      />
+
+      {/* 0. Playlist Track Lyrics Switcher & Batch Synchronizer */}
+      {playlist && playlist.tracks.length > 0 && (
+        <div className="bg-gradient-to-br from-purple-950/40 via-neutral-900 to-neutral-900 border border-purple-500/30 rounded-2xl p-4 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300">
+                <ListMusic className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+                    {language === 'vi' ? 'Danh Sách Lời Bài Hát (Playlist Lyrics)' : 'Playlist Lyrics by Audio Track'}
+                  </h4>
+                  <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold">
+                    {playlist.tracks.filter((t) => t.lyrics && t.lyrics.length > 0).length}/{playlist.tracks.length} {language === 'vi' ? 'bài đã có lời' : 'tracks ready'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-400">
+                  {language === 'vi'
+                    ? 'Mỗi file nhạc có lời riêng. Chọn bài bên dưới để xem, sửa câu hát hoặc nạp file lời hàng loạt'
+                    : 'Each track holds its own lyrics. Select a track below to view, edit, or batch-match lyrics'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => batchLyricsInputRef.current?.click()}
+                title={language === 'vi' ? 'Nạp nhiều file .LRC/.SRT cùng lúc, hệ thống tự động ghép theo tên bài hát' : 'Batch import .lrc/.srt files'}
+                className="px-2.5 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/40 border border-purple-500/50 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              >
+                <Upload className="w-3.5 h-3.5 text-purple-300" />
+                <span>{language === 'vi' ? 'Nạp Lời Hàng Loạt (.LRC/.SRT)' : 'Batch Lyrics (.lrc/.srt)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPasteModalText(viewedTrack?.rawLyrics || '');
+                  setIsPasteModalOpen(true);
+                }}
+                title={language === 'vi' ? 'Dán nhanh văn bản hoặc nội dung file lời cho bài này' : 'Quick paste lyrics text'}
+                className="px-2.5 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-neutral-400" />
+                <span>{language === 'vi' ? 'Dán Lời Nhanh' : 'Paste'}</span>
+              </button>
+
+              {onNavigateToPlaylistTab && (
+                <button
+                  type="button"
+                  onClick={onNavigateToPlaylistTab}
+                  title={language === 'vi' ? 'Chuyển sang Tab Danh Sách Nhạc' : 'Go to Playlist tab'}
+                  className="p-1.5 rounded-xl bg-neutral-800/80 hover:bg-neutral-700 border border-neutral-700 text-neutral-400 hover:text-neutral-200 transition-all cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Track Selector Horizontal Scrollable Strip */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5 custom-scrollbar">
+            {playlist.tracks.map((track, idx) => {
+              const isSelected = viewedTrack?.id === track.id;
+              const isPlayingThis = currentPlayingTrack?.id === track.id;
+              const hasLyrics = track.lyrics && track.lyrics.length > 0;
+
+              return (
+                <button
+                  key={`${track.id || 'track'}-${idx}`}
+                  type="button"
+                  onClick={() => setSelectedTrackId(track.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-left shrink-0 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-purple-500/25 border-purple-400 text-white shadow-md ring-1 ring-purple-500/40'
+                      : 'bg-neutral-900/90 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
+                  }`}
+                >
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono text-neutral-400 font-bold">
+                        #{idx + 1}
+                      </span>
+                      <span className="text-xs font-bold truncate max-w-[120px] sm:max-w-[160px] text-neutral-100">
+                        {track.title}
+                      </span>
+                      {isPlayingThis && (
+                        <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-bold text-[9px] uppercase border border-rose-500/40 shrink-0 animate-pulse">
+                          Live
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-neutral-400 mt-0.5">
+                      {hasLyrics ? (
+                        <span className="text-purple-300 font-medium flex items-center gap-0.5">
+                          <Mic2 className="w-2.5 h-2.5" /> {track.lyrics?.length} câu
+                        </span>
+                      ) : (
+                        <span className="text-neutral-500 italic">Chưa có lời</span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Track Controls Bar */}
+          {viewedTrack && (
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-neutral-800/80 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-neutral-400 text-[11px]">
+                  {language === 'vi' ? 'Đang chỉnh sửa:' : 'Editing:'}
+                </span>
+                <span className="font-bold text-white max-w-[200px] truncate">
+                  {viewedTrack.title}
+                </span>
+                {viewedTrack.lyricsFileName && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 font-mono">
+                    {viewedTrack.lyricsFileName}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {onSelectTrackIndex && viewedTrack.id !== currentPlayingTrack?.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const trackIndex = playlist.tracks.findIndex((t) => t.id === viewedTrack.id);
+                      if (trackIndex >= 0) {
+                        onSelectTrackIndex(trackIndex);
+                      }
+                    }}
+                    title={language === 'vi' ? 'Phát bài hát này ngay trên Visualizer' : 'Play this track'}
+                    className="px-2.5 py-1 rounded-lg bg-rose-600/30 hover:bg-rose-600/40 border border-rose-500/40 text-rose-200 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    <Play className="w-3 h-3 text-rose-300 fill-rose-300" />
+                    <span>{language === 'vi' ? 'Phát Bài Này' : 'Play Track'}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleApplyToAllTracks}
+                  disabled={lyrics.length === 0}
+                  title={language === 'vi' ? 'Áp dụng câu hát này cho toàn bộ danh sách' : 'Apply these lyrics to all tracks'}
+                  className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[11px] font-semibold transition-all disabled:opacity-30 cursor-pointer flex items-center gap-1"
+                >
+                  <RefreshCw className="w-3 h-3 text-neutral-400" />
+                  <span className="hidden sm:inline">{language === 'vi' ? 'Chép Cho Mọi Bài' : 'Copy All'}</span>
+                </button>
+
+                {lyrics.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearViewedLyrics}
+                    title={language === 'vi' ? 'Xóa toàn bộ câu hát của bài này' : 'Clear lyrics'}
+                    className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-rose-500/20 text-neutral-300 hover:text-rose-300 text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3 h-3 text-rose-400" />
+                    <span>{language === 'vi' ? 'Xóa Lời' : 'Clear'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Quick Paste Modal */}
+      {isPasteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg bg-neutral-900 border border-neutral-700 rounded-2xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-purple-400" />
+                <h3 className="text-sm font-bold text-white">
+                  {language === 'vi' ? 'Dán Lời Nhanh Cho Bài Hát' : 'Quick Paste Lyrics'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPasteModalOpen(false)}
+                className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-neutral-400">
+              {language === 'vi'
+                ? 'Hỗ trợ dán file .LRC, .SRT có thẻ thời gian [00:12.34] hoặc chỉ văn bản lời từng dòng. Hệ thống sẽ tự phân bổ thời gian thông minh.'
+                : 'Paste .LRC or .SRT formatted text with timestamps, or raw lyric lines.'}
+            </p>
+
+            <textarea
+              rows={8}
+              value={pasteModalText}
+              onChange={(e) => setPasteModalText(e.target.value)}
+              placeholder="[00:02.00] Dòng lời đầu tiên...&#10;[00:08.50] Dòng lời thứ hai...&#10;hoặc dán nguyên bài hát không cần thời gian"
+              className="w-full bg-neutral-950 border border-neutral-700 rounded-xl p-3 text-xs font-mono text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-purple-500 resize-y"
+            />
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPasteModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-neutral-800 text-neutral-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
+              >
+                {language === 'vi' ? 'Hủy' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePastedLyrics}
+                disabled={!pasteModalText.trim()}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all disabled:opacity-40 cursor-pointer flex items-center gap-1.5 shadow-lg shadow-purple-600/30"
+              >
+                <Check className="w-4 h-4" />
+                <span>{language === 'vi' ? 'Lưu & Nạp Lời' : 'Save & Load'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -15,7 +15,8 @@ import {
   RotateCcw, 
   Sliders, 
   Settings, 
-  Globe 
+  Globe,
+  FilePlus2
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -25,6 +26,7 @@ interface HeaderProps {
   onCaptureSnapshot: () => void;
   onOpenPresetsModal: () => void;
   onOpenProjectsModal: () => void;
+  onNewProject: () => void;
   onOpenMasterEqModal: () => void;
   onOpenSettingsModal: () => void;
   onLoadDemoTrack: (type: 'lofi' | 'synthwave' | 'acoustic' | 'edm') => void;
@@ -42,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   onCaptureSnapshot,
   onOpenPresetsModal,
   onOpenProjectsModal,
+  onNewProject,
   onOpenMasterEqModal,
   onOpenSettingsModal,
   onLoadDemoTrack,
@@ -91,8 +94,19 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Center Zone: Projects, Presets, Master EQ, Demo & Aspect Ratio */}
+      {/* Center Zone: New, Projects, Presets, Master EQ, Demo & Aspect Ratio */}
       <div className="flex items-center gap-1 sm:gap-2">
+        {/* New Project (Reset to Defaults) Button */}
+        <button
+          id="btn-header-new-project"
+          onClick={onNewProject}
+          title={language === 'vi' ? 'Dự án mới: Reset toàn bộ thông số về mặc định' : 'New Project: Reset all parameters to defaults'}
+          className="flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700/60 hover:border-rose-500/60 text-xs font-semibold text-neutral-200 transition-all cursor-pointer shadow-sm hover:text-white"
+        >
+          <FilePlus2 className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-rose-400" />
+          <span className="hidden md:inline">New</span>
+        </button>
+
         {/* Projects / Save / Load Button */}
         <button
           onClick={onOpenProjectsModal}

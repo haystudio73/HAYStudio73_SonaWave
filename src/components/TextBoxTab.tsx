@@ -1,7 +1,8 @@
 import React from 'react';
-import { TextBoxItem, TextBoxLayerOrder } from '../types';
+import { TextBoxItem, TextBoxLayerOrder, PlaylistConfig, TracklistTextFormat } from '../types';
 import { AVAILABLE_FONTS } from '../utils/presets';
 import { Language, TRANSLATIONS } from '../utils/i18n';
+import { generateTracklistContent } from '../utils/playlistManager';
 import { 
   Plus, 
   Trash2, 
@@ -24,14 +25,86 @@ import {
   Music2,
   Image as ImageIcon,
   Eye,
-  EyeOff
+  EyeOff,
+  ListMusic,
+  RefreshCw,
+  Clock,
+  Check,
+  Music
 } from 'lucide-react';
 
 interface TextBoxTabProps {
   textBoxes: TextBoxItem[];
   onChange: (textBoxes: TextBoxItem[]) => void;
   language?: Language;
+  playlist?: PlaylistConfig;
+  onNavigateToPlaylistTab?: () => void;
 }
+
+const TRACKLIST_FORMAT_OPTIONS: {
+  id: TracklistTextFormat;
+  labelVi: string;
+  labelEn: string;
+  example: string;
+}[] = [
+  {
+    id: 'title-duration',
+    labelVi: 'Tiêu Đề (Thời Lượng)',
+    labelEn: 'Title (Duration)',
+    example: '01. Neon Dream (03:45)',
+  },
+  {
+    id: 'timestamp-title',
+    labelVi: 'Mốc Timeline (00:00)',
+    labelEn: 'Timeline Timestamps',
+    example: '00:00 - Neon Dream',
+  },
+  {
+    id: 'duration-title',
+    labelVi: '[Thời Lượng] Tiêu Đề',
+    labelEn: '[Duration] Title',
+    example: '01. [03:45] Neon Dream',
+  },
+  {
+    id: 'title-artist-duration',
+    labelVi: 'Tiêu Đề - Ca Sĩ (Thời Lượng)',
+    labelEn: 'Title - Artist (Duration)',
+    example: '01. Neon Dream - SonaWave (03:45)',
+  },
+  {
+    id: 'compact-bullet',
+    labelVi: 'Dấu Chấm (Bullet)',
+    labelEn: 'Compact (Bullet)',
+    example: '1. Neon Dream • 03:45',
+  },
+];
+
+const TRACKLIST_LAYOUT_PRESETS = [
+  {
+    id: 'left-sidebar',
+    nameVi: 'Cột Trái',
+    nameEn: 'Left Sidebar',
+    settings: { positionX: 18, positionY: 48, alignment: 'left' as const, maxWidth: 45 },
+  },
+  {
+    id: 'right-sidebar',
+    nameVi: 'Cột Phải',
+    nameEn: 'Right Sidebar',
+    settings: { positionX: 82, positionY: 48, alignment: 'right' as const, maxWidth: 45 },
+  },
+  {
+    id: 'bottom-center',
+    nameVi: 'Dưới Cùng',
+    nameEn: 'Bottom Center',
+    settings: { positionX: 50, positionY: 82, alignment: 'center' as const, maxWidth: 75 },
+  },
+  {
+    id: 'top-right',
+    nameVi: 'Góc Trên Phải',
+    nameEn: 'Top Right',
+    settings: { positionX: 82, positionY: 22, alignment: 'right' as const, maxWidth: 40 },
+  },
+];
 
 const LAYER_OPTIONS: { 
   id: TextBoxLayerOrder; 
@@ -87,6 +160,8 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
   textBoxes,
   onChange,
   language = 'vi',
+  playlist,
+  onNavigateToPlaylistTab,
 }) => {
   const t = TRANSLATIONS[language] || TRANSLATIONS['vi'];
   const [selectedId, setSelectedId] = React.useState<string>(
@@ -131,6 +206,73 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
     setSelectedId(newBox.id);
   };
 
+  const handleAddTracklistBox = (format: TracklistTextFormat = 'title-duration') => {
+    const tracks = playlist?.tracks || [];
+    const headerTitle = language === 'vi' ? '🎵 DANH SÁCH BÀI HÁT' : '🎵 TRACKLIST';
+    const tracklistText = generateTracklistContent(tracks, format, {
+      includeHeader: true,
+      headerTitle,
+      currentIndex: playlist?.currentIndex || 0,
+      highlightCurrent: true,
+    });
+
+    const newBox: TextBoxItem = {
+      id: 'tb-tracklist-' + Date.now(),
+      text: tracklistText,
+      fontFamily: 'Be Vietnam Pro',
+      fontSize: 13,
+      color: '#ffffff',
+      hasBackground: true,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      backgroundOpacity: 0.75,
+      glowColor: '#38bdf8',
+      glowIntensity: 6,
+      positionX: 18,
+      positionY: 50,
+      alignment: 'left',
+      fontWeight: 'bold',
+      fontStyle: 'normal',
+      letterSpacing: 0.5,
+      isUppercase: false,
+      opacity: 0.95,
+      wrapText: true,
+      maxWidth: 45,
+      lineHeight: 1.5,
+      layerOrder: 'front-all',
+      visible: true,
+      isTracklist: true,
+      tracklistFormat: format,
+      tracklistAutoSync: true,
+      tracklistHighlightCurrent: true,
+      tracklistIncludeHeader: true,
+      tracklistCustomHeader: headerTitle,
+    };
+    const updated = [...textBoxes, newBox];
+    onChange(updated);
+    setSelectedId(newBox.id);
+  };
+
+  const handleSyncTracklist = (boxId: string, customFormat?: TracklistTextFormat) => {
+    const targetBox = textBoxes.find((b) => b.id === boxId);
+    if (!targetBox) return;
+    const format = customFormat || targetBox.tracklistFormat || 'title-duration';
+    const tracks = playlist?.tracks || [];
+    const headerTitle = targetBox.tracklistCustomHeader || (language === 'vi' ? '🎵 DANH SÁCH BÀI HÁT' : '🎵 TRACKLIST');
+    const newText = generateTracklistContent(tracks, format, {
+      includeHeader: targetBox.tracklistIncludeHeader !== false,
+      headerTitle,
+      currentIndex: playlist?.currentIndex || 0,
+      highlightCurrent: targetBox.tracklistHighlightCurrent !== false,
+    });
+
+    handleUpdateBox(boxId, {
+      text: newText,
+      isTracklist: true,
+      tracklistFormat: format,
+      tracklistCustomHeader: headerTitle,
+    });
+  };
+
   const handleUpdateBox = (id: string, partial: Partial<TextBoxItem>) => {
     const updated = textBoxes.map((b) => (b.id === id ? { ...b, ...partial } : b));
     onChange(updated);
@@ -169,17 +311,32 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
   return (
     <div className="space-y-6 text-neutral-200">
       {/* Header & Add Button */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
           {language === 'vi' ? `Hộp Chữ & Watermark (${textBoxes.length})` : `Text Boxes & Watermark (${textBoxes.length})`}
         </label>
-        <button
-          onClick={() => handleAddBox()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600/25 hover:bg-rose-600/35 border border-rose-500/50 text-rose-300 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>{language === 'vi' ? 'Thêm Hộp Chữ' : 'Add Text Box'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Add Tracklist Box Button */}
+          <button
+            type="button"
+            onClick={() => handleAddTracklistBox('title-duration')}
+            title={language === 'vi' ? 'Tạo hộp chữ tự động điền danh sách bài hát (Thời gian & Tên)' : 'Create auto text box with audio playlist tracklist info (Time & Title)'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-rose-600/30 hover:from-purple-600/45 hover:to-rose-600/45 border border-purple-500/50 text-purple-200 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
+          >
+            <ListMusic className="w-3.5 h-3.5 text-purple-300" />
+            <span>{language === 'vi' ? '+ Danh Sách Bài Hát (Tracklist)' : '+ Auto Tracklist Box'}</span>
+          </button>
+
+          {/* Standard Add Text Box */}
+          <button
+            type="button"
+            onClick={() => handleAddBox()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600/25 hover:bg-rose-600/35 border border-rose-500/50 text-rose-300 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{language === 'vi' ? 'Thêm Hộp Chữ' : 'Add Text Box'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Quick Presets for Text */}
@@ -187,10 +344,17 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
         <div className="p-4 rounded-2xl bg-neutral-900/60 border border-dashed border-neutral-800 text-center space-y-3">
           <p className="text-xs text-neutral-400">
             {language === 'vi'
-              ? 'Chưa có hộp chữ nào. Thêm watermark, credit nghệ sĩ, thông điệp hoặc tài khoản mạng xã hội của bạn!'
-              : 'No text boxes yet. Add watermarks, artist credits, headphone tips, or social handles!'}
+              ? 'Chưa có hộp chữ nào. Thêm danh sách bài hát (Tracklist), watermark, credit nghệ sĩ hoặc thông điệp của bạn!'
+              : 'No text boxes yet. Add audio tracklist info, watermarks, artist credits, or headphone tips!'}
           </p>
           <div className="flex flex-wrap gap-2 justify-center">
+            <button
+              onClick={() => handleAddTracklistBox('title-duration')}
+              className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600/30 to-rose-600/30 border border-purple-500/40 hover:border-purple-400 text-purple-200 text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+            >
+              <ListMusic className="w-3.5 h-3.5 text-purple-300" />
+              <span>{language === 'vi' ? '🎵 Danh sách bài hát (Tracklist)' : '🎵 Auto Tracklist (Time & Title)'}</span>
+            </button>
             <button
               onClick={() => handleAddBox(language === 'vi' ? '🎧 Đeo tai nghe để trải nghiệm tốt nhất' : '🎧 Best experienced with headphones')}
               className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs transition-colors cursor-pointer"
@@ -239,6 +403,12 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
                     <span className={`max-w-[80px] truncate text-[11px] font-normal ${!isVisible ? 'line-through' : ''}`}>
                       {box.text ? box.text.slice(0, 14) : (language === 'vi' ? 'Trống' : 'Empty')}
                     </span>
+                    {box.isTracklist && (
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/25 text-purple-300 border border-purple-500/40 flex items-center gap-0.5">
+                        <ListMusic className="w-2.5 h-2.5" />
+                        <span>List</span>
+                      </span>
+                    )}
                     {currentLayer && (
                       <span className="text-[9px] px-1 py-0.2 rounded bg-black/30 text-rose-200 border border-white/10">
                         {language === 'vi' ? currentLayer.nameVi.split(' ')[0] : currentLayer.nameEn.split(' ')[0]}
@@ -300,11 +470,229 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
             </label>
           </div>
 
+          {/* Auto Tracklist Settings Panel (if this is a Tracklist Box) */}
+          {activeBox.isTracklist ? (
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-neutral-900 via-purple-950/20 to-neutral-900 border border-purple-500/30 space-y-3.5 shadow-lg">
+              <div className="flex items-center justify-between border-b border-purple-500/20 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+                    <ListMusic className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-white flex items-center gap-2">
+                      {language === 'vi' ? 'Hộp Danh Sách Bài Hát Tự Động' : 'Auto Tracklist Text Box'}
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-200 font-semibold">
+                        {playlist?.tracks?.length || 0} {language === 'vi' ? 'Bài' : 'Tracks'}
+                      </span>
+                    </span>
+                    <span className="text-[10px] text-purple-300/70 block">
+                      {language === 'vi' ? 'Tự động tính thời gian và tiêu đề từ Playlist' : 'Auto generates time & title from audio playlist'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Manual Sync Button */}
+                <button
+                  type="button"
+                  onClick={() => handleSyncTracklist(activeBox.id)}
+                  title={language === 'vi' ? 'Đồng bộ lại danh sách bài hát mới nhất từ playlist' : 'Sync tracklist from current playlist'}
+                  className="px-2.5 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-purple-300" />
+                  <span>{language === 'vi' ? 'Đồng Bộ Lại' : 'Sync Now'}</span>
+                </button>
+              </div>
+
+              {/* Format Switcher */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider flex items-center justify-between">
+                  <span>{language === 'vi' ? 'Kiểu Định Dạng Danh Sách (Format)' : 'Tracklist Format'}</span>
+                  <span className="text-[10px] font-mono text-purple-300 lowercase">
+                    {activeBox.tracklistFormat || 'title-duration'}
+                  </span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {TRACKLIST_FORMAT_OPTIONS.map((opt) => {
+                    const isSelected = (activeBox.tracklistFormat || 'title-duration') === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleSyncTracklist(activeBox.id, opt.id)}
+                        className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-purple-600/25 border-purple-500 text-white shadow-sm ring-1 ring-purple-500/40'
+                            : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-semibold ${isSelected ? 'text-purple-200' : 'text-neutral-300'}`}>
+                            {language === 'vi' ? opt.labelVi : opt.labelEn}
+                          </span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-purple-400" />}
+                        </div>
+                        <span className="text-[10px] font-mono text-neutral-400 block truncate mt-0.5">
+                          {opt.example}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Quick Layout Presets for Tracklist */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider block">
+                  {language === 'vi' ? 'Vị Trí Mẫu Đẹp (Layout Presets)' : 'Suggested Layout Presets'}
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {TRACKLIST_LAYOUT_PRESETS.map((preset) => {
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => handleUpdateBox(activeBox.id, preset.settings)}
+                        className="p-1.5 px-2 rounded-lg bg-neutral-900 border border-neutral-800 hover:border-purple-500/50 hover:bg-purple-950/20 text-neutral-300 text-[11px] font-medium transition-all text-center cursor-pointer active:scale-95"
+                      >
+                        {language === 'vi' ? preset.nameVi : preset.nameEn}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sync & Feature Toggles */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-purple-500/15">
+                {/* Auto sync toggle */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/80 border border-neutral-800">
+                  <div>
+                    <span className="text-xs font-semibold text-neutral-200 block">
+                      {language === 'vi' ? 'Tự động đồng bộ' : 'Auto-Sync with Playlist'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400 block">
+                      {language === 'vi' ? 'Cập nhật khi đổi bài hát' : 'Updates on playlist change'}
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer ml-2">
+                    <input
+                      type="checkbox"
+                      checked={activeBox.tracklistAutoSync !== false}
+                      onChange={(e) => handleUpdateBox(activeBox.id, { tracklistAutoSync: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-8 h-4 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+
+                {/* Highlight active playing track */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/80 border border-neutral-800">
+                  <div>
+                    <span className="text-xs font-semibold text-neutral-200 block">
+                      {language === 'vi' ? 'Chỉ báo bài đang phát (▶)' : 'Highlight Playing (▶)'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400 block">
+                      {language === 'vi' ? 'Sáng bài đang phát' : 'Glows current track'}
+                    </span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer ml-2">
+                    <input
+                      type="checkbox"
+                      checked={activeBox.tracklistHighlightCurrent !== false}
+                      onChange={(e) => {
+                        const nextVal = e.target.checked;
+                        handleUpdateBox(activeBox.id, { tracklistHighlightCurrent: nextVal });
+                        const tracks = playlist?.tracks || [];
+                        const newText = generateTracklistContent(tracks, activeBox.tracklistFormat || 'title-duration', {
+                          includeHeader: activeBox.tracklistIncludeHeader !== false,
+                          headerTitle: activeBox.tracklistCustomHeader || (language === 'vi' ? '🎵 DANH SÁCH BÀI HÁT' : '🎵 TRACKLIST'),
+                          currentIndex: playlist?.currentIndex || 0,
+                          highlightCurrent: nextVal,
+                        });
+                        handleUpdateBox(activeBox.id, { text: newText, tracklistHighlightCurrent: nextVal });
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-8 h-4 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Include Header & Custom Header Input */}
+              <div className="p-2.5 rounded-xl bg-neutral-900/80 border border-neutral-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-neutral-200">
+                    {language === 'vi' ? 'Hiển thị Dòng Tiêu Đề (Header)' : 'Show Header Title'}
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={activeBox.tracklistIncludeHeader !== false}
+                      onChange={(e) => {
+                        const nextVal = e.target.checked;
+                        const tracks = playlist?.tracks || [];
+                        const newText = generateTracklistContent(tracks, activeBox.tracklistFormat || 'title-duration', {
+                          includeHeader: nextVal,
+                          headerTitle: activeBox.tracklistCustomHeader || (language === 'vi' ? '🎵 DANH SÁCH BÀI HÁT' : '🎵 TRACKLIST'),
+                          currentIndex: playlist?.currentIndex || 0,
+                          highlightCurrent: activeBox.tracklistHighlightCurrent !== false,
+                        });
+                        handleUpdateBox(activeBox.id, { text: newText, tracklistIncludeHeader: nextVal });
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-8 h-4 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+
+                {activeBox.tracklistIncludeHeader !== false && (
+                  <input
+                    type="text"
+                    value={activeBox.tracklistCustomHeader || (language === 'vi' ? '🎵 DANH SÁCH BÀI HÁT' : '🎵 TRACKLIST')}
+                    onChange={(e) => {
+                      const newHeader = e.target.value;
+                      const tracks = playlist?.tracks || [];
+                      const newText = generateTracklistContent(tracks, activeBox.tracklistFormat || 'title-duration', {
+                        includeHeader: true,
+                        headerTitle: newHeader,
+                        currentIndex: playlist?.currentIndex || 0,
+                        highlightCurrent: activeBox.tracklistHighlightCurrent !== false,
+                      });
+                      handleUpdateBox(activeBox.id, { text: newText, tracklistCustomHeader: newHeader });
+                    }}
+                    placeholder={language === 'vi' ? 'Tiêu đề đầu bảng...' : 'Header title...'}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-purple-500"
+                  />
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="p-2.5 rounded-xl bg-neutral-900/60 border border-dashed border-neutral-800 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <ListMusic className="w-4 h-4 text-purple-400" />
+                <span className="text-[11px] text-neutral-300">
+                  {language === 'vi' ? 'Bạn muốn biến hộp chữ này thành Danh Sách Bài Hát?' : 'Convert this text box into Auto Tracklist?'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSyncTracklist(activeBox.id, 'title-duration')}
+                className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-[11px] font-semibold transition-all cursor-pointer shrink-0"
+              >
+                {language === 'vi' ? 'Chuyển đổi ngay' : 'Convert Now'}
+              </button>
+            </div>
+          )}
+
           {/* Text input & Actions */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-neutral-400 font-medium">
-                {language === 'vi' ? 'Nội dung chữ' : 'Text Content'}
+              <span className="text-xs text-neutral-400 font-medium flex items-center gap-1.5">
+                <span>{language === 'vi' ? 'Nội dung chữ' : 'Text Content'}</span>
+                {activeBox.isTracklist && (
+                  <span className="text-[10px] text-purple-400 font-normal">
+                    ({language === 'vi' ? 'Hỗ trợ chỉnh tay hoặc đồng bộ lại' : 'Editable / Syncable'})
+                  </span>
+                )}
               </span>
               <div className="flex items-center gap-1">
                 {/* Reorder Buttons */}
@@ -346,11 +734,11 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
             </div>
 
             <textarea
-              rows={3}
+              rows={activeBox.isTracklist ? 7 : 3}
               value={activeBox.text}
               onChange={(e) => handleUpdateBox(activeBox.id, { text: e.target.value })}
               placeholder={language === 'vi' ? 'Nhập nội dung hiển thị (hỗ trợ nhiều dòng)...' : 'Enter text content (multi-line supported)...'}
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 resize-y font-medium"
+              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 resize-y font-medium font-mono"
             />
           </div>
 

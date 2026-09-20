@@ -17,6 +17,10 @@ export class AudioEngine {
   private streamDest: MediaStreamAudioDestinationNode | null = null;
   private isInitialized = false;
 
+  // Master Fade-in / Fade-out DSP Node (controls smooth audio transitions)
+  private fadeGainNode: GainNode | null = null;
+  private currentFadeGain = 1.0;
+
   // Pro Master EQ Filter Nodes
   private preampGainNode: GainNode | null = null;
   private lowCutFilter: BiquadFilterNode | null = null;
@@ -61,9 +65,15 @@ export class AudioEngine {
 
     this.streamDest = this.audioCtx.createMediaStreamDestination();
 
+    // 0. Create Master Fade In/Out Gain Node (handles smooth fade-in, fade-out, crossfade)
+    this.fadeGainNode = this.audioCtx.createGain();
+    this.fadeGainNode.gain.value = 1.0;
+
     // 1. Create Preamp Gain Node
     this.preampGainNode = this.audioCtx.createGain();
     this.preampGainNode.gain.value = 1.0;
+
+    this.fadeGainNode.connect(this.preampGainNode);
 
     // 2. Create Low-Cut High-Pass Filter (removes rumble below 20-80Hz)
     this.lowCutFilter = this.audioCtx.createBiquadFilter();
@@ -130,19 +140,37 @@ export class AudioEngine {
 
   public attachAudioElement(audio: HTMLAudioElement) {
     this.init();
-    if (!this.audioCtx || !this.preampGainNode) return;
+    if (!this.audioCtx || !this.fadeGainNode || !this.preampGainNode) return;
 
     this.audioElement = audio;
 
     if (!this.sourceNode) {
       try {
         this.sourceNode = this.audioCtx.createMediaElementSource(audio);
-        // Connect Source into the beginning of Master EQ DSP Chain (Preamp Gain)
-        this.sourceNode.connect(this.preampGainNode);
+        // Connect Source into Master Fade-in / Fade-out Node -> Master EQ Preamp Chain
+        this.sourceNode.connect(this.fadeGainNode);
       } catch (e) {
         console.warn('Audio source node already attached or error:', e);
       }
     }
+  }
+
+  /**
+   * Sets the real-time fade in/out gain multiplier smoothly (0.0 to 1.0)
+   * Using Web Audio linear or exponential target ramps to prevent clicking
+   */
+  public setFadeGain(gainValue: number, rampTimeSec = 0.05) {
+    const clamped = Math.max(0, Math.min(1, gainValue));
+    this.currentFadeGain = clamped;
+    if (this.fadeGainNode && this.audioCtx) {
+      const now = this.audioCtx.currentTime;
+      this.fadeGainNode.gain.cancelScheduledValues(now);
+      this.fadeGainNode.gain.setTargetAtTime(clamped, now, Math.max(0.01, rampTimeSec));
+    }
+  }
+
+  public getFadeGain(): number {
+    return this.currentFadeGain;
   }
 
   /**

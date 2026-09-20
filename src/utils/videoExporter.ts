@@ -17,10 +17,11 @@ export class VideoExporter {
   private activeStream: MediaStream | null = null;
 
   /**
-   * Get optimal supported MIME type (Prefers MP4/H264 format)
+   * Get optimal supported MIME type (Prefers GPU hardware-accelerated H264/MP4 format if requested)
    */
-  public static getSupportedMimeType(): string {
-    const types = [
+  public static getSupportedMimeType(hardwareAcceleration: 'prefer-hardware' | 'auto' | 'software' = 'prefer-hardware'): string {
+    const hwTypes = [
+      'video/mp4;codecs=avc1.640028,mp4a.40.2', // High Profile H.264 (Hardware-accelerated NVENC / Apple VideoToolbox / Intel QSV)
       'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
       'video/mp4;codecs=avc1,mp4a.40.2',
       'video/mp4;codecs=h264,aac',
@@ -32,7 +33,17 @@ export class VideoExporter {
       'video/webm',
     ];
 
-    for (const type of types) {
+    const swTypes = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+      'video/mp4',
+      'video/webm',
+    ];
+
+    const targetList = hardwareAcceleration === 'software' ? swTypes : hwTypes;
+
+    for (const type of targetList) {
       if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
         return type;
       }
@@ -47,7 +58,8 @@ export class VideoExporter {
     canvas: HTMLCanvasElement,
     audioStream: MediaStream | null,
     fps: number = 60,
-    bitrateMultiplier: 'high' | 'ultra' | 'medium' = 'high'
+    bitrateMultiplier: 'high' | 'ultra' | 'medium' = 'high',
+    hardwareAcceleration: 'prefer-hardware' | 'auto' | 'software' = 'prefer-hardware'
   ): Promise<Blob> {
     return new Promise((resolve, reject) => {
       this.recordedChunks = [];
@@ -77,7 +89,7 @@ export class VideoExporter {
           });
         }
 
-        const mimeType = VideoExporter.getSupportedMimeType();
+        const mimeType = VideoExporter.getSupportedMimeType(hardwareAcceleration);
 
         let videoBitrate = 14000000; // 14 Mbps for High Quality
         if (bitrateMultiplier === 'ultra') videoBitrate = 24000000;

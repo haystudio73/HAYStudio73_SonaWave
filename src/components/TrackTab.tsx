@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { TrackMetadata, CardStyle, LogoPosition, BadgeBeatJumpStyle, TrackLayerOrder, TrackFontEffect } from '../types';
+import { TrackMetadata, CardStyle, LogoPosition, BadgeBeatJumpStyle, TrackLayerOrder, TrackFontEffect, LogoAnimation, TrackFontWeight } from '../types';
 import { AVAILABLE_FONTS, DEFAULT_TRACK } from '../utils/presets';
 import { 
   Disc, 
@@ -77,6 +77,20 @@ const TRACK_FONT_STYLES: { id: 'normal' | 'italic' | 'bold' | 'bold-italic' | 'u
   { id: 'italic', nameVi: 'Nghiêng (Italic)', nameEn: 'Italic' },
   { id: 'bold-italic', nameVi: 'Đậm & Nghiêng (Bold Italic)', nameEn: 'Bold Italic' },
   { id: 'uppercase', nameVi: 'VIẾT HOA (ALL CAPS)', nameEn: 'Uppercase' },
+];
+
+const TRACK_FONT_WEIGHTS: { id: TrackFontWeight; nameVi: string; nameEn: string }[] = [
+  { id: 'normal', nameVi: 'Bình thường (Regular 400)', nameEn: 'Regular (400)' },
+  { id: '500', nameVi: 'Vừa phải (Medium 500)', nameEn: 'Medium (500)' },
+  { id: '600', nameVi: 'Hơi đậm (SemiBold 600)', nameEn: 'SemiBold (600)' },
+  { id: 'bold', nameVi: 'Đậm nét (Bold 700)', nameEn: 'Bold (700)' },
+  { id: '900', nameVi: 'Cực đậm (Black 900)', nameEn: 'Black (900)' },
+];
+
+const LOGO_ANIMATIONS: { id: LogoAnimation; nameVi: string; nameEn: string; descVi: string; descEn: string }[] = [
+  { id: 'none', nameVi: 'Tĩnh (Không xoay)', nameEn: 'None (Static)', descVi: 'Hiển thị cố định không xoay', descEn: 'Static logo watermark' },
+  { id: 'vertical-spin-3d', nameVi: 'Xoay 360° theo trục đứng (3D Spin)', nameEn: 'Vertical 3D Spin (360°)', descVi: 'Xoay lật 3D liên tục quanh trục dọc Y', descEn: 'Continuous 3D rotation around vertical Y-axis' },
+  { id: 'circular-spin', nameVi: 'Xoay tròn 360° (Circular 2D)', nameEn: 'Circular Spin (360°)', descVi: 'Xoay tròn đều đặn theo chiều kim đồng hồ', descEn: 'Smooth circular clockwise rotation' },
 ];
 
 export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, language = 'vi' }) => {
@@ -853,6 +867,46 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                 className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700"
               />
             </label>
+
+            {/* Logo Animation (xoay 360 theo trục đứng, xoay tròn, etc.) */}
+            <div className="space-y-2 pt-2 border-t border-neutral-800/80">
+              <div>
+                <span className="text-xs text-neutral-400 block mb-1">
+                  {language === 'vi' ? 'Hiệu ứng chuyển động Logo (Animation)' : 'Logo Animation Effect'}
+                </span>
+                <select
+                  value={track.logoAnimation || 'none'}
+                  onChange={(e) => update({ logoAnimation: e.target.value as LogoAnimation })}
+                  className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-cyan-500 cursor-pointer"
+                >
+                  {LOGO_ANIMATIONS.map((anim) => (
+                    <option key={anim.id} value={anim.id}>
+                      {language === 'vi' ? anim.nameVi : anim.nameEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {track.logoAnimation && track.logoAnimation !== 'none' && (
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-400">
+                      {language === 'vi' ? 'Tốc độ xoay / chuyển động' : 'Animation Speed'}
+                    </span>
+                    <span className="text-cyan-400 font-mono">{(track.logoAnimationSpeed ?? 1.0).toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.2}
+                    max={3.0}
+                    step={0.1}
+                    value={track.logoAnimationSpeed ?? 1.0}
+                    onChange={(e) => update({ logoAnimationSpeed: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -975,6 +1029,58 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
             </div>
           </div>
 
+          {/* Spacing Settings between Elements */}
+          <div className="space-y-3 p-3 bg-neutral-900/70 border border-neutral-800 rounded-2xl">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-neutral-200">
+                {language === 'vi' ? 'Khoảng cách giữa các dòng (Line Spacing)' : 'Element Spacing Gaps'}
+              </span>
+              <span className="text-[10px] text-neutral-400 font-mono">px</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">
+                    {language === 'vi' ? 'Phụ đề ↔ Tên bài' : 'Subtitle ↔ Title'}
+                  </span>
+                  <span className="text-rose-400 font-mono font-bold">
+                    {track.subtitleTitleGap ?? 6}px
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={40}
+                  step={1}
+                  value={track.subtitleTitleGap ?? 6}
+                  onChange={(e) => update({ subtitleTitleGap: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">
+                    {language === 'vi' ? 'Tên bài ↔ Ca sĩ' : 'Title ↔ Artist'}
+                  </span>
+                  <span className="text-rose-400 font-mono font-bold">
+                    {track.titleArtistGap ?? 8}px
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={40}
+                  step={1}
+                  value={track.titleArtistGap ?? 8}
+                  onChange={(e) => update({ titleArtistGap: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* B. Sub-tabs to customize each element (Subtitle, Title, Artist) */}
           <div className="space-y-3 pt-1">
             <div className="flex items-center justify-between">
@@ -1041,32 +1147,32 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                 </div>
               </div>
 
-              {/* 2. Font Style & Font Effect in 2 columns */}
+              {/* 2. Font Weight & Font Effect in 2 columns */}
               <div className="grid grid-cols-2 gap-3">
-                {/* Font Style */}
+                {/* Font Weight */}
                 <div>
                   <span className="text-xs text-neutral-400 block mb-1">
-                    {language === 'vi' ? 'Kiểu chữ (Style)' : 'Font Style'}
+                    {language === 'vi' ? 'Độ đậm chữ (Font Weight)' : 'Font Weight'}
                   </span>
                   <select
                     value={
                       selectedDetailTab === 'subtitle'
-                        ? track.subtitleFontStyle || 'normal'
+                        ? track.subtitleFontWeight || (track.subtitleFontStyle === 'bold' || track.subtitleFontStyle === 'bold-italic' ? 'bold' : 'normal')
                         : selectedDetailTab === 'title'
-                        ? track.titleFontStyle || 'bold'
-                        : track.artistFontStyle || 'normal'
+                        ? track.titleFontWeight || (track.titleFontStyle === 'bold' || track.titleFontStyle === 'bold-italic' || track.titleFontStyle === 'uppercase' ? 'bold' : 'normal')
+                        : track.artistFontWeight || (track.artistFontStyle === 'bold' || track.artistFontStyle === 'bold-italic' ? 'bold' : 'normal')
                     }
                     onChange={(e) => {
-                      const val = e.target.value as any;
-                      if (selectedDetailTab === 'subtitle') update({ subtitleFontStyle: val });
-                      else if (selectedDetailTab === 'title') update({ titleFontStyle: val });
-                      else update({ artistFontStyle: val });
+                      const val = e.target.value as TrackFontWeight;
+                      if (selectedDetailTab === 'subtitle') update({ subtitleFontWeight: val });
+                      else if (selectedDetailTab === 'title') update({ titleFontWeight: val });
+                      else update({ artistFontWeight: val });
                     }}
                     className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer"
                   >
-                    {TRACK_FONT_STYLES.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {language === 'vi' ? st.nameVi : st.nameEn}
+                    {TRACK_FONT_WEIGHTS.map((wt) => (
+                      <option key={wt.id} value={wt.id}>
+                        {language === 'vi' ? wt.nameVi : wt.nameEn}
                       </option>
                     ))}
                   </select>
@@ -1100,6 +1206,55 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* 2b. Italic & Uppercase independent checkboxes */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedDetailTab === 'subtitle'
+                        ? (track.subtitleItalic !== undefined ? track.subtitleItalic : (track.subtitleFontStyle === 'italic' || track.subtitleFontStyle === 'bold-italic'))
+                        : selectedDetailTab === 'title'
+                        ? (track.titleItalic !== undefined ? track.titleItalic : (track.titleFontStyle === 'italic' || track.titleFontStyle === 'bold-italic'))
+                        : (track.artistItalic !== undefined ? track.artistItalic : (track.artistFontStyle === 'italic' || track.artistFontStyle === 'bold-italic'))
+                    }
+                    onChange={(e) => {
+                      const chk = e.target.checked;
+                      if (selectedDetailTab === 'subtitle') update({ subtitleItalic: chk });
+                      else if (selectedDetailTab === 'title') update({ titleItalic: chk });
+                      else update({ artistItalic: chk });
+                    }}
+                    className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700 cursor-pointer"
+                  />
+                  <span className="text-xs text-neutral-300 font-medium italic">
+                    {language === 'vi' ? 'Chữ nghiêng (Italic)' : 'Italic Style'}
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedDetailTab === 'subtitle'
+                        ? (track.subtitleUppercase !== undefined ? track.subtitleUppercase : (track.subtitleFontStyle === 'uppercase'))
+                        : selectedDetailTab === 'title'
+                        ? (track.titleUppercase !== undefined ? track.titleUppercase : (track.titleFontStyle === 'uppercase'))
+                        : (track.artistUppercase !== undefined ? track.artistUppercase : (track.artistFontStyle === 'uppercase'))
+                    }
+                    onChange={(e) => {
+                      const chk = e.target.checked;
+                      if (selectedDetailTab === 'subtitle') update({ subtitleUppercase: chk });
+                      else if (selectedDetailTab === 'title') update({ titleUppercase: chk });
+                      else update({ artistUppercase: chk });
+                    }}
+                    className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700 cursor-pointer"
+                  />
+                  <span className="text-xs text-neutral-300 font-medium font-mono uppercase">
+                    {language === 'vi' ? 'In hoa (UPPERCASE)' : 'ALL CAPS'}
+                  </span>
+                </label>
               </div>
 
               {/* 3. Font Size Slider with Steppers & Color Picker */}

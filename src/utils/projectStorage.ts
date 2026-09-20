@@ -12,6 +12,8 @@ import {
   MasterEQConfig,
   MasterEQCustomPreset,
   MasterEQBands,
+  SceneTransitionsConfig,
+  LottieItem,
 } from '../types';
 import {
   DEFAULT_VISUALIZER,
@@ -23,6 +25,7 @@ import {
   DEFAULT_FILM_LIGHT,
   DEFAULT_COLOR_GRADING,
   DEFAULT_MASTER_EQ,
+  DEFAULT_SCENE_TRANSITIONS,
   SAMPLE_SRT_SYNTHWAVE,
 } from './presets';
 import { parseAnyLyrics } from './lyricsParser';
@@ -43,6 +46,8 @@ export interface SavedProject {
   filmLight?: FilmLightConfig;
   colorGrading?: ColorGradingConfig;
   masterEq?: MasterEQConfig;
+  sceneTransitions?: SceneTransitionsConfig;
+  lotties?: LottieItem[];
   audioFileName: string;
   sampleAudioType?: 'lofi' | 'synthwave' | 'acoustic' | 'edm';
 }
@@ -199,6 +204,7 @@ export function getAutoSave(): SavedProject | null {
       particles: parsed.particles ? { ...DEFAULT_PARTICLES, ...parsed.particles } : { ...DEFAULT_PARTICLES },
       filmLight: parsed.filmLight ? { ...DEFAULT_FILM_LIGHT, ...parsed.filmLight } : { ...DEFAULT_FILM_LIGHT },
       colorGrading: parsed.colorGrading ? { ...DEFAULT_COLOR_GRADING, ...parsed.colorGrading } : { ...DEFAULT_COLOR_GRADING },
+      sceneTransitions: parsed.sceneTransitions ? { ...DEFAULT_SCENE_TRANSITIONS, ...parsed.sceneTransitions } : { ...DEFAULT_SCENE_TRANSITIONS },
     };
   } catch (err) {
     return null;
@@ -270,6 +276,7 @@ export function importProjectFromJSON(file: File): Promise<SavedProject> {
           filmLight: parsed.filmLight ? { ...DEFAULT_FILM_LIGHT, ...parsed.filmLight } : DEFAULT_FILM_LIGHT,
           colorGrading: parsed.colorGrading ? { ...DEFAULT_COLOR_GRADING, ...parsed.colorGrading } : DEFAULT_COLOR_GRADING,
           masterEq: parsed.masterEq ? { ...DEFAULT_MASTER_EQ, ...parsed.masterEq } : DEFAULT_MASTER_EQ,
+          sceneTransitions: parsed.sceneTransitions ? { ...DEFAULT_SCENE_TRANSITIONS, ...parsed.sceneTransitions } : DEFAULT_SCENE_TRANSITIONS,
           audioFileName: parsed.audioFileName || 'Imported_Audio.wav',
           sampleAudioType: parsed.sampleAudioType || 'synthwave',
         };

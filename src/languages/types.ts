@@ -23,6 +23,7 @@ export interface TranslationDictionary {
   autoSaved: string;
   projectsAndSave: string;
   presetTemplates: string;
+  newProject?: string;
   demoMusic: string;
   selectDemo: string;
   aspectRatio: string;
@@ -39,10 +40,13 @@ export interface TranslationDictionary {
   tabVisualizer: string;
   tabLyrics: string;
   tabBackground: string;
+  tabTransitions: string;
   tabFilmLight: string;
   tabColorGrading: string;
   tabTrack: string;
   tabTextBoxes: string;
+  tabPlaylist: string;
+  tabLottie: string;
 
   // Canvas Stage & Player Bar
   noAudioUploaded: string;
@@ -78,11 +82,33 @@ export interface TranslationDictionary {
   shortcutArrows: string;
   shortcutSave: string;
   performanceOptions: string;
+  highPerformanceRenderPath: string;
+  highPerformanceRenderPathDesc: string;
+  highPerformanceActive: string;
+  highPerformanceStandard: string;
   targetFps: string;
   autoSaveEnabled: string;
   close: string;
   activePresetLabel: string;
   defaultAspectRatio: string;
+
+  // Hardware Acceleration (CPU/GPU)
+  hardwareAcceleration: string;
+  hardwareAccelerationDesc: string;
+  gpuDeviceDetected: string;
+  cpuCoresDetected: string;
+  hardwareModeGpuMax: string;
+  hardwareModeGpuMaxDesc: string;
+  hardwareModeBalanced: string;
+  hardwareModeBalancedDesc: string;
+  hardwareModeCpuSafe: string;
+  hardwareModeCpuSafeDesc: string;
+  directGpuPresentation: string;
+  directGpuPresentationDesc: string;
+  hardwareVideoEncoding: string;
+  hardwareVideoEncodingDesc: string;
+  performanceOverlay: string;
+  performanceOverlayDesc: string;
 
   // Pro Master Equalizer
   eqActive: string;

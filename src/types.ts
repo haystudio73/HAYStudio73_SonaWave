@@ -5,6 +5,7 @@ export type VisualizerType =
   | 'bars-mirrored-peaks'    // Mirrored bars with dual falling peak dots
   | 'bars-mirrored'          // Top & bottom mirrored bars
   | 'bars'                   // Classic vertical audio spectrum bars
+  | 'spectrum-bars-simple'   // Simple column spectrum (clean minimalist vertical bars)
   | 'spectrum-line'          // Smooth filled gradient spectrum curve
   | 'radial-bars-peaks'      // Circular radial spikes with orbit peak dots
   | 'circular-spikes'        // Radial spikes around center
@@ -18,11 +19,155 @@ export type VisualizerType =
   | 'tunnel-vortex'          // Infinite 3D concentric portal tunnel
   | 'laser-beams'            // Stage EDM concert scanning laser beams
   | 'starburst-core'         // Multi-point pulsating starburst nova
-  | 'audio-equalizer-grid';   // Multi-tiered floating digital EQ cascade blocks
+  | 'audio-equalizer-grid'   // Multi-tiered floating digital EQ cascade blocks
+  // 3D.js (Three.js WebGL) Visualizers:
+  | '3d-cube-matrix'         // 3D Audio Cube Equalizer Matrix Field
+  | '3d-sphere-waveform'     // 3D Cyber Wireframe Audio Sphere / Icosahedron
+  | '3d-wave-terrain'        // 3D Synthwave Cyberpunk Wireframe Landscape
+  | '3d-solar-system'        // 3D Cosmic Solar Planetary Galaxy System
+  | '3d-fluid-shape'         // 3D Transparent Fluid Morphing Shape Pulsing to Music Rhythm
+  | '3d-bezier-mesh'         // 3D Bezier Polygon Line Network (Plexus/Constellation Web)
+  | '3d-raycaster'           // 3D Ray Caster Field with Line and Head Dots (Stanford Bunny / Mesh Normal Rays)
+  | '3d-spiral-galaxy';      // 3D Particle Spiral Galaxy with Glowing Core, Nebula Arms & Audio Star Pulses
+
+export interface ThreeDVisualizerSettings {
+  [key: string]: any;
+  // Universal 3D Viewport Controls
+  cameraDistance?: number;     // 15 to 80 (default 38)
+  cameraAngleX?: number;       // -80 to +80 deg (tilt)
+  cameraAngleY?: number;       // -180 to +180 deg (orbit)
+  autoRotate?: boolean;        // default true
+  autoRotateSpeed?: number;    // 0.2 to 5.0 (default 1.0)
+  wireframe?: boolean;         // wireframe vs solid mesh
+  lightIntensity?: number;     // 0.2 to 3.0 (default 1.5)
+  lightColor?: string;         // Point light tint
+  depthScale?: number;         // 0.5 to 3.0 (z-scale)
+
+  // 3D Spatial Position Offset (Move X, Y, Z)
+  moveX?: number;              // -50 to +50 (default 0)
+  moveY?: number;              // -50 to +50 (default 0)
+  moveZ?: number;              // -50 to +50 (default 0)
+
+  // 3D Spatial Rotation Angles (Rotate X, Y, Z in degrees)
+  rotateX?: number;            // -180 to +180 deg (default 0)
+  rotateY?: number;            // -180 to +180 deg (default 0)
+  rotateZ?: number;            // -180 to +180 deg (default 0)
+
+  // Global Post-Processing Bloom Effect (Hào Quang Phát Sáng Hậu Kỳ Three.js)
+  bloomEnabled?: boolean;      // Bật/tắt hiệu ứng Bloom phát quang toàn cục (default true)
+  bloomStrength?: number;     // 0.2 to 3.5 (default 1.6)
+  bloomRadius?: number;       // 0.1 to 1.5 (default 0.75)
+  bloomThreshold?: number;    // 0.0 to 0.8 (default 0.15)
+  bloomBassBoost?: boolean;   // Tăng cường phát sáng chói lóa cực mạnh theo âm bass / beat kicks (default true)
+
+  // Universal Flowing Light Feature (Tính năng Ánh Sáng Chạy / Flowing Wave)
+  flowingLight?: boolean;      // Bật/tắt dải sáng luân chuyển / sóng ánh sáng chạy (default true)
+  flowingLightSpeed?: number;  // 0.2 to 4.0 (default 1.5)
+  flowingLightIntensity?: number; // 0.2 to 3.0 (default 1.6)
+  flowingLightColor?: string;  // Custom tint or auto
+  flowingLightMode?: 'neon-wave' | 'rainbow-stream' | 'laser-pulse' | 'audio-reactive'; // Chế độ luồng sáng
+  flowingLightWidth?: number;  // 0.5 to 3.0 (default 1.2)
+
+  // 1. 3D Cube Matrix Settings
+  cubeGridSize?: number;       // 6, 8, 10, 12 (default 8)
+  cubeSpacing?: number;        // 0.1 to 1.0 (default 0.35)
+  cubeHeightScale?: number;    // 0.5 to 3.5 (default 1.6)
+  cubeShading?: 'metallic' | 'phong' | 'wireframe' | 'glow-edges';
+
+  // 2. 3D Sphere Waveform Settings (Quả Cầu Tần Số 3D)
+  sphereRadius?: number;       // 6 to 25 (default 13)
+  sphereDetail?: number;       // 1 to 4 (default 2)
+  sphereSpikeIntensity?: number; // 0.2 to 3.0 (default 1.4)
+  sphereStyle?: 'solid-facets' | 'wireframe' | 'particles' | 'dual-shell';
+  sphereOpacity?: number;      // 0.05 to 1.0 (default 0.85) - Độ trong suốt / opacity của đa giác
+  sphereRoughness?: number;    // 0.0 to 1.0 (default 0.25)
+  sphereMetalness?: number;    // 0.0 to 1.0 (default 0.6)
+  sphereMaterial?: 'crystal-glass' | 'neon-glow' | 'metallic-poly' | 'matte-clay' | 'hologram';
+  sphereColorMode?: 'gradient-duo' | 'primary-single' | 'audio-reactive' | 'rainbow-flow';
+  sphereWireframeEdges?: boolean; // Hiển thị viền cạnh đa giác sắc nét
+  sphereCorePulse?: boolean;   // deprecated
+
+  // 3. 3D Wave Terrain Settings (Địa Hình Cyberpunk 3D)
+  terrainResolution?: number;  // 20 to 60 (default 36)
+  terrainSpeed?: number;       // 0.2 to 3.0 (default 1.0)
+  terrainHeightScale?: number; // 0.5 to 3.0 (default 1.4)
+  terrainRenderMode?: 'solid' | 'wireframe' | 'solid-wireframe'; // Dạng đặc (solid fill), dạng lưới (wireframe), hoặc kết hợp cả 2
+  terrainEnvReflection?: boolean; // Bật phản chiếu môi trường / ảnh background
+  terrainReflectionIntensity?: number; // 0.0 to 1.0 (default 0.85)
+  terrainRoughness?: number;   // 0.0 to 1.0 (default 0.18) - Độ nhám mờ / gương bóng
+  terrainMetalness?: number;   // 0.0 to 1.0 (default 0.75) - Độ phản xạ kim loại
+  terrainOpacity?: number;     // 0.2 to 1.0 (default 0.95) - Độ trong suốt mặt địa hình
+  terrainCyberSun?: boolean;   // Deprecated / removed as requested
+  terrainSunColor?: string;
+
+  // 4. 3D Solar System & Planetary Galaxy Settings (Hệ Thiên Hà 3D)
+  solarSunSize?: number;       // 3 to 10 (default 5.5)
+  solarOrbitSpeed?: number;    // 0.2 to 3.0 (default 1.0)
+  solarPlanetCount?: number;   // 4 to 8 (default 6)
+  solarPlanetSizeScale?: number; // 0.5 to 2.5 (default 1.0)
+  solarShowOrbits?: boolean;   // default true
+  solarAsteroidBelt?: boolean; // default true
+  solarSaturnRings?: boolean;  // default true
+  solarSunPulse?: number;      // 0.5 to 3.0 (default 1.5)
+  solarAsteroidSize?: number;  // 0.6 to 4.0 (default 1.8 - Cỡ vì sao khối tròn)
+  solarAsteroidCount?: number; // 200 to 1200 (default 550)
+  solarStarShape?: 'circle' | 'celestial-ray'; // Dạng tròn (mặc định) hoặc dạng tròn có tia sáng
+
+  // 5. 3D Transparent Fluid Shape Settings (Khối Chất Lỏng 3D Trong Suốt)
+  fluidRadius?: number;        // 6 to 22 (default 12)
+  fluidDetail?: number;        // 3 to 6 (default 4)
+  fluidTurbulence?: number;    // 0.4 to 3.0 (default 1.5)
+  fluidSpeed?: number;         // 0.4 to 3.0 (default 1.2)
+  fluidOpacity?: number;       // 0.0 to 1.0 (default 0.72)
+  fluidRoughness?: number;     // 0.02 to 0.7 (default 0.1)
+  fluidMetalness?: number;     // 0.0 to 0.9 (default 0.25)
+  fluidTransmission?: number;  // 0.0 to 1.0 (default 0.65)
+  fluidDroplets?: boolean;     // default true (giọt nước li ti xung quanh)
+  fluidWireframe?: boolean;    // default false (chế độ khung dây)
+  fluidEnvReflection?: boolean; // default true (phản chiếu môi trường)
+  fluidReflectionIntensity?: number; // 0.0 to 2.0 (default 0.85)
+  fluidStyle?: 'translucent-glass' | 'iridescent' | 'neon-plasma' | 'liquid-chrome' | 'ocean-water';
+
+  // 6. 3D Bezier Polygon Line Network Settings (Mạng Lưới Đa Giác Bezier 3D / Plexus)
+  bezierNodeCount?: number;     // 80 to 300 (default 150)
+  bezierMaxDistance?: number;   // 6 to 18 (default 10)
+  bezierBoxSize?: number;       // 20 to 60 (default 36)
+  bezierLineWidth?: number;     // 1 to 4 (default 1.5)
+  bezierSpeed?: number;         // 0.2 to 3.0 (default 1.0)
+  bezierAudioDisplace?: number; // 0.2 to 3.0 (default 1.4)
+  bezierShowPoints?: boolean;   // default true (hiển thị hạt đỉnh)
+  bezierPointSize?: number;     // 1 to 6 (default 2.5)
+
+  // 7. 3D Ray Caster Field Settings (Tia Phóng / Normal Ray Caster có Hạt Đỉnh)
+  rayCount?: number;            // 60 to 350 (default 160)
+  rayLength?: number;           // 5 to 35 (default 16)
+  rayHeadDotSize?: number;      // 1 to 8 (default 3.0)
+  rayDotShape?: 'square' | 'circle' | 'star'; // default 'circle' (Vuông, tròn, sao 5 cánh)
+  rayModelShape?: 'bunny' | 'torus-knot' | 'sphere' | 'cylinder'; // (deprecated)
+  rayAudioPulse?: number;       // 0.2 to 3.0 (default 1.5)
+  rayCoreOpacity?: number;      // 0.1 to 1.0 (default 0.9)
+  rayShowCore?: boolean;        // default true (hiển thị mô hình vật thể lõi)
+
+  // 8. 3D Spiral Galaxy Settings (Dải Ngân Hà Xoắn Ốc Vũ Trụ)
+  galaxyStarCount?: number;     // 2000 to 20000 (default 8500)
+  galaxyParticleCount?: number; // alias for galaxyStarCount
+  galaxyArms?: number;          // 2 to 8 (default 4)
+  galaxyRadius?: number;        // 15 to 45 (default 26)
+  galaxySpin?: number;          // 0.4 to 3.0 (default 1.2)
+  galaxyRandomness?: number;    // 0.1 to 1.5 (default 0.45)
+  galaxyPower?: number;         // 2.0 to 6.0 (default 3.5 - radial power distribution)
+  galaxyPointSize?: number;     // 0.8 to 6.5 (default 2.4)
+  galaxyParticleSize?: number;  // alias for galaxyPointSize
+  galaxyCoreBrightness?: number;// (deprecated / removed)
+  galaxyCoreColor?: string;     // '#fff7ed' / warm golden core
+  galaxyAudioDisplace?: number; // 0.2 to 3.0 (default 1.4)
+  galaxySwirlSpeed?: number;    // 0.2 to 3.0 (default 1.0)
+}
 
 export type VisualizerColorMode = 'solid' | 'gradient2' | 'gradient3' | 'rainbow' | 'neon-glow';
 
 export interface VisualizerConfig {
+  visible?: boolean;     // Bật / tắt hiển thị sóng âm Visualizer (default true)
   type: VisualizerType;
   colorMode: VisualizerColorMode;
   primaryColor: string;
@@ -54,6 +199,8 @@ export interface VisualizerConfig {
   reflectionFade?: boolean;     // Mờ dần theo khoảng cách Gradient Fade (mặc định true)
   lineThickness: number;
   fillOpacity: number;
+  // 3D.js Visualizer Custom Settings
+  threeDSettings?: ThreeDVisualizerSettings;
 }
 
 export interface LyricLine {
@@ -163,19 +310,20 @@ export interface BackgroundConfig {
 
 export type ParticleType = 
   | 'none' 
+  | 'rain'             // Mưa Rơi Tự Nhiên
   | 'snow'             // Mưa tuyết rơi mùa đông (Snowfall with Wind Direction)
+  | 'speed-lines'      // Đường vạch tốc độ (Speed Lines) lặp lại: song song ngang hoặc hướng tâm
+  | 'spaghetti'        // Mưa mảnh ruy băng lụa mềm mại (Silk Ribbon Rain - formerly Spaghetti)
+  | 'silk-ribbon'      // Alias for Mưa mảnh ruy băng lụa
   | 'spinning-dashes'  // Đoạn thẳng ngắn vừa rơi vừa xoay 360° theo nhịp Bass
-  | 'spaghetti'        // Sợi mì Spaghetti vàng óng / neon rơi mềm mại
-  | 'sound-sparks'     // Tia lửa bốc cháy rực rỡ
   | 'rainbow-bubbles'  // Bong bóng xà phòng cầu vồng ngũ sắc lấp lánh
   | 'hyperspace'       // Tăng tốc vũ trụ Hyperspace warp-speed
   | 'dust' 
   | 'stars' 
   | 'bubbles' 
-  | 'rain' 
   | 'audio-rings';
 
-export type ParticleShape = 'circle' | 'square' | 'star' | 'heart' | 'diamond' | 'ring';
+export type ParticleShape = 'circle' | 'square' | 'star' | 'heart' | 'diamond' | 'ring' | 'silk-fluff';
 export type ParticleColorMode = 'custom' | 'rainbow' | 'fire' | 'neon-pulse' | 'audio-reactive';
 
 export type SnowFlakeType = 'mixed' | 'crystal' | 'flurry' | 'glitter';
@@ -190,11 +338,35 @@ export interface ParticleConfig {
   secondaryColor?: string;
   shape?: ParticleShape;
   colorMode?: ParticleColorMode;
-  glowIntensity?: number; // 0 to 30
+  glowIntensity?: number; // 0 to 50
   sizeScale?: number;     // 0.5 to 3.0
   reactiveToBeat: boolean;
   bassReactiveColor?: boolean; // Dynamically link particle color to bass intensity & flash brighter on beat drops
   bassFlashBoost?: number;    // 0.5 to 2.5 multiplier
+
+  // 1. Speed Lines Dynamics (Đường vạch tốc độ lặp lại)
+  speedLineMode?: 'horizontal' | 'converge-center'; // 1. Chạy song song chiều ngang ảnh, 2. Theo chiều đứng về tâm (như ảnh vẽ tay)
+  speedLineLength?: number;       // Chiều dài cơ sở (30 đến 450, mặc định 140)
+  speedLineRandomLength?: number; // Độ dài ngẫu nhiên / phân tán (0 đến 100%, mặc định 55%)
+  speedLineWidth?: number;        // Độ dày nét (1px đến 14px, mặc định 2.5px)
+  speedLineBlur?: number;         // Độ nhòe mờ vệt tốc độ / motion blur (0px đến 22px, mặc định 5px)
+  speedLineDirection?: 'left-to-right' | 'right-to-left'; // Hướng chạy song song ngang
+  speedLineTilt?: number;          // Độ nghiêng vệt line từ -45 đến 45 độ (mặc định 0°)
+  speedLineVerticalCenter?: 'top' | 'center' | 'bottom';  // Vị trí tâm tụ theo chiều đứng: top center, center center, bottom center
+  speedLineCenterY?: number;       // Tinh chỉnh tọa độ tâm tụ theo % chiều cao (10% đến 90%, mặc định 50%)
+  speedLineHorizontalCenter?: 'left' | 'center' | 'right'; // Vị trí tâm tụ theo chiều ngang: left center, center center, right center
+  speedLineCenterX?: number;       // Tinh chỉnh tọa độ tâm tụ theo % chiều rộng (10% đến 90%, mặc định 50%)
+  speedLineSpeed?: number;         // Tốc độ chuyển động vệt line (0.2x đến 3.5x, mặc định 1.0x)
+
+  // 2. Silk Ribbon Rain Dynamics (Mưa Mảnh Ruy Băng Lụa - nâng cấp từ Spaghetti)
+  ribbonLength?: number;          // Độ dài / ngắn của dải ruy băng lụa (50px đến 500px, mặc định 160px)
+  ribbonThickness?: number;       // Độ dày / bản dẹt ruy băng lụa (2px đến 32px, mặc định 8px)
+  ribbonTwist?: number;           // Độ xoắn lượn sóng 3D (0.5 đến 4.5, mặc định 1.8)
+  ribbonGlow?: number;            // Vầng sáng phát quang dạ quang lụa (0px đến 35px, mặc định 15px)
+
+  // 3. Fluffy Silk Ball & Bokeh Particle Settings (Bóng Tơ Mềm / Lofi / Stars)
+  silkFluffGlow?: boolean;        // Bật chế độ bóng tơ mềm viền phát sáng mờ êm
+  particleGlowRadius?: number;    // Bán kính phát sáng mở rộng (0 đến 50px)
 
   // Snow & Wind Dynamics
   snowWindAngle?: number;     // -60 to +60 degrees (- left, + right, 0 straight down)
@@ -209,6 +381,26 @@ export interface ParticleConfig {
   rainDropType?: RainDropType; // 'mixed' | 'streaks' | 'drizzle' | 'heavy' | 'neon-glow'
   rainLengthScale?: number;   // 0.5 to 3.0 length multiplier of raindrops
   rainSplash?: boolean;       // Hiệu ứng giọt nước bắn tung tóe / ripple khi chạm đáy
+
+  // WebGL Stereo 3D Rain Effect (threejs.org/examples/#webgl_effects_stereo)
+  stereoRainEnabled?: boolean; // Bật hiệu ứng Stereo 3D WebGL cho mưa
+  stereoRain?: boolean;        // Alias for stereoRainEnabled
+  stereoMode?: 'split-screen' | 'anaglyph' | 'depth-parallax'; // Chế độ Stereo VR (Chia đôi màn hình Trái/Phải), Kính 3D Đỏ-Xanh (Anaglyph), hoặc Depth Parallax
+  stereoRainMode?: 'split-screen' | 'anaglyph' | 'depth-parallax'; // Alias for stereoMode
+  stereoEyeSeparation?: number; // 0.01 to 0.2 (khoảng cách 2 mắt, mặc định 0.064)
+  stereoRainEyeSeparation?: number; // Alias for stereoEyeSeparation
+  stereoFocalLength?: number;   // 10 to 60 (tiêu cự hội tụ 3D, mặc định 25)
+  stereoRainGlow?: boolean;     // Hiệu ứng phát sáng 3D cho giọt mưa
+
+  // Three.js Water on Glass (Raindrops on Window / Camera Lens)
+  waterOnGlass?: boolean;       // Bật hiệu ứng giọt nước mưa bám mặt kính chân thực (Three.js WebGL Glass Beads)
+  waterGlassCount?: number;     // 30 to 200 (số lượng giọt nước đọng trên kính)
+  waterGlassRefraction?: number; // 0.2 to 2.5 (độ khúc xạ & lúp cầu ánh sáng của giọt nước)
+  waterGlassTrickleSpeed?: number; // 0.2 to 3.0 (tốc độ giọt nước trượt chảy xuống mặt kính)
+  waterGlassWipeMist?: boolean; // Hiệu ứng mờ hơi nước sương mù nhẹ trên kính
+  waterGlassLighting?: 'cinematic-blue' | 'golden-bokeh' | 'neon-glow' | 'pure-clear'; // Ánh sáng môi trường phản chiếu trên giọt nước kính
+  waterGlassBlur?: number;      // 0 to 10 (độ mờ nhòe quang học của nền phía sau kính)
+  waterGlassTrailTrails?: boolean; // Vệt nước trượt kéo dài đằng sau giọt nước chảy
 }
 
 export type FilmLightStyle = 
@@ -309,7 +501,11 @@ export type TrackLayerOrder = 'behind-visualizer' | 'front-visualizer' | 'back-a
 
 export type TrackDetailElement = 'subtitle' | 'title' | 'artist';
 
+export type TrackFontWeight = 'normal' | '500' | '600' | 'bold' | '900';
+
 export type TrackFontStyle = 'normal' | 'italic' | 'bold' | 'bold-italic' | 'uppercase';
+
+export type LogoAnimation = 'none' | 'vertical-spin-3d' | 'circular-spin';
 
 export type TrackFontEffect = 
   | 'none' 
@@ -335,6 +531,8 @@ export interface TrackMetadata {
   logoScale?: number;         // 0.3 to 2.5
   logoOpacity?: number;       // 0.1 to 1.0
   logoGlow?: boolean;         // Neon halo around logo
+  logoAnimation?: LogoAnimation; // 'none' | 'vertical-spin-3d' (xoay 360 trục đứng) | 'circular-spin' (xoay tròn)
+  logoAnimationSpeed?: number;   // 0.2 to 3.0 (default 1.0)
   badgeBeatJump?: boolean;    // Nhảy nảy theo nhịp Beat / Bass cho Badge & Thẻ bài hát
   badgeBeatJumpIntensity?: number; // Cường độ nảy (0.05 to 0.5, default 0.18)
   badgeBeatJumpStyle?: BadgeBeatJumpStyle; // 'pulse' | 'bounce-up' | 'scale-rotate' | 'jelly' | 'shake'
@@ -355,10 +553,26 @@ export interface TrackMetadata {
   titleFontFamily?: string;
   artistFontFamily?: string;
 
-  // Custom font styles for each element
+  // Custom font styles & weights for each element
   subtitleFontStyle?: TrackFontStyle;
   titleFontStyle?: TrackFontStyle;
   artistFontStyle?: TrackFontStyle;
+
+  subtitleFontWeight?: TrackFontWeight;
+  titleFontWeight?: TrackFontWeight;
+  artistFontWeight?: TrackFontWeight;
+
+  subtitleItalic?: boolean;
+  titleItalic?: boolean;
+  artistItalic?: boolean;
+
+  subtitleUppercase?: boolean;
+  titleUppercase?: boolean;
+  artistUppercase?: boolean;
+
+  // Spacing gaps between titles
+  subtitleTitleGap?: number; // Khoảng cách giữa Subtitle và Main Title (px, default 6)
+  titleArtistGap?: number;    // Khoảng cách giữa Main Title và Artist (px, default 8)
 
   // Font sizes for each element
   subtitleFontSize?: number;  // px (default 13)
@@ -399,6 +613,13 @@ export type TextBoxLayerOrder =
   | 'behind-lyrics'       // Behind Lyrics text
   | 'front-all';          // In front of everything (topmost)
 
+export type TracklistTextFormat = 
+  | 'title-duration'        // 01. Song Title (03:45)
+  | 'duration-title'        // 01. [03:45] Song Title
+  | 'timestamp-title'       // 00:00 - Song Title (Timeline Start Timestamp)
+  | 'title-artist-duration' // 01. Song Title - Artist (03:45)
+  | 'compact-bullet';       // 1. Song Title • 03:45
+
 export interface TextBoxItem {
   id: string;
   text: string;
@@ -423,7 +644,72 @@ export interface TextBoxItem {
   lineHeight?: number;    // Line height multiplier (1.1 to 2.0, default 1.35)
   layerOrder?: TextBoxLayerOrder; // Order layer: back/front of Wave, Lyrics, Title, etc.
   visible?: boolean;      // Toggle hidden/show on canvas (default true)
+
+  // Auto Audio Tracklist features
+  isTracklist?: boolean;
+  tracklistFormat?: TracklistTextFormat;
+  tracklistAutoSync?: boolean; // When true, automatically stays in sync with playlist tracks
+  tracklistHighlightCurrent?: boolean; // Highlight active playing song with cursor ▶ or accent
+  tracklistIncludeHeader?: boolean; // Include 'TRACKLIST' title
+  tracklistCustomHeader?: string;
 }
+
+export type HardwareAccelerationMode = 'gpu-max' | 'balanced' | 'cpu-safe';
+
+export interface HardwareInfo {
+  gpuRenderer: string;
+  gpuVendor: string;
+  isWebGlSupported: boolean;
+  isWebGpuSupported: boolean;
+  cpuCores: number;
+  deviceMemoryGb?: number;
+  hasOffscreenCanvas: boolean;
+  supportsDesynchronized: boolean;
+  supportsHardwareVideoEncoding: boolean;
+}
+
+export interface HardwareAccelerationConfig {
+  mode: HardwareAccelerationMode;
+  desynchronized: boolean;
+  preferHardwareEncoder: boolean;
+  showOverlay: boolean;
+  multiThreadedAudio: boolean;
+}
+
+export type PlaylistRepeatMode = 'off' | 'repeat-all' | 'repeat-one' | 'shuffle';
+
+export interface AudioTrackItem {
+  id: string;
+  title: string;
+  artist: string;
+  fileName: string;
+  url: string; // Object URL or static URL
+  duration: number; // in seconds
+  fadeInSec: number; // Fade-in duration (0.0 to 10.0s, default 1.5s)
+  fadeOutSec: number; // Fade-out duration (0.0 to 10.0s, default 2.0s)
+  volume: number; // Volume trimming multiplier (0.0 to 1.0, default 1.0)
+  bpm?: number;
+  coverUrl?: string;
+  file?: File;
+  blob?: Blob;
+  lyrics?: LyricLine[];
+  rawLyrics?: string;
+  lyricsFileName?: string;
+  background?: BackgroundConfig; // Custom per-track background image/video & settings
+}
+
+export interface PlaylistConfig {
+  tracks: AudioTrackItem[];
+  currentIndex: number;
+  repeatMode: PlaylistRepeatMode;
+  crossfadeDuration: number; // 0 to 8 seconds
+  autoPlayNext: boolean;
+  enableFadeInOut: boolean; // Global toggle for fade-in / fade-out processing
+  defaultFadeInSec: number; // Default fade-in for newly imported tracks
+  defaultFadeOutSec: number; // Default fade-out for newly imported tracks
+}
+
+export type ExportAudioTarget = 'current-track' | 'full-playlist';
 
 export interface ExportSettings {
   resolution: '1080p' | '720p' | '4k';
@@ -432,6 +718,8 @@ export interface ExportSettings {
   startTime: number;
   endTime: number;
   fullSong: boolean;
+  hardwareAcceleration?: 'prefer-hardware' | 'auto' | 'software';
+  exportAudioTarget?: ExportAudioTarget;
 }
 
 export interface PresetTheme {
@@ -448,8 +736,10 @@ export interface PresetTheme {
   filmLight?: FilmLightConfig;
   colorGrading?: ColorGradingConfig;
   masterEq?: MasterEQConfig;
+  sceneTransitions?: SceneTransitionsConfig;
   track: TrackMetadata;
   textBoxes?: TextBoxItem[];
+  lotties?: LottieItem[];
   isUserPreset?: boolean;
   createdAt?: number;
   sampleAudio?: {
@@ -458,6 +748,54 @@ export interface PresetTheme {
     type: 'lofi' | 'synthwave' | 'acoustic' | 'edm';
     lyrics: string;
   };
+}
+
+export type SceneTransitionType = 
+  | 'fade'
+  | 'slide-left'
+  | 'slide-right'
+  | 'slide-up'
+  | 'slide-down'
+  | 'zoom-in'
+  | 'zoom-out';
+
+export interface SlideImageItem {
+  id: string;
+  url: string;
+  name: string;
+  duration?: number; // Optional individual slide duration override in seconds
+}
+
+export interface TimelineSceneItem {
+  id: string;
+  time: number;                   // Timestamp in seconds (e.g. 0, 15, 30, 45)
+  name: string;                   // Scene title (e.g. "Intro", "Drop 1", "Chorus")
+  imageId?: string;               // Reference to SlideImageItem ID or custom image
+  imageUrl?: string;              // Custom direct image URL
+  transitionType: SceneTransitionType;
+  transitionDuration: number;     // Seconds (e.g. 1.0)
+  // Optional Visualizer preset overrides for this scene
+  visualizerType?: VisualizerType;
+  visualizerPrimaryColor?: string;
+  visualizerSecondaryColor?: string;
+  visualizerColorMode?: VisualizerColorMode;
+  barCount?: number;
+}
+
+export type SceneTransitionsMode = 'slider' | 'timeline' | 'both';
+
+export interface SceneTransitionsConfig {
+  enabled: boolean;
+  mode: SceneTransitionsMode; // 'slider' = automatic interval slideshow, 'timeline' = cued scenes, 'both' = mixed
+  // Multi-image slider
+  images: SlideImageItem[];
+  sliderInterval: number; // Seconds per slide (default 8s)
+  defaultTransition: SceneTransitionType; // Default transition (fade, slide-left, etc.)
+  transitionDuration: number; // Transition duration in seconds (default 1.2s)
+  sliderLoop: boolean;
+  kenBurnsEffect: boolean; // Gentle Ken Burns motion / pan-zoom on background
+  // Timeline Cued Scenes
+  scenes: TimelineSceneItem[];
 }
 
 export type MasterEQPreset = 
@@ -504,3 +842,70 @@ export interface MasterEQConfig {
   highCutFreq: number;     // 20000 (off), 18000, 15000, 12000 Hz
   bands: MasterEQBands;
 }
+
+// ==========================================
+// LOTTIE ANIMATIONS & STICKERS TYPES
+// ==========================================
+export type LottieLayerOrder = 
+  | 'back-all'           // Phía sau cùng (ngay trên Background, dưới tất cả)
+  | 'behind-visualizer'  // Phía sau Sóng âm (giữa đĩa nhạc và sóng âm)
+  | 'front-visualizer'   // Phía trước Sóng âm (trên sóng âm, dưới lời bài hát)
+  | 'front-all';         // Phía trước tất cả (lên trên cùng màn hình)
+
+export interface LottieItem {
+  id: string;
+  name: string;
+  category?: 'music' | 'neon' | 'lofi' | 'effects' | 'custom';
+  url: string;              // Đường dẫn file Lottie JSON / dotLottie (.lottie, lottie.host)
+  format?: 'json' | 'dotlottie'; // Định dạng hoạt họa Lottie JSON hoặc dotLottie
+  animationData?: any;      // Dữ liệu JSON trực tiếp nếu được tải lên
+  x: number;                // Tọa độ X theo % chiều rộng (0 - 100)
+  y: number;                // Tọa độ Y theo % chiều cao (0 - 100)
+  scale: number;            // Tỷ lệ phóng to/thu nhỏ (0.2 đến 3.0, mặc định 1.0)
+  width?: number;           // Chiều rộng cơ sở px (mặc định 240)
+  height?: number;          // Chiều cao cơ sở px (mặc định 240)
+  opacity: number;          // Độ trong suốt (0.05 đến 1.0, mặc định 1.0)
+  rotation: number;         // Góc xoay (-180° đến +180°, mặc định 0)
+  speed: number;            // Tốc độ hoạt họa (0.25x đến 2.5x, mặc định 1.0)
+  loop: boolean;            // Tự động lặp lại (mặc định true)
+  visible: boolean;         // Hiển thị (mặc định true)
+  layerOrder: LottieLayerOrder; // Thứ tự lớp hiển thị trước / sau
+  audioReactive?: boolean;  // Nhún nhảy / phóng to theo nhịp Beat Bass
+}
+
+export interface LottieLibraryItem {
+  id: string;
+  nameVi: string;
+  nameEn: string;
+  category: 'music' | 'neon' | 'lofi' | 'effects';
+  tags: string[];
+  url: string;
+  format?: 'json' | 'dotlottie';
+  previewUrl?: string;
+  defaultScale?: number;
+  defaultLayerOrder?: LottieLayerOrder;
+  animationData?: any;
+}
+
+export const DEFAULT_LOTTIES: LottieItem[] = [
+  {
+    id: 'vinyl-record-spin',
+    name: 'Đĩa Than Cổ Điển Xoay (Vinyl Spin)',
+    category: 'music',
+    url: '',
+    x: 50,
+    y: 50,
+    scale: 1.0,
+    width: 240,
+    height: 240,
+    opacity: 0.9,
+    rotation: 0,
+    speed: 1.0,
+    loop: true,
+    visible: true,
+    layerOrder: 'behind-visualizer',
+    audioReactive: true,
+  },
+];
+
+

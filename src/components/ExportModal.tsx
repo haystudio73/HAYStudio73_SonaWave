@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AspectRatio, ExportSettings } from '../types';
+import { AspectRatio, ExportSettings, ExportAudioTarget, PlaylistConfig } from '../types';
 import { 
   Download, 
   X, 
@@ -14,7 +14,11 @@ import {
   RefreshCw,
   Play,
   Monitor,
-  Check
+  Check,
+  Cpu,
+  Zap,
+  Gauge,
+  Activity
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { formatTime } from '../utils/lyricsParser';
@@ -33,6 +37,7 @@ interface ExportModalProps {
   exportTotalSeconds: number;
   exportedBlob: Blob | null;
   onDownloadExportedVideo: () => void;
+  playlist?: PlaylistConfig;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -49,10 +54,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   exportTotalSeconds,
   exportedBlob,
   onDownloadExportedVideo,
+  playlist,
 }) => {
   const [resolution, setResolution] = useState<'1080p' | '720p' | '4k'>('1080p');
   const [fps, setFps] = useState<30 | 60>(60);
   const [qualityBitrate, setQualityBitrate] = useState<'high' | 'ultra' | 'medium'>('high');
+  const [hardwareAcceleration, setHardwareAcceleration] = useState<'prefer-hardware' | 'auto' | 'software'>('prefer-hardware');
+  const [exportAudioTarget, setExportAudioTarget] = useState<ExportAudioTarget>('current-track');
   const [fullSong, setFullSong] = useState(true);
   const [rangeDuration, setRangeDuration] = useState<number>(30); // 15, 30, 60
   const [startTime, setStartTime] = useState<number>(0);
@@ -93,7 +101,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   if (!isOpen) return null;
 
   const getEffectiveSettings = (): ExportSettings => {
-    const songDuration = duration || 30;
+    const totalPlaylistSec = playlist?.tracks.reduce((sum, t) => sum + (t.duration || 0), 0) || duration;
+    const effDuration = exportAudioTarget === 'full-playlist' ? totalPlaylistSec : (duration || 30);
+    const songDuration = effDuration > 0 ? effDuration : 30;
     const start = fullSong ? 0 : Math.min(startTime, Math.max(0, songDuration - 1));
     const end = fullSong ? songDuration : Math.min(start + rangeDuration, songDuration);
 
@@ -104,6 +114,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       startTime: start,
       endTime: end,
       fullSong,
+      hardwareAcceleration,
+      exportAudioTarget,
     };
   };
 
@@ -353,6 +365,56 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         ) : (
           /* 3. Settings Configuration Form */
           <div className="space-y-4">
+            {/* Audio Scope Selector (when playlist has multiple tracks) */}
+            {playlist && playlist.tracks.length > 1 && (
+              <div className="p-3 bg-neutral-950/80 rounded-xl border border-neutral-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
+                    Phạm Vi Xuất Video Âm Thanh
+                  </label>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/30">
+                    Playlist {playlist.tracks.length} Bài
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExportAudioTarget('current-track')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      exportAudioTarget === 'current-track'
+                        ? 'bg-rose-500/20 border-rose-500 text-white font-bold ring-1 ring-rose-500/40'
+                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    <div className="text-xs font-bold truncate">Bài Hiện Tại</div>
+                    <div className="text-[10px] text-neutral-400 truncate">
+                      {playlist.tracks[playlist.currentIndex]?.title || 'Track'}
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setExportAudioTarget('full-playlist')}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      exportAudioTarget === 'full-playlist'
+                        ? 'bg-purple-500/20 border-purple-500 text-white font-bold ring-1 ring-purple-500/40'
+                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    <div className="text-xs font-bold flex items-center justify-between">
+                      <span>Toàn Bộ Playlist</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/30 text-purple-200 font-mono">
+                        {playlist.tracks.length} bài
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-purple-300">
+                      Fade-in / Fade-out liên hoàn
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Resolution Selector */}
             <div>
               <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-2">
@@ -417,6 +479,64 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   <option value="ultra">Cực Cao (24 Mbps)</option>
                   <option value="medium">Tiêu chuẩn (8 Mbps)</option>
                 </select>
+              </div>
+            </div>
+
+            {/* Hardware Acceleration (GPU / CPU) Selection Card */}
+            <div className="p-3 rounded-2xl bg-neutral-950/90 border border-neutral-800/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+                    Tăng Tốc Phần Cứng (CPU / GPU)
+                  </span>
+                </div>
+                <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                  <Zap className="w-2.5 h-2.5" />
+                  {hardwareAcceleration === 'prefer-hardware' ? 'NVENC / VideoToolbox' : 'CPU Multi-Core'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setHardwareAcceleration('prefer-hardware')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 ${
+                    hardwareAcceleration === 'prefer-hardware'
+                      ? 'bg-rose-500/15 border-rose-500 text-white ring-1 ring-rose-500/40 shadow-sm'
+                      : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs font-bold block text-white">GPU Hardware</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-semibold uppercase">
+                      Nhanh
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-neutral-400 leading-tight">
+                    Tận dụng card đồ họa GPU, tốc độ render nhanh hơn 3-5 lần
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setHardwareAcceleration('software')}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 ${
+                    hardwareAcceleration === 'software'
+                      ? 'bg-purple-500/15 border-purple-500 text-white ring-1 ring-purple-500/40 shadow-sm'
+                      : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs font-bold block text-white">CPU Software</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400 font-semibold uppercase">
+                      Tương Thích
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-neutral-400 leading-tight">
+                    Xử lý bằng đa nhân CPU, ổn định trên mọi thiết bị
+                  </span>
+                </button>
               </div>
             </div>
 

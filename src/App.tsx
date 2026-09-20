@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   AspectRatio,
   VisualizerConfig,
@@ -13,6 +13,14 @@ import {
   FilmLightConfig,
   ColorGradingConfig,
   MasterEQConfig,
+  SceneTransitionsConfig,
+  HardwareAccelerationConfig,
+  HardwareInfo,
+  PlaylistConfig,
+  AudioTrackItem,
+  PlaylistRepeatMode,
+  LottieItem,
+  DEFAULT_LOTTIES,
 } from './types';
 import {
   DEFAULT_VISUALIZER,
@@ -24,6 +32,7 @@ import {
   DEFAULT_FILM_LIGHT,
   DEFAULT_COLOR_GRADING,
   DEFAULT_MASTER_EQ,
+  DEFAULT_SCENE_TRANSITIONS,
   SAMPLE_SRT_LOFI,
   SAMPLE_SRT_SYNTHWAVE,
   SAMPLE_SRT_ACOUSTIC,
@@ -33,10 +42,17 @@ import { AudioEngine } from './utils/audioEngine';
 import { VisualizerRenderer } from './utils/visualizerRenderer';
 import { VideoExporter } from './utils/videoExporter';
 import {
+  detectHardwareInfo,
+  getSavedHardwareConfig,
+  saveHardwareConfig,
+  HardwarePerformanceTracker,
+} from './utils/hardwareAcceleration';
+import {
   SavedProject,
   saveAutoSave,
   getAutoSave,
   hasAutoSave,
+  clearAutoSave,
 } from './utils/projectStorage';
 import { Language, getSavedLanguage, saveLanguage, TRANSLATIONS } from './utils/i18n';
 import { Header } from './components/Header';
@@ -44,6 +60,7 @@ import { CanvasStage } from './components/CanvasStage';
 import { VisualizerTab } from './components/VisualizerTab';
 import { LyricsTab } from './components/LyricsTab';
 import { BackgroundTab } from './components/BackgroundTab';
+import { SceneTransitionsTab } from './components/SceneTransitionsTab';
 import { FilmLightTab } from './components/FilmLightTab';
 import { ColorGradingTab } from './components/ColorGradingTab';
 import { TrackTab } from './components/TrackTab';
@@ -53,15 +70,30 @@ import { ProjectsModal } from './components/ProjectsModal';
 import { ExportModal } from './components/ExportModal';
 import { MasterEQModal } from './components/MasterEQModal';
 import { GlobalSettingsModal } from './components/GlobalSettingsModal';
+import { NewProjectModal } from './components/NewProjectModal';
+import { AudioPlaylistTab } from './components/AudioPlaylistTab';
+import { LottieTab } from './components/LottieTab';
+import {
+  DEFAULT_PLAYLIST_CONFIG,
+  getSavedPlaylist,
+  savePlaylist,
+  ensureUniqueTrackIds,
+  calculateFadeMultiplier,
+  generateTracklistContent,
+  matchLyricsFilesToTracks,
+} from './utils/playlistManager';
 
 import {
   BarChart2,
   FileText,
   ImageIcon,
+  Layers,
   Sparkles,
   Palette,
   Disc,
   Type,
+  ListMusic,
+  Check,
 } from 'lucide-react';
 
 export function App() {
@@ -69,15 +101,32 @@ export function App() {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
   const [visualizer, setVisualizer] = useState<VisualizerConfig>(DEFAULT_VISUALIZER);
   const [lyricsConfig, setLyricsConfig] = useState<LyricsConfig>(DEFAULT_LYRICS);
-  const [lyricsData, setLyricsData] = useState<LyricLine[]>(() =>
-    parseAnyLyrics(SAMPLE_SRT_SYNTHWAVE, 30)
-  );
-  const [background, setBackground] = useState<BackgroundConfig>(DEFAULT_BACKGROUND);
+  const [playlist, setPlaylist] = useState<PlaylistConfig>(() => getSavedPlaylist());
+  const playlistRef = useRef<PlaylistConfig>(playlist);
+  playlistRef.current = playlist;
+
+  const [lyricsData, setLyricsData] = useState<LyricLine[]>(() => {
+    const savedPl = getSavedPlaylist();
+    const curTrack = savedPl.tracks[savedPl.currentIndex];
+    if (curTrack?.lyrics && curTrack.lyrics.length > 0) {
+      return curTrack.lyrics;
+    }
+    return parseAnyLyrics(SAMPLE_SRT_SYNTHWAVE, 30);
+  });
+
+  const [defaultBackground, setDefaultBackground] = useState<BackgroundConfig>(DEFAULT_BACKGROUND);
+
+  const [background, setBackground] = useState<BackgroundConfig>(() => {
+    const savedPl = getSavedPlaylist();
+    const curTrack = savedPl.tracks[savedPl.currentIndex];
+    return curTrack?.background || DEFAULT_BACKGROUND;
+  });
   const [particles, setParticles] = useState<ParticleConfig>(DEFAULT_PARTICLES);
   const [filmLight, setFilmLight] = useState<FilmLightConfig>(DEFAULT_FILM_LIGHT);
   const [colorGrading, setColorGrading] = useState<ColorGradingConfig>(DEFAULT_COLOR_GRADING);
   const [track, setTrack] = useState<TrackMetadata>(DEFAULT_TRACK);
   const [textBoxes, setTextBoxes] = useState<TextBoxItem[]>(DEFAULT_TEXT_BOXES);
+  const [sceneTransitions, setSceneTransitions] = useState<SceneTransitionsConfig>(DEFAULT_SCENE_TRANSITIONS);
 
   // 2. Audio Engine & State
   const [isPlaying, setIsPlaying] = useState(false);
@@ -85,7 +134,6 @@ export function App() {
   const [duration, setDuration] = useState(30);
   const [volume, setVolume] = useState(0.85);
   const [isLooping, setIsLooping] = useState(true);
-  const [beatIntensity, setBeatIntensity] = useState(0);
   const [audioFileName, setAudioFileName] = useState('Neon_Synthwave_Demo.wav');
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [sampleAudioType, setSampleAudioType] = useState<'lofi' | 'synthwave' | 'acoustic' | 'edm'>('synthwave');
@@ -93,19 +141,149 @@ export function App() {
   const [isDetectingBpm, setIsDetectingBpm] = useState<boolean>(false);
   const currentAudioBlobRef = useRef<Blob | File | null>(null);
 
+  // Lottie Animation Overlays State
+  const [lotties, setLotties] = useState<LottieItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('sonawave_lotties_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((item: any) => ({
+            ...item,
+            // Clean out external failing CDN URLs on default items
+            url: item.url && item.url.includes('assets2.lottiefiles.com/packages/lf20_m6cuL6') ? '' : (item.url || ''),
+            // Ensure animationData is only kept if it is a valid object
+            animationData: item.animationData && typeof item.animationData === 'object' && item.animationData.v ? item.animationData : undefined,
+          }));
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_LOTTIES;
+  });
+  const [selectedLottieId, setSelectedLottieId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sonawave_lotties_v1', JSON.stringify(lotties));
+    } catch {
+      // ignore
+    }
+  }, [lotties]);
+
   // 3. UI Navigation & Modals
   const [activeTab, setActiveTab] = useState<
-    'visualizer' | 'lyrics' | 'background' | 'filmlight' | 'colorgrading' | 'track' | 'textboxes'
+    'visualizer' | 'lyrics' | 'background' | 'transitions' | 'filmlight' | 'colorgrading' | 'track' | 'textboxes' | 'playlist' | 'lottie'
   >('visualizer');
+
+  // 4. Global Language & Pro Master EQ State
+  const [language, setLanguage] = useState<Language>(() => getSavedLanguage());
+  const handleLanguageChange = (newLang: Language) => {
+    setLanguage(newLang);
+    saveLanguage(newLang);
+  };
+
+  // Persist playlist changes
+  useEffect(() => {
+    savePlaylist(playlist);
+  }, [playlist]);
+
+  // Auto-sync tracklist text boxes whenever playlist currentIndex or tracks change
+  useEffect(() => {
+    setTextBoxes((prevBoxes) => {
+      let hasChanged = false;
+      const nextBoxes = prevBoxes.map((box) => {
+        if (box.isTracklist && box.tracklistAutoSync !== false) {
+          const newText = generateTracklistContent(
+            playlist.tracks,
+            box.tracklistFormat || 'title-duration',
+            {
+              includeHeader: box.tracklistIncludeHeader !== false,
+              headerTitle: box.tracklistCustomHeader || (language === 'vi' ? '🎵 DANH SÁCH BÀI HÁT' : '🎵 TRACKLIST'),
+              currentIndex: playlist.currentIndex,
+              highlightCurrent: box.tracklistHighlightCurrent !== false,
+            }
+          );
+          if (newText !== box.text) {
+            hasChanged = true;
+            return { ...box, text: newText };
+          }
+        }
+        return box;
+      });
+      return hasChanged ? nextBoxes : prevBoxes;
+    });
+  }, [playlist.currentIndex, playlist.tracks, language]);
+
+  // Handler to add a Tracklist Text Box to the Visualizer Stage
+  const handleAddTracklistToVisualizer = useCallback(() => {
+    const existing = textBoxes.find((b) => b.isTracklist);
+    if (existing) {
+      setActiveTab('textboxes');
+      return;
+    }
+    const content = generateTracklistContent(
+      playlist.tracks,
+      'title-duration',
+      {
+        includeHeader: true,
+        headerTitle: language === 'vi' ? '🎵 DANH SÁCH BÀI HÁT' : '🎵 TRACKLIST',
+        currentIndex: playlist.currentIndex,
+        highlightCurrent: true,
+      }
+    );
+    const newBox: TextBoxItem = {
+      id: `tracklist-${Date.now()}`,
+      text: content,
+      positionX: 5,
+      positionY: 8,
+      fontSize: 14,
+      fontFamily: 'Inter, sans-serif',
+      color: '#ffffff',
+      alignment: 'left',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      letterSpacing: 0.5,
+      isUppercase: false,
+      opacity: 0.95,
+      hasBackground: true,
+      backgroundColor: '#0a0a0c',
+      backgroundOpacity: 0.7,
+      glowColor: '#a855f7',
+      glowIntensity: 10,
+      visible: true,
+      layerOrder: 'front-all',
+      wrapText: true,
+      maxWidth: 45,
+      lineHeight: 1.4,
+      isTracklist: true,
+      tracklistFormat: 'title-duration',
+      tracklistAutoSync: true,
+      tracklistIncludeHeader: true,
+      tracklistCustomHeader: language === 'vi' ? '🎵 DANH SÁCH BÀI HÁT' : '🎵 TRACKLIST',
+      tracklistHighlightCurrent: true,
+    };
+    setTextBoxes((prev) => [...prev, newBox]);
+    setActiveTab('textboxes');
+  }, [playlist.tracks, playlist.currentIndex, language, textBoxes]);
+
+  const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [isPresetsModalOpen, setIsPresetsModalOpen] = useState(false);
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isMasterEqModalOpen, setIsMasterEqModalOpen] = useState(false);
   const [isGlobalSettingsModalOpen, setIsGlobalSettingsModalOpen] = useState(false);
   const [hasSavedIndicator, setHasSavedIndicator] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // 4. Global Language & Pro Master EQ State
-  const [language, setLanguage] = useState<Language>(() => getSavedLanguage());
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
   const [masterEqConfig, setMasterEqConfig] = useState<MasterEQConfig>(() => {
     try {
       const saved = localStorage.getItem('sonawave_master_eq_v1');
@@ -115,10 +293,39 @@ export function App() {
     }
   });
 
-  const handleLanguageChange = (newLang: Language) => {
-    setLanguage(newLang);
-    saveLanguage(newLang);
-  };
+  // High Performance Render Path (Reduces load on lower-end devices during editing by simplifying particle calculations)
+  const [highPerformanceRender, setHighPerformanceRender] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sonawave_high_perf_render') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const highPerformanceRenderRef = useRef(highPerformanceRender);
+
+  useEffect(() => {
+    highPerformanceRenderRef.current = highPerformanceRender;
+    try {
+      localStorage.setItem('sonawave_high_perf_render', String(highPerformanceRender));
+    } catch {
+      // ignore
+    }
+  }, [highPerformanceRender]);
+
+  // Hardware Acceleration (GPU/CPU) State & Diagnostics
+  const [hardwareConfig, setHardwareConfig] = useState<HardwareAccelerationConfig>(getSavedHardwareConfig);
+  const [hardwareInfo] = useState<HardwareInfo>(detectHardwareInfo);
+  const hardwareConfigRef = useRef(hardwareConfig);
+  hardwareConfigRef.current = hardwareConfig;
+
+  useEffect(() => {
+    saveHardwareConfig(hardwareConfig);
+  }, [hardwareConfig]);
+
+  // Live Performance & GPU Metrics Tracker
+  const hwTrackerRef = useRef(new HardwarePerformanceTracker());
+  const [livePerformance, setLivePerformance] = useState({ fps: 60, renderDurationMs: 2.1, droppedFrames: 0 });
+  const lastPerfUpdateRef = useRef<number>(0);
 
   // 4. Export State
   const [isExporting, setIsExporting] = useState(false);
@@ -158,6 +365,9 @@ export function App() {
   const backgroundRef = useRef(background);
   backgroundRef.current = background;
 
+  const defaultBackgroundRef = useRef(defaultBackground);
+  defaultBackgroundRef.current = defaultBackground;
+
   const particlesRef = useRef(particles);
   particlesRef.current = particles;
 
@@ -172,6 +382,12 @@ export function App() {
 
   const textBoxesRef = useRef(textBoxes);
   textBoxesRef.current = textBoxes;
+
+  const sceneTransitionsRef = useRef(sceneTransitions);
+  sceneTransitionsRef.current = sceneTransitions;
+
+  const lottiesRef = useRef(lotties);
+  lottiesRef.current = lotties;
 
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -203,9 +419,11 @@ export function App() {
         particles,
         track,
         textBoxes,
+        sceneTransitions,
         filmLight,
         colorGrading,
         masterEq: masterEqConfig,
+        lotties,
         audioFileName,
         sampleAudioType,
       });
@@ -222,11 +440,13 @@ export function App() {
     lyricsData,
     background,
     particles,
+    sceneTransitions,
     filmLight,
     colorGrading,
     masterEqConfig,
     track,
     textBoxes,
+    lotties,
     audioFileName,
     sampleAudioType,
   ]);
@@ -266,6 +486,9 @@ export function App() {
       const safeTrack = autoSaved.track ? { ...DEFAULT_TRACK, ...autoSaved.track } : DEFAULT_TRACK;
       setTrack(safeTrack);
       setTextBoxes(autoSaved.textBoxes || DEFAULT_TEXT_BOXES);
+      if (autoSaved.sceneTransitions) {
+        setSceneTransitions(autoSaved.sceneTransitions);
+      }
       setAudioFileName(autoSaved.audioFileName || 'Neon_Synthwave_Demo.wav');
 
       if (autoSaved.background?.url) {
@@ -299,7 +522,7 @@ export function App() {
 
   useEffect(() => {
     if (rendererRef.current) {
-      rendererRef.current.syncVideoPlayback(isPlaying);
+      rendererRef.current.syncVideoPlayback(isPlaying, currentTime);
     }
   }, [isPlaying]);
 
@@ -363,7 +586,8 @@ export function App() {
       setDetectedBpm(demoBpm);
       setVisualizer((prev) => ({ ...prev, bpm: demoBpm }));
 
-      setAudioFileName(`${sampleTitle.replace(/\s+/g, '_')}.wav`);
+      const fileName = `${sampleTitle.replace(/\s+/g, '_')}.wav`;
+      setAudioFileName(fileName);
       if (updateLyrics) {
         setTrack((prev) => ({
           ...prev,
@@ -372,6 +596,65 @@ export function App() {
         }));
         const parsed = parseAnyLyrics(sampleLyrics, 30);
         setLyricsData(parsed);
+      }
+
+      // Sync active demo track with playlist
+      setPlaylist((prev) => {
+        const tracks = [...prev.tracks];
+        const curIdx = Math.max(0, Math.min(prev.currentIndex, Math.max(0, tracks.length - 1)));
+        const existingTrack = tracks[curIdx];
+
+        // Retain existing track ID if unique among other tracks, otherwise generate a unique demo ID
+        let trackId = existingTrack?.id;
+        const isDuplicate = !trackId || tracks.some((t, idx) => idx !== curIdx && t.id === trackId);
+        if (isDuplicate) {
+          trackId = `demo-${type}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        }
+
+        const demoItem: AudioTrackItem = {
+          id: trackId,
+          title: sampleTitle,
+          artist: sampleArtist,
+          fileName,
+          url,
+          duration: 30,
+          fadeInSec: prev.defaultFadeInSec ?? 2,
+          fadeOutSec: prev.defaultFadeOutSec ?? 2.5,
+          volume: 1.0,
+          bpm: demoBpm,
+        };
+
+        if (tracks.length === 0) {
+          return { ...prev, tracks: [demoItem], currentIndex: 0 };
+        } else {
+          tracks[curIdx] = demoItem;
+          return { ...prev, tracks: ensureUniqueTrackIds(tracks) };
+        }
+      });
+
+      // Warm up demo audio for any other tracks in playlist in the background for zero-latency seamless continuation
+      if (audioEngineRef.current) {
+        setTimeout(async () => {
+          const curTracks = playlistRef.current.tracks;
+          for (let i = 0; i < curTracks.length; i++) {
+            const tr = curTracks[i];
+            if (!tr.url && audioEngineRef.current) {
+              try {
+                const dType = (tr.id?.includes('lofi') || tr.title?.toLowerCase().includes('lofi'))
+                  ? 'lofi'
+                  : (tr.id?.includes('acoustic') || tr.title?.toLowerCase().includes('acoustic'))
+                  ? 'acoustic'
+                  : (tr.id?.includes('edm') || tr.title?.toLowerCase().includes('edm'))
+                  ? 'edm'
+                  : 'synthwave';
+                const b = await audioEngineRef.current.generateDemoAudio(dType, tr.duration || 30);
+                tr.url = URL.createObjectURL(b);
+              } catch (e) {
+                // ignore
+              }
+            }
+          }
+        }, 150);
       }
     } catch (err) {
       console.error('Failed to generate demo track:', err);
@@ -393,18 +676,40 @@ export function App() {
     // Auto extract title from filename
     const cleanName = file.name.replace(/\.[^/.]+$/, '');
     const parts = cleanName.split('-');
-    if (parts.length > 1) {
-      setTrack((prev) => ({
-        ...prev,
-        artist: parts[0].trim(),
-        title: parts.slice(1).join('-').trim(),
-      }));
-    } else {
-      setTrack((prev) => ({
-        ...prev,
-        title: cleanName,
-      }));
-    }
+    const extractedArtist = parts.length > 1 ? parts[0].trim() : 'Artist';
+    const extractedTitle = parts.length > 1 ? parts.slice(1).join('-').trim() : cleanName;
+
+    setTrack((prev) => ({
+      ...prev,
+      artist: extractedArtist,
+      title: extractedTitle,
+    }));
+
+    // Add track to playlist
+    const newTrackItem: AudioTrackItem = {
+      id: 'track-' + Date.now(),
+      title: extractedTitle,
+      artist: extractedArtist,
+      fileName: file.name,
+      url,
+      duration: 0,
+      fadeInSec: playlistRef.current.defaultFadeInSec ?? 2,
+      fadeOutSec: playlistRef.current.defaultFadeOutSec ?? 2.5,
+      volume: 1.0,
+    };
+
+    const tempAudio = new Audio(url);
+    tempAudio.onloadedmetadata = () => {
+      newTrackItem.duration = tempAudio.duration;
+      setPlaylist((prev) => {
+        const tracks = [...prev.tracks, newTrackItem];
+        return {
+          ...prev,
+          tracks,
+          currentIndex: tracks.length - 1,
+        };
+      });
+    };
 
     // Auto detect BPM from uploaded audio
     if (audioEngineRef.current) {
@@ -448,6 +753,267 @@ export function App() {
   };
 
   // Audio Playback Controls
+  const playTrackAtIndex = useCallback(async (index: number, shouldAutoPlay = true, seekTime = 0) => {
+    const list = playlistRef.current;
+    if (index < 0 || index >= list.tracks.length) return;
+    const targetTrack = list.tracks[index];
+
+    // Immediately pause current audio playback to avoid stale timeupdate events from previous track
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+
+    // Immediately update index and reset currentTime to target seekTime (0 by default)
+    setPlaylist((prev) => ({
+      ...prev,
+      currentIndex: index,
+    }));
+    setCurrentTime(seekTime);
+
+    // Apply track's unique background if configured, otherwise fallback to project default background
+    if (targetTrack.background) {
+      setBackground(targetTrack.background);
+    } else {
+      setBackground(defaultBackgroundRef.current);
+    }
+
+    // Switch track lyrics if available
+    if (targetTrack.lyrics && targetTrack.lyrics.length > 0) {
+      setLyricsData(targetTrack.lyrics);
+    } else {
+      setLyricsData([]);
+    }
+
+    let audioUrl = targetTrack.url;
+    if (!audioUrl && audioEngineRef.current) {
+      try {
+        const demoType = (targetTrack.id?.includes('lofi') || targetTrack.title?.toLowerCase().includes('lofi'))
+          ? 'lofi'
+          : (targetTrack.id?.includes('acoustic') || targetTrack.title?.toLowerCase().includes('acoustic'))
+          ? 'acoustic'
+          : (targetTrack.id?.includes('edm') || targetTrack.title?.toLowerCase().includes('edm'))
+          ? 'edm'
+          : 'synthwave';
+        const blob = await audioEngineRef.current.generateDemoAudio(demoType, targetTrack.duration || 30);
+        audioUrl = URL.createObjectURL(blob);
+        targetTrack.url = audioUrl;
+      } catch (e) {
+        console.warn('Failed to generate audio for playlist track:', e);
+      }
+    }
+
+    if (audioRef.current && audioUrl) {
+      audioRef.current.src = audioUrl;
+      audioRef.current.load();
+      audioRef.current.currentTime = seekTime;
+    }
+
+    setAudioFileName(targetTrack.fileName);
+    setTrack((prev) => ({
+      ...prev,
+      title: targetTrack.title,
+      artist: targetTrack.artist || prev.artist,
+      coverUrl: targetTrack.coverUrl || prev.coverUrl,
+    }));
+
+    if (targetTrack.bpm) {
+      setDetectedBpm(targetTrack.bpm);
+      setVisualizer((prev) => ({ ...prev, bpm: targetTrack.bpm }));
+    }
+
+    if (audioEngineRef.current && audioRef.current) {
+      audioEngineRef.current.attachAudioElement(audioRef.current);
+      await audioEngineRef.current.resume();
+      if (audioRef.current && seekTime > 0) {
+        audioRef.current.currentTime = seekTime;
+      }
+      if (shouldAutoPlay) {
+        try {
+          await audioRef.current.play();
+          setIsPlaying(true);
+        } catch (e) {
+          console.warn('Track auto-play error:', e);
+        }
+      }
+    }
+  }, []);
+
+  // Handler to update background for a specific track
+  const handleUpdateTrackBackground = useCallback((trackId: string, bg: BackgroundConfig | undefined) => {
+    setPlaylist((prev) => {
+      const updated = prev.tracks.map((t) => (t.id === trackId ? { ...t, background: bg } : t));
+      return { ...prev, tracks: updated };
+    });
+
+    const activeTrack = playlistRef.current.tracks[playlistRef.current.currentIndex];
+    if (activeTrack && activeTrack.id === trackId) {
+      setBackground(bg || defaultBackgroundRef.current);
+    }
+  }, []);
+
+  // Handler to apply a background to all tracks in the playlist
+  const handleApplyBackgroundToAllTracks = useCallback((bg: BackgroundConfig) => {
+    setPlaylist((prev) => {
+      const updated = prev.tracks.map((t) => ({ ...t, background: { ...bg } }));
+      return { ...prev, tracks: updated };
+    });
+    setBackground(bg);
+  }, []);
+
+  // Handler to update lyrics for a specific track
+  const handleUpdateTrackLyrics = useCallback(
+    (trackId: string, lyrics: LyricLine[], rawLyrics?: string, fileName?: string) => {
+      setPlaylist((prev) => {
+        const updated = prev.tracks.map((t) =>
+          t.id === trackId
+            ? {
+                ...t,
+                lyrics,
+                rawLyrics: rawLyrics !== undefined ? rawLyrics : t.rawLyrics,
+                lyricsFileName: fileName !== undefined ? fileName : t.lyricsFileName,
+              }
+            : t
+        );
+        return { ...prev, tracks: updated };
+      });
+
+      const curTrack = playlistRef.current.tracks[playlistRef.current.currentIndex];
+      if (curTrack && curTrack.id === trackId) {
+        setLyricsData(lyrics);
+      }
+    },
+    []
+  );
+
+  // Handler to batch import lyrics files
+  const handleBatchImportLyrics = useCallback((files: { name: string; content: string }[]) => {
+    let count = 0;
+    setPlaylist((prev) => {
+      const { updatedTracks, matchedCount } = matchLyricsFilesToTracks(prev.tracks, files);
+      count = matchedCount;
+      const curTrack = updatedTracks[prev.currentIndex];
+      if (curTrack && curTrack.lyrics) {
+        setLyricsData(curTrack.lyrics);
+      }
+      return { ...prev, tracks: updatedTracks };
+    });
+    return count;
+  }, []);
+
+  // Handler to apply lyrics to all tracks
+  const handleApplyLyricsToAllTracks = useCallback((lyrics: LyricLine[]) => {
+    setPlaylist((prev) => {
+      const updated = prev.tracks.map((t) => ({
+        ...t,
+        lyrics: [...lyrics],
+        lyricsFileName: 'Shared_Lyrics.lrc',
+      }));
+      return { ...prev, tracks: updated };
+    });
+    setLyricsData(lyrics);
+  }, []);
+
+  // Handler to update lyrics when user edits in Lyrics Tab
+  const handleLyricsChange = useCallback((newLyrics: LyricLine[]) => {
+    setLyricsData(newLyrics);
+    setPlaylist((prev) => {
+      const curIdx = prev.currentIndex;
+      if (curIdx >= 0 && curIdx < prev.tracks.length) {
+        const updated = [...prev.tracks];
+        updated[curIdx] = {
+          ...updated[curIdx],
+          lyrics: newLyrics,
+        };
+        return { ...prev, tracks: updated };
+      }
+      return prev;
+    });
+  }, []);
+
+  const isAdvancingTrackRef = useRef(false);
+  const handleNextTrack = useCallback(async (autoAdvance = false) => {
+    if (isAdvancingTrackRef.current) return;
+    isAdvancingTrackRef.current = true;
+    setTimeout(() => {
+      isAdvancingTrackRef.current = false;
+    }, 450);
+
+    const list = playlistRef.current;
+    if (list.tracks.length === 0) return;
+
+    if (list.repeatMode === 'repeat-one' && autoAdvance) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        setCurrentTime(0);
+        audioRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
+      return;
+    }
+
+    if (list.repeatMode === 'shuffle') {
+      if (list.tracks.length > 1) {
+        let rand = Math.floor(Math.random() * list.tracks.length);
+        if (rand === list.currentIndex) {
+          rand = (rand + 1) % list.tracks.length;
+        }
+        playTrackAtIndex(rand, true, 0);
+      } else {
+        playTrackAtIndex(0, true, 0);
+      }
+      return;
+    }
+
+    if (list.currentIndex < list.tracks.length - 1) {
+      playTrackAtIndex(list.currentIndex + 1, true, 0);
+    } else if (list.repeatMode === 'repeat-all') {
+      playTrackAtIndex(0, true, 0);
+    } else {
+      // Reached the end of the entire playlist and repeat is off:
+      // Keep playhead at the end of the full timeline bar without resetting to 0
+      setIsPlaying(false);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        const curDur = audioRef.current.duration || 30;
+        audioRef.current.currentTime = curDur;
+        setCurrentTime(curDur);
+      }
+    }
+  }, [playTrackAtIndex]);
+
+  const handlePreviousTrack = useCallback(async () => {
+    const list = playlistRef.current;
+    if (list.tracks.length === 0) return;
+
+    if (audioRef.current && audioRef.current.currentTime > 3) {
+      audioRef.current.currentTime = 0;
+      setCurrentTime(0);
+      return;
+    }
+
+    if (list.currentIndex > 0) {
+      playTrackAtIndex(list.currentIndex - 1, true);
+    } else if (list.repeatMode === 'repeat-all') {
+      playTrackAtIndex(list.tracks.length - 1, true);
+    } else {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+      }
+    }
+  }, [playTrackAtIndex]);
+
+  const handleToggleRepeatMode = useCallback(() => {
+    setPlaylist((prev) => {
+      const modes: PlaylistRepeatMode[] = ['off', 'repeat-all', 'repeat-one', 'shuffle'];
+      const currentIdx = modes.indexOf(prev.repeatMode);
+      const nextMode = modes[(currentIdx + 1) % modes.length];
+      return {
+        ...prev,
+        repeatMode: nextMode,
+      };
+    });
+  }, []);
+
   const handleTogglePlay = async () => {
     if (!audioRef.current || !audioEngineRef.current) return;
 
@@ -471,8 +1037,61 @@ export function App() {
     if (audioRef.current) {
       audioRef.current.currentTime = time;
       setCurrentTime(time);
+      rendererRef.current?.syncVideoSeek(time);
     }
   };
+
+  // Total Playlist Duration (automatically updates when tracks are added, modified, or removed)
+  const totalPlaylistDuration = useMemo(() => {
+    if (!playlist.tracks || playlist.tracks.length === 0) {
+      return duration || 30;
+    }
+    return playlist.tracks.reduce((sum, t) => sum + (t.duration || 0), 0) || duration || 30;
+  }, [playlist.tracks, duration]);
+
+  // Playlist Elapsed Time (cumulative elapsed time across all previous tracks + current track offset)
+  const playlistElapsedTime = useMemo(() => {
+    if (!playlist.tracks || playlist.tracks.length === 0) {
+      return currentTime;
+    }
+    let elapsed = 0;
+    for (let i = 0; i < playlist.currentIndex && i < playlist.tracks.length; i++) {
+      const tDur = (playlist.tracks[i].duration && playlist.tracks[i].duration > 0)
+        ? playlist.tracks[i].duration
+        : 30;
+      elapsed += tDur;
+    }
+    return elapsed + (currentTime || 0);
+  }, [playlist.tracks, playlist.currentIndex, currentTime]);
+
+  // Global Seek across whole playlist (switches to target track and seeks accurately)
+  const handleSeekPlaylist = useCallback((globalTime: number) => {
+    const tracks = playlistRef.current.tracks;
+    if (!tracks || tracks.length === 0) {
+      handleSeek(globalTime);
+      return;
+    }
+
+    let cumulative = 0;
+    for (let i = 0; i < tracks.length; i++) {
+      const tDur = (tracks[i].duration && tracks[i].duration > 0) ? tracks[i].duration : 30;
+      const nextCum = cumulative + tDur;
+      if (globalTime < nextCum || i === tracks.length - 1) {
+        const localSeek = Math.max(0, globalTime - cumulative);
+        if (i === playlistRef.current.currentIndex) {
+          if (audioRef.current) {
+            audioRef.current.currentTime = localSeek;
+            setCurrentTime(localSeek);
+            rendererRef.current?.syncVideoSeek(localSeek);
+          }
+        } else {
+          playTrackAtIndex(i, isPlaying, localSeek);
+        }
+        break;
+      }
+      cumulative = nextCum;
+    }
+  }, [isPlaying, playTrackAtIndex]);
 
   const handleVolumeChange = (vol: number) => {
     setVolume(vol);
@@ -506,6 +1125,18 @@ export function App() {
     const safeTrack = project.track ? { ...DEFAULT_TRACK, ...project.track } : DEFAULT_TRACK;
     setTrack(safeTrack);
     setTextBoxes(project.textBoxes || DEFAULT_TEXT_BOXES);
+    if (project.sceneTransitions) {
+      setSceneTransitions(project.sceneTransitions);
+    } else {
+      setSceneTransitions(DEFAULT_SCENE_TRANSITIONS);
+    }
+    if (project.lotties) {
+      setLotties(project.lotties);
+      setSelectedLottieId(project.lotties.length > 0 ? project.lotties[0].id : null);
+    } else {
+      setLotties([]);
+      setSelectedLottieId(null);
+    }
     setAudioFileName(project.audioFileName || 'Neon_Synthwave_Demo.wav');
 
     if (rendererRef.current) {
@@ -520,20 +1151,62 @@ export function App() {
     }
   };
 
-  // Reset to default blank state
-  const handleResetToDefaults = () => {
+  // Complete Reset to Defaults / New Project
+  const executeResetToDefaults = useCallback(() => {
+    // 1. Stop audio playback cleanly
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setIsPlaying(false);
+    setCurrentTime(0);
+
+    // 2. Reset all visualizer and scene configurations
     setAspectRatio('9:16');
     setVisualizer(DEFAULT_VISUALIZER);
     setLyricsConfig(DEFAULT_LYRICS);
+    setLyricsData([]);
     setBackground(DEFAULT_BACKGROUND);
+    setDefaultBackground(DEFAULT_BACKGROUND);
     setParticles(DEFAULT_PARTICLES);
     setFilmLight(DEFAULT_FILM_LIGHT);
     setColorGrading(DEFAULT_COLOR_GRADING);
     setMasterEqConfig(DEFAULT_MASTER_EQ);
     setTrack(DEFAULT_TRACK);
     setTextBoxes(DEFAULT_TEXT_BOXES);
-    loadSampleTrack('synthwave', true);
-  };
+    setSceneTransitions(DEFAULT_SCENE_TRANSITIONS);
+    setPlaylist(DEFAULT_PLAYLIST_CONFIG);
+    setLotties(DEFAULT_LOTTIES);
+    setSelectedLottieId(null);
+    setAudioFileName('Neon_Synthwave_Demo.wav');
+
+    // 3. Reset visualizer canvas renderer background and cover
+    if (rendererRef.current) {
+      rendererRef.current.setBackgroundVideo('');
+      rendererRef.current.setBackgroundImage(DEFAULT_BACKGROUND.url);
+      rendererRef.current.setCoverImage(DEFAULT_TRACK.coverUrl);
+      rendererRef.current.syncVideoSeek(0);
+    }
+
+    // 4. Reload clean default sample track
+    loadSampleTrack('synthwave', false);
+
+    // 5. Clean stored local autosave
+    try {
+      localStorage.removeItem('sonawave_project_data_v1');
+      localStorage.removeItem('sonawave_lotties_v1');
+      clearAutoSave();
+    } catch {
+      // ignore
+    }
+
+    setToastMessage(language === 'vi' ? '✨ Đã tạo dự án mới thành công!' : '✨ New project created successfully!');
+  }, [language, loadSampleTrack]);
+
+  // Reset to default blank state
+  const handleResetToDefaults = useCallback(() => {
+    executeResetToDefaults();
+  }, [executeResetToDefaults]);
 
   // Apply Preset Theme
   const handleSelectPresetTheme = (theme: PresetTheme) => {
@@ -546,6 +1219,9 @@ export function App() {
     setColorGrading(theme.colorGrading || DEFAULT_COLOR_GRADING);
     const safeTrack = theme.track ? { ...DEFAULT_TRACK, ...theme.track } : DEFAULT_TRACK;
     setTrack(safeTrack);
+    if (theme.sceneTransitions) {
+      setSceneTransitions(theme.sceneTransitions);
+    }
 
     if (rendererRef.current) {
       if (theme.background?.url) {
@@ -598,6 +1274,12 @@ export function App() {
           targetH = 1350;
         }
 
+        // Preview resolution scaling when High Performance Mode is enabled (cuts GPU pixel fill overhead by ~60%)
+        if (!isExportingRef.current && highPerformanceRenderRef.current) {
+          targetW = Math.round(targetW * 0.625);
+          targetH = Math.round(targetH * 0.625);
+        }
+
         // 1. Prepare OffscreenCanvas if supported
         const hasOffscreen = typeof OffscreenCanvas !== 'undefined';
         let drawTargetCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null = null;
@@ -633,15 +1315,28 @@ export function App() {
             trebleIntensity = data.trebleIntensity;
             overallVol = data.overallVolume;
             beatIntensityVal = audioEngine.beatIntensity;
-
-            // Throttled beat indicator update for UI (every 120ms) to avoid render spam
-            if (time - lastBeatUpdate > 120) {
-              lastBeatUpdate = time;
-              setBeatIntensity(beatIntensityVal);
-            }
           }
 
           const curTime = audioRef.current ? audioRef.current.currentTime : currentTimeRef.current;
+
+          // Real-time Smooth Fade-In and Fade-Out automation
+          if (audioEngine && audioRef.current && isPlayingRef.current) {
+            const list = playlistRef.current;
+            const curTrack = list.tracks[list.currentIndex];
+            if (curTrack && list.enableFadeInOut) {
+              const fadeMult = calculateFadeMultiplier(
+                curTime,
+                audioRef.current.duration || 30,
+                curTrack.fadeInSec,
+                curTrack.fadeOutSec,
+                true
+              );
+              const targetFadeGain = fadeMult * (curTrack.volume ?? 1.0);
+              audioEngine.setFadeGain(targetFadeGain);
+            } else if (curTrack) {
+              audioEngine.setFadeGain(curTrack.volume ?? 1.0);
+            }
+          }
 
           // Render entire visualizer scene directly to isolated offscreen buffer / target
           renderer.render(
@@ -665,7 +1360,10 @@ export function App() {
             currentAR,
             isPlayingRef.current,
             filmLightRef.current,
-            colorGradingRef.current
+            colorGradingRef.current,
+            sceneTransitionsRef.current,
+            isExportingRef.current ? false : highPerformanceRenderRef.current,
+            lottiesRef.current
           );
 
           // Fast blit from OffscreenCanvas to export target if exporting
@@ -776,6 +1474,11 @@ export function App() {
       });
     }
 
+    // Auto-replay Background MP4 from beginning when video render starts
+    if (rendererRef.current) {
+      rendererRef.current.replayBackgroundVideo();
+    }
+
     // Start playback
     try {
       await audio.play();
@@ -786,11 +1489,13 @@ export function App() {
 
     // Get fresh audio stream with live active tracks
     const audioStream = audioEngine.getFreshAudioStream();
+    const hwAccel = settings.hardwareAcceleration || (hardwareConfigRef.current.preferHardwareEncoder ? 'prefer-hardware' : 'software');
     const recordPromise = exporter.startRecording(
       exportCanvas,
       audioStream,
       settings.fps,
-      settings.qualityBitrate
+      settings.qualityBitrate,
+      hwAccel
     );
 
     const startTimeStamp = Date.now();
@@ -892,25 +1597,56 @@ export function App() {
     }
   };
 
+  const handleNewProject = useCallback(() => {
+    setIsNewProjectModalOpen(true);
+  }, []);
+
   return (
     <div className="min-h-screen bg-neutral-950 flex flex-col font-['Be_Vietnam_Pro',sans-serif]">
       {/* Hidden HTML5 Audio Element */}
       <audio
         ref={audioRef}
         crossOrigin="anonymous"
-        loop={isLooping}
+        loop={playlist.tracks.length > 1 ? (playlist.repeatMode === 'repeat-one') : isLooping}
         onTimeUpdate={() => {
           if (audioRef.current) {
-            setCurrentTime(audioRef.current.currentTime);
+            const cur = audioRef.current.currentTime;
+            setCurrentTime(cur);
+
+            // Seamless playlist continuation across timeline: auto advance when nearing end of current track
+            const curDur = audioRef.current.duration;
+            if (
+              playlistRef.current.tracks.length > 1 &&
+              playlistRef.current.repeatMode !== 'repeat-one' &&
+              curDur > 0 &&
+              cur >= curDur - 0.08
+            ) {
+              handleNextTrack(true);
+            }
           }
         }}
         onLoadedMetadata={() => {
           if (audioRef.current) {
-            setDuration(audioRef.current.duration || 30);
+            const d = audioRef.current.duration;
+            if (d && !isNaN(d) && isFinite(d) && d > 0) {
+              setDuration(d);
+              setPlaylist((prev) => {
+                const curIdx = prev.currentIndex;
+                if (curIdx >= 0 && curIdx < prev.tracks.length) {
+                  const cur = prev.tracks[curIdx];
+                  if (!cur.duration || Math.abs(cur.duration - d) > 0.25) {
+                    const copy = [...prev.tracks];
+                    copy[curIdx] = { ...copy[curIdx], duration: d };
+                    return { ...prev, tracks: copy };
+                  }
+                }
+                return prev;
+              });
+            }
           }
         }}
         onEnded={() => {
-          if (!isLooping) setIsPlaying(false);
+          handleNextTrack(true);
         }}
       />
 
@@ -922,6 +1658,7 @@ export function App() {
         onCaptureSnapshot={handleCaptureSnapshot}
         onOpenPresetsModal={() => setIsPresetsModalOpen(true)}
         onOpenProjectsModal={() => setIsProjectsModalOpen(true)}
+        onNewProject={handleNewProject}
         onLoadDemoTrack={(type) => loadSampleTrack(type, true)}
         isLoadingAudio={isLoadingAudio}
         savedIndicator={hasSavedIndicator}
@@ -947,83 +1684,69 @@ export function App() {
           onVolumeChange={handleVolumeChange}
           isLooping={isLooping}
           onToggleLoop={() => setIsLooping(!isLooping)}
-          beatIntensity={beatIntensity}
           onUploadAudioFile={handleUploadAudioFile}
           audioFileName={audioFileName}
           language={language}
           onOpenMasterEq={() => setIsMasterEqModalOpen(true)}
           masterEqActive={masterEqConfig.enabled}
+          hardwareConfig={hardwareConfig}
+          livePerformance={livePerformance}
+          hardwareInfo={hardwareInfo}
+          onOpenSettings={() => setIsGlobalSettingsModalOpen(true)}
+          onPreviousTrack={handlePreviousTrack}
+          onNextTrack={() => handleNextTrack(false)}
+          hasNextTrack={playlist.tracks.length > 1}
+          hasPreviousTrack={playlist.tracks.length > 1 || currentTime > 3}
+          playlistTrackInfo={
+            playlist.tracks.length > 0 && playlist.tracks[playlist.currentIndex]
+              ? {
+                  current: playlist.currentIndex + 1,
+                  total: playlist.tracks.length,
+                  title: playlist.tracks[playlist.currentIndex].title,
+                  artist: playlist.tracks[playlist.currentIndex].artist,
+                  fadeInSec: playlist.enableFadeInOut ? playlist.tracks[playlist.currentIndex].fadeInSec : undefined,
+                  fadeOutSec: playlist.enableFadeInOut ? playlist.tracks[playlist.currentIndex].fadeOutSec : undefined,
+                }
+              : undefined
+          }
+          onOpenPlaylist={() => setActiveTab('playlist')}
+          repeatMode={playlist.repeatMode}
+          onToggleRepeatMode={handleToggleRepeatMode}
+          playlist={playlist}
+          totalPlaylistDuration={totalPlaylistDuration}
+          playlistElapsedTime={playlistElapsedTime}
+          onSeekPlaylist={handleSeekPlaylist}
+          isVisualizerVisible={visualizer.visible !== false}
+          onToggleVisualizerVisible={() =>
+            setVisualizer((prev) => ({ ...prev, visible: prev.visible === false ? true : false }))
+          }
+          lotties={lotties}
+          selectedLottie={lotties.find((l) => l.id === selectedLottieId) || null}
+          onSelectLottieId={(id) => setSelectedLottieId(id)}
+          onUpdateLottie={(id, partial) =>
+            setLotties((prev) => prev.map((item) => (item.id === id ? { ...item, ...partial } : item)))
+          }
         />
 
         {/* Right Area: Customization Panel Tabs */}
         <div className="w-full lg:w-[420px] xl:w-[460px] border-t lg:border-t-0 lg:border-l border-neutral-800/80 bg-neutral-950/90 backdrop-blur-xl flex flex-col shrink-0 h-[50vh] lg:h-[calc(100vh-4rem)]">
-          {/* Tabs Navigation */}
+          {/* Tabs Navigation (Reorganized in logical production workflow) */}
           <div className="flex items-center border-b border-neutral-800/90 bg-neutral-900/50 p-1.5 gap-1 shrink-0 overflow-x-auto custom-scrollbar">
+            {/* 1. Playlist - Danh Sách Nhạc */}
             <button
-              onClick={() => setActiveTab('visualizer')}
-              title={TRANSLATIONS[language].tabVisualizer}
+              onClick={() => setActiveTab('playlist')}
+              title={TRANSLATIONS[language].tabPlaylist}
               className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'visualizer'
-                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                activeTab === 'playlist'
+                  ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-md shadow-rose-600/20'
                   : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
               }`}
             >
-              <BarChart2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabVisualizer}</span>
+              <ListMusic className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabPlaylist}</span>
             </button>
 
-            <button
-              onClick={() => setActiveTab('lyrics')}
-              title={TRANSLATIONS[language].tabLyrics}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'lyrics'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
-            >
-              <FileText className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabLyrics}</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('background')}
-              title={TRANSLATIONS[language].tabBackground}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'background'
-                  ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
-            >
-              <ImageIcon className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabBackground}</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('filmlight')}
-              title={TRANSLATIONS[language].tabFilmLight}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'filmlight'
-                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
-            >
-              <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabFilmLight}</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('colorgrading')}
-              title={TRANSLATIONS[language].tabColorGrading}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'colorgrading'
-                  ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md shadow-amber-500/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
-            >
-              <Palette className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabColorGrading}</span>
-            </button>
-
+            {/* 2. Track - Thông Tin Bài Hát */}
             <button
               onClick={() => setActiveTab('track')}
               title={TRANSLATIONS[language].tabTrack}
@@ -1037,6 +1760,35 @@ export function App() {
               <span className="hidden sm:inline">{TRANSLATIONS[language].tabTrack}</span>
             </button>
 
+            {/* 3. Visualizer - Sóng Nhạc */}
+            <button
+              onClick={() => setActiveTab('visualizer')}
+              title={TRANSLATIONS[language].tabVisualizer}
+              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'visualizer'
+                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+              }`}
+            >
+              <BarChart2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabVisualizer}</span>
+            </button>
+
+            {/* 4. Lyrics - Lời Nhạc / Karaoke */}
+            <button
+              onClick={() => setActiveTab('lyrics')}
+              title={TRANSLATIONS[language].tabLyrics}
+              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'lyrics'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+              }`}
+            >
+              <FileText className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabLyrics}</span>
+            </button>
+
+            {/* 5. Text Boxes - Chữ & Hộp Tracklist */}
             <button
               onClick={() => setActiveTab('textboxes')}
               title={TRANSLATIONS[language].tabTextBoxes}
@@ -1049,10 +1801,120 @@ export function App() {
               <Type className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
               <span className="hidden sm:inline">{TRANSLATIONS[language].tabTextBoxes}</span>
             </button>
+
+            {/* 6. Lottie Animation FX / LottieFiles (placed before Background) */}
+            <button
+              onClick={() => setActiveTab('lottie')}
+              title={TRANSLATIONS[language].tabLottie || 'LottieFiles'}
+              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap relative ${
+                activeTab === 'lottie'
+                  ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md shadow-indigo-600/20'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-300" />
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabLottie || 'LottieFiles'}</span>
+              {lotties.length > 0 && (
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-400 text-neutral-950 ml-0.5">
+                  {lotties.length}
+                </span>
+              )}
+            </button>
+
+            {/* 7. Background - Hình Nền & Hạt Bay */}
+            <button
+              onClick={() => setActiveTab('background')}
+              title={TRANSLATIONS[language].tabBackground}
+              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'background'
+                  ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+              }`}
+            >
+              <ImageIcon className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabBackground}</span>
+            </button>
+
+            {/* 8. Scene Transitions - Hiệu Ứng Chuyển Cảnh */}
+            <button
+              onClick={() => setActiveTab('transitions')}
+              title={TRANSLATIONS[language].tabTransitions}
+              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'transitions'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+              }`}
+            >
+              <Layers className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabTransitions}</span>
+            </button>
+
+            {/* 9. Film Light - Ánh Sáng Phim & Bụi Điện Ảnh */}
+            <button
+              onClick={() => setActiveTab('filmlight')}
+              title={TRANSLATIONS[language].tabFilmLight}
+              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'filmlight'
+                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabFilmLight}</span>
+            </button>
+
+            {/* 10. Color Grading - Chỉnh Màu & LUTs */}
+            <button
+              onClick={() => setActiveTab('colorgrading')}
+              title={TRANSLATIONS[language].tabColorGrading}
+              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'colorgrading'
+                  ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md shadow-amber-500/20'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+              }`}
+            >
+              <Palette className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
+              <span className="hidden sm:inline">{TRANSLATIONS[language].tabColorGrading}</span>
+            </button>
           </div>
 
-          {/* Tab Content Panel (Scrollable) */}
+          {/* Tab Content Panel (Scrollable, aligned in logical order) */}
           <div className="flex-1 overflow-y-auto p-4 lg:p-5 custom-scrollbar">
+            {/* 1. Playlist Content */}
+            {activeTab === 'playlist' && (
+              <AudioPlaylistTab
+                playlist={playlist}
+                onChangePlaylist={setPlaylist}
+                onChange={setPlaylist}
+                onPlayTrackAtIndex={(index) => playTrackAtIndex(index, true)}
+                onSelectTrack={(index) => playTrackAtIndex(index, true)}
+                onTogglePlay={handleTogglePlay}
+                isPlaying={isPlaying}
+                currentTime={currentTime}
+                currentDuration={duration}
+                language={language}
+                currentBackground={background}
+                defaultBackground={defaultBackground}
+                onNavigateToBackgroundTab={() => setActiveTab('background')}
+                onAddTracklistBox={handleAddTracklistToVisualizer}
+                onNavigateToTextBoxTab={() => setActiveTab('textboxes')}
+                onNavigateToLyricsTab={(trackIndex) => {
+                  if (typeof trackIndex === 'number') {
+                    playTrackAtIndex(trackIndex, false);
+                  }
+                  setActiveTab('lyrics');
+                }}
+                onUpdateTrackLyrics={handleUpdateTrackLyrics}
+                onBatchImportLyrics={handleBatchImportLyrics}
+              />
+            )}
+
+            {/* 2. Track Metadata Content */}
+            {activeTab === 'track' && (
+              <TrackTab track={track} onChange={setTrack} language={language} />
+            )}
+
+            {/* 3. Visualizer Content */}
             {activeTab === 'visualizer' && (
               <VisualizerTab
                 config={visualizer}
@@ -1063,28 +1925,81 @@ export function App() {
               />
             )}
 
+            {/* 4. Lyrics & Karaoke Content */}
             {activeTab === 'lyrics' && (
               <LyricsTab
                 config={lyricsConfig}
                 onChange={setLyricsConfig}
                 lyrics={lyricsData}
-                onLyricsChange={setLyricsData}
+                onLyricsChange={handleLyricsChange}
                 currentTime={currentTime}
                 duration={duration}
                 onSeek={handleSeek}
                 language={language}
+                playlist={playlist}
+                onSelectTrackIndex={(idx) => playTrackAtIndex(idx, true)}
+                onUpdateTrackLyrics={handleUpdateTrackLyrics}
+                onBatchImportLyrics={handleBatchImportLyrics}
+                onNavigateToPlaylistTab={() => setActiveTab('playlist')}
+                onApplyLyricsToAllTracks={handleApplyLyricsToAllTracks}
               />
             )}
 
+            {/* 5. Text Boxes & Tracklist Content */}
+            {activeTab === 'textboxes' && (
+              <TextBoxTab
+                textBoxes={textBoxes}
+                onChange={setTextBoxes}
+                language={language}
+                playlist={playlist}
+              />
+            )}
+
+            {/* 6. Lottie Animation Overlays Content */}
+            {activeTab === 'lottie' && (
+              <LottieTab
+                lotties={lotties}
+                onChangeLotties={setLotties}
+                selectedLottieId={selectedLottieId}
+                onSelectLottieId={setSelectedLottieId}
+                language={language}
+              />
+            )}
+
+            {/* 7. Background Content */}
             {activeTab === 'background' && (
               <BackgroundTab
                 background={background}
-                onBackgroundChange={setBackground}
+                onBackgroundChange={(newBg) => {
+                  setBackground(newBg);
+                  setDefaultBackground(newBg);
+                }}
                 particles={particles}
                 onParticlesChange={setParticles}
+                language={language}
+                playlist={playlist}
+                defaultBackground={defaultBackground}
+                onUpdateTrackBackground={handleUpdateTrackBackground}
+                onApplyBackgroundToAllTracks={handleApplyBackgroundToAllTracks}
+                onSelectTrackForPlayback={(idx) => playTrackAtIndex(idx, false)}
               />
             )}
 
+            {/* 8. Scene Transitions Content */}
+            {activeTab === 'transitions' && (
+              <SceneTransitionsTab
+                transitions={sceneTransitions}
+                onTransitionsChange={setSceneTransitions}
+                currentTime={currentTime}
+                duration={duration}
+                onSeek={handleSeek}
+                currentVisualizer={visualizer}
+                currentBackground={background}
+                language={language}
+              />
+            )}
+
+            {/* 9. Film Light Content */}
             {activeTab === 'filmlight' && (
               <FilmLightTab
                 filmLight={filmLight}
@@ -1093,19 +2008,12 @@ export function App() {
               />
             )}
 
+            {/* 10. Color Grading Content */}
             {activeTab === 'colorgrading' && (
               <ColorGradingTab
                 colorGrading={colorGrading}
                 onChange={setColorGrading}
               />
-            )}
-
-            {activeTab === 'track' && (
-              <TrackTab track={track} onChange={setTrack} language={language} />
-            )}
-
-            {activeTab === 'textboxes' && (
-              <TextBoxTab textBoxes={textBoxes} onChange={setTextBoxes} />
             )}
           </div>
         </div>
@@ -1146,6 +2054,8 @@ export function App() {
           masterEq: masterEqConfig,
           track,
           textBoxes,
+          sceneTransitions,
+          lotties,
           audioFileName,
         }}
         onLoadProject={handleLoadProject}
@@ -1171,6 +2081,11 @@ export function App() {
         onOpenMasterEq={() => setIsMasterEqModalOpen(true)}
         aspectRatio={aspectRatio}
         onSelectAspectRatio={setAspectRatio}
+        highPerformanceRender={highPerformanceRender}
+        onToggleHighPerformanceRender={setHighPerformanceRender}
+        hardwareConfig={hardwareConfig}
+        onUpdateHardwareConfig={setHardwareConfig}
+        hardwareInfo={hardwareInfo}
       />
 
       {/* High Definition Video Export Modal */}
@@ -1191,7 +2106,27 @@ export function App() {
         exportTotalSeconds={exportTotalSec}
         exportedBlob={exportedBlob}
         onDownloadExportedVideo={handleDownloadExportedVideo}
+        playlist={playlist}
+        language={language}
       />
+
+      {/* New Project Confirmation Modal (Safe for Sandboxed iFrames) */}
+      <NewProjectModal
+        isOpen={isNewProjectModalOpen}
+        onClose={() => setIsNewProjectModalOpen(false)}
+        onConfirm={executeResetToDefaults}
+        language={language}
+      />
+
+      {/* Global Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-neutral-900/95 border border-emerald-500/50 text-emerald-300 text-xs font-semibold shadow-2xl shadow-black/80 backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+            <Check className="w-3.5 h-3.5" />
+          </div>
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }

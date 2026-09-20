@@ -11,6 +11,8 @@ import {
   FilmLightConfig,
   ColorGradingConfig,
   MasterEQConfig,
+  SceneTransitionsConfig,
+  LottieItem,
 } from '../types';
 import {
   SavedProject,
@@ -61,6 +63,8 @@ interface ProjectsModalProps {
     filmLight?: FilmLightConfig;
     colorGrading?: ColorGradingConfig;
     masterEq?: MasterEQConfig;
+    sceneTransitions?: SceneTransitionsConfig;
+    lotties?: LottieItem[];
     audioFileName: string;
   };
   onLoadProject: (project: SavedProject) => void;
@@ -126,6 +130,8 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
       filmLight: currentConfig.filmLight,
       colorGrading: currentConfig.colorGrading,
       masterEq: currentConfig.masterEq,
+      sceneTransitions: currentConfig.sceneTransitions,
+      lotties: currentConfig.lotties,
       track: currentConfig.track ? { ...DEFAULT_TRACK, ...currentConfig.track } : DEFAULT_TRACK,
       textBoxes: currentConfig.textBoxes,
       audioFileName: currentConfig.audioFileName,

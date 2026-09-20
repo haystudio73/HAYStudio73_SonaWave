@@ -10,7 +10,8 @@ import {
   BackgroundZoomTrigger, 
   BackgroundZoomStyle,
   BackgroundGlitchTrigger,
-  BackgroundGlitchStyle 
+  BackgroundGlitchStyle,
+  PlaylistConfig,
 } from '../types';
 import { BACKGROUND_PRESETS } from '../utils/presets';
 import { Language } from '../utils/i18n';
@@ -25,7 +26,6 @@ import {
   Maximize, 
   CircleDot, 
   Zap, 
-  Flame, 
   Video, 
   Film, 
   Circle, 
@@ -51,7 +51,14 @@ import {
   Snowflake,
   Compass,
   Droplet,
-  Droplets
+  Droplets,
+  ListMusic,
+  Music,
+  Globe,
+  Check,
+  Trash2,
+  Copy,
+  Feather
 } from 'lucide-react';
 
 interface BackgroundTabProps {
@@ -60,6 +67,11 @@ interface BackgroundTabProps {
   particles: ParticleConfig;
   onParticlesChange: (pt: ParticleConfig) => void;
   language?: Language;
+  playlist?: PlaylistConfig;
+  defaultBackground?: BackgroundConfig;
+  onUpdateTrackBackground?: (trackId: string, bg: BackgroundConfig | undefined) => void;
+  onApplyBackgroundToAllTracks?: (bg: BackgroundConfig) => void;
+  onSelectTrackForPlayback?: (index: number) => void;
 }
 
 const CATEGORIES = [
@@ -75,12 +87,12 @@ const PARTICLE_TYPES: { id: ParticleType; nameVi: string; nameEn: string; icon: 
   { id: 'none', nameVi: 'Tắt hạt', nameEn: 'Off', icon: Eye },
   { id: 'rain', nameVi: 'Mưa Rơi Tự Nhiên', nameEn: 'Natural Rain', icon: CloudRain, badgeVi: 'Vật Lý Mưa 🌧️', badgeEn: 'Rain Physics 🌧️' },
   { id: 'snow', nameVi: 'Tuyết Rơi Mùa Đông', nameEn: 'Winter Snowfall', icon: CloudSnow, badgeVi: 'Mùa Đông ❄️', badgeEn: 'Winter ❄️' },
+  { id: 'speed-lines', nameVi: 'Vệt Tốc Độ (Speed Lines)', nameEn: 'Speed Lines', icon: Zap, badgeVi: 'Anime ⚡', badgeEn: 'Speed FX ⚡' },
+  { id: 'spaghetti', nameVi: 'Mưa mảnh ruy băng lụa', nameEn: 'Silk Ribbon Rain', icon: Waves, badgeVi: 'Mềm Mại 🎀', badgeEn: 'Silky 🎀' },
   { id: 'spinning-dashes', nameVi: 'Đường ngắn rơi & xoay', nameEn: 'Spinning Dashes', icon: Slash, badgeVi: 'Hot Trend', badgeEn: 'Trending' },
-  { id: 'spaghetti', nameVi: 'Mưa Spaghetti Rơi', nameEn: 'Spaghetti Rain', icon: Waves, badgeVi: 'Mới & Độc Lạ', badgeEn: 'Unique' },
-  { id: 'sound-sparks', nameVi: 'Tia lửa bốc (Sparks)', nameEn: 'Sound Sparks', icon: Flame, badgeVi: 'Rực Rỡ', badgeEn: 'Vibrant' },
   { id: 'rainbow-bubbles', nameVi: 'Bong bóng cầu vồng', nameEn: 'Rainbow Bubbles', icon: CircleDot, badgeVi: 'Mới & Đẹp', badgeEn: 'Prismatic' },
   { id: 'hyperspace', nameVi: 'Tăng tốc Hyperspace', nameEn: 'Hyperspace 3D', icon: Zap, badgeVi: 'Mới 3D', badgeEn: '3D Warp' },
-  { id: 'dust', nameVi: 'Bụi lofi trôi', nameEn: 'Lofi Ambient Dust', icon: Sparkles },
+  { id: 'dust', nameVi: 'Bụi lofi trôi', nameEn: 'Lofi Ambient Dust', icon: Sparkles, badgeVi: 'Bóng Tơ ✨', badgeEn: 'Soft Fluff ✨' },
   { id: 'stars', nameVi: 'Sao lấp lánh', nameEn: 'Twinkling Stars', icon: Sparkles },
 ];
 
@@ -101,6 +113,7 @@ const RAINDROP_TYPES: { id: RainDropType; nameVi: string; nameEn: string; descVi
 
 const PARTICLE_SHAPES: { id: ParticleShape; nameVi: string; nameEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'circle', nameVi: 'Hình tròn', nameEn: 'Circle', icon: Circle },
+  { id: 'silk-fluff', nameVi: 'Bóng tơ mềm', nameEn: 'Fluffy Silk Ball', icon: Feather },
   { id: 'square', nameVi: 'Khối vuông', nameEn: 'Square', icon: Square },
   { id: 'star', nameVi: 'Ngôi sao', nameEn: 'Star', icon: Star },
   { id: 'heart', nameVi: 'Trái tim', nameEn: 'Heart', icon: Heart },
@@ -166,14 +179,63 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
   particles,
   onParticlesChange,
   language = 'vi',
+  playlist,
+  defaultBackground,
+  onUpdateTrackBackground,
+  onApplyBackgroundToAllTracks,
+  onSelectTrackForPlayback,
 }) => {
   const isVi = language === 'vi';
   const [activeCategory, setActiveCategory] = useState('all');
+  const [selectedTargetId, setSelectedTargetId] = useState<'global' | string>('global');
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
+  // Active targeted track (if targeting a specific track)
+  const activeTargetTrack = playlist?.tracks.find((t) => t.id === selectedTargetId);
+
   const updateBg = (partial: Partial<BackgroundConfig>) => {
-    onBackgroundChange({ ...background, ...partial });
+    const newBg = { ...background, ...partial };
+    onBackgroundChange(newBg);
+
+    if (selectedTargetId !== 'global' && onUpdateTrackBackground) {
+      onUpdateTrackBackground(selectedTargetId, newBg);
+    }
+  };
+
+  const handleSelectTarget = (targetId: 'global' | string) => {
+    setSelectedTargetId(targetId);
+    if (targetId === 'global') {
+      if (defaultBackground) {
+        onBackgroundChange(defaultBackground);
+      }
+    } else {
+      const track = playlist?.tracks.find((t) => t.id === targetId);
+      if (track) {
+        if (track.background) {
+          onBackgroundChange(track.background);
+        } else if (defaultBackground) {
+          onBackgroundChange(defaultBackground);
+        }
+      }
+    }
+  };
+
+  const handleResetTrackBackground = () => {
+    if (selectedTargetId !== 'global' && onUpdateTrackBackground) {
+      onUpdateTrackBackground(selectedTargetId, undefined);
+      if (defaultBackground) {
+        onBackgroundChange(defaultBackground);
+      }
+    }
+  };
+
+  const handleCreateTrackCustomBackground = () => {
+    if (selectedTargetId !== 'global' && onUpdateTrackBackground) {
+      const customBg = { ...background };
+      onUpdateTrackBackground(selectedTargetId, customBg);
+      onBackgroundChange(customBg);
+    }
   };
 
   const updatePt = (partial: Partial<ParticleConfig>) => {
@@ -212,6 +274,153 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
 
   return (
     <div className="space-y-6 text-neutral-200">
+      {/* 0. Target Scope Selector: Global vs Specific Playlist Track */}
+      {playlist && playlist.tracks.length > 0 && (
+        <div className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-rose-500 to-purple-600 flex items-center justify-center text-white shrink-0">
+                <ListMusic className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-white block">
+                  {isVi ? 'Phạm Vi Áp Dụng Hình Nền' : 'Background Target Scope'}
+                </span>
+                <p className="text-[10px] text-neutral-400">
+                  {isVi 
+                    ? 'Tải ảnh/video hoặc chỉnh hiệu ứng nền riêng cho từng bài hát'
+                    : 'Upload & customize individual backgrounds for each track'}
+                </p>
+              </div>
+            </div>
+
+            {activeTargetTrack && activeTargetTrack.background && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1 shrink-0">
+                <Check className="w-3 h-3" />
+                <span>{isVi ? 'Có Nền Riêng' : 'Custom BG'}</span>
+              </span>
+            )}
+          </div>
+
+          {/* Target Selection Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+            <button
+              type="button"
+              onClick={() => handleSelectTarget('global')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
+                selectedTargetId === 'global'
+                  ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30 ring-1 ring-rose-400/40'
+                  : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>{isVi ? '🌐 Nền Chung Dự Án' : '🌐 Project Default'}</span>
+            </button>
+
+            {playlist.tracks.map((t, idx) => {
+              const isTarget = selectedTargetId === t.id;
+              const hasCustomBg = !!t.background;
+              const isCurrentlyPlaying = idx === playlist.currentIndex;
+
+              return (
+                <button
+                  key={`${t.id || 'track'}-${idx}`}
+                  type="button"
+                  onClick={() => handleSelectTarget(t.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isTarget
+                      ? 'bg-gradient-to-r from-purple-600 to-rose-500 text-white shadow-md shadow-purple-600/30 ring-1 ring-white/20'
+                      : hasCustomBg
+                      ? 'bg-neutral-800/90 text-neutral-200 border border-purple-500/40 hover:bg-neutral-700'
+                      : 'bg-neutral-800/60 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700'
+                  }`}
+                >
+                  <Music className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate max-w-[130px]">
+                    {idx + 1}. {t.title}
+                  </span>
+                  {hasCustomBg && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" title={isVi ? 'Bài này có nền riêng' : 'Has custom background'} />
+                  )}
+                  {isCurrentlyPlaying && (
+                    <span className="text-[9px] px-1 rounded bg-rose-500/30 text-rose-300 font-bold uppercase shrink-0">
+                      {isVi ? 'Đang phát' : 'Playing'}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active target track info and action banner */}
+          {activeTargetTrack && (
+            <div className="pt-2 border-t border-neutral-800/80 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {activeTargetTrack.background ? (
+                  <div className="text-[11px] text-purple-300 font-medium flex items-center gap-1.5">
+                    <span>{isVi ? 'Đang chỉnh nền riêng cho:' : 'Custom background for:'}</span>
+                    <strong className="text-white truncate max-w-[200px]">"{activeTargetTrack.title}"</strong>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-neutral-400 font-medium">
+                    {isVi ? 'Bài này đang dùng nền chung. Bấm bên phải để tạo nền riêng.' : 'Track using project default background. Click to create custom.'}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {activeTargetTrack.background ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleResetTrackBackground}
+                      title={isVi ? 'Xóa nền riêng, dùng nền mặc định' : 'Reset to default background'}
+                      className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-rose-500/20 text-neutral-300 hover:text-rose-300 text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3 text-rose-400" />
+                      <span>{isVi ? 'Dùng Nền Chung' : 'Reset to Default'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onApplyBackgroundToAllTracks && onApplyBackgroundToAllTracks(background)}
+                      title={isVi ? 'Sao chép nền này cho tất cả các bài' : 'Apply this background to all tracks'}
+                      className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Copy className="w-3 h-3 text-cyan-400" />
+                      <span>{isVi ? 'Áp Dụng Cho Tất Cả' : 'Apply to All'}</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCreateTrackCustomBackground}
+                    className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-rose-500 to-purple-600 hover:opacity-90 text-white text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>{isVi ? 'Tạo Nền Riêng Cho Bài Này' : 'Create Custom BG'}</span>
+                  </button>
+                )}
+
+                {onSelectTrackForPlayback && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const idx = playlist.tracks.findIndex((t) => t.id === selectedTargetId);
+                      if (idx >= 0) onSelectTrackForPlayback(idx);
+                    }}
+                    title={isVi ? 'Phát bài này trên sân khấu' : 'Play this track on stage'}
+                    className="px-2.5 py-1 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 text-[11px] font-medium border border-cyan-500/30 transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <Disc className="w-3 h-3" />
+                    <span>{isVi ? 'Phát Thử' : 'Play'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 1. Background Source Selection (Preset, Custom Image / Video Upload) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -1324,19 +1533,645 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                     </label>
                   </div>
                 </div>
+
+                {/* Three.js Water on Glass (Raindrops on Glass Pane / Window Lens) */}
+                <div className="pt-2.5 border-t border-cyan-500/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={particles.waterOnGlass || false}
+                        onChange={(e) => updatePt({ waterOnGlass: e.target.checked })}
+                        className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700"
+                      />
+                      <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                        <Droplets className="w-3.5 h-3.5 text-cyan-400" />
+                        {isVi ? 'Mưa Bám Mặt Kính (Three.js Water on Glass)' : 'Water on Glass (Three.js Lens Beads)'}
+                      </span>
+                    </label>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      WebGL Glass
+                    </span>
+                  </div>
+
+                  {particles.waterOnGlass && (
+                    <div className="space-y-2.5 pl-2 pt-1 border-l-2 border-cyan-500/40">
+                      <div className="grid grid-cols-2 gap-2.5">
+                        {/* Droplets Count Slider */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-neutral-400">{isVi ? 'Số giọt nước' : 'Droplets Count'}</span>
+                            <span className="text-cyan-400 font-mono">{particles.waterGlassCount ?? 75}</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={20}
+                            max={180}
+                            step={5}
+                            value={particles.waterGlassCount ?? 75}
+                            onChange={(e) => updatePt({ waterGlassCount: parseInt(e.target.value) })}
+                            className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                          />
+                        </div>
+
+                        {/* Trickle Speed Slider */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-neutral-400">{isVi ? 'Tốc độ trượt chảy' : 'Trickle Speed'}</span>
+                            <span className="text-cyan-400 font-mono">{(particles.waterGlassTrickleSpeed ?? 1.0).toFixed(1)}x</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={0.2}
+                            max={3.0}
+                            step={0.1}
+                            value={particles.waterGlassTrickleSpeed ?? 1.0}
+                            onChange={(e) => updatePt({ waterGlassTrickleSpeed: parseFloat(e.target.value) })}
+                            className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Glass Refraction Slider */}
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-neutral-400">{isVi ? 'Độ khúc xạ & lúp cầu giọt nước' : 'Refraction Index'}</span>
+                          <span className="text-cyan-400 font-mono">{(particles.waterGlassRefraction ?? 1.0).toFixed(2)}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0.4}
+                          max={2.5}
+                          step={0.05}
+                          value={particles.waterGlassRefraction ?? 1.0}
+                          onChange={(e) => updatePt({ waterGlassRefraction: parseFloat(e.target.value) })}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                        />
+                      </div>
+
+                      {/* Glass Reflection Ambiance Lighting */}
+                      <div>
+                        <div className="text-xs text-neutral-400 mb-1">
+                          {isVi ? 'Ánh sáng môi trường phản chiếu (Bokeh / Ambiance)' : 'Lighting Environment'}
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {[
+                            { id: 'cinematic-blue', label: isVi ? 'Xanh Đêm Điện Ảnh' : 'Cinematic Blue', color: '#38bdf8' },
+                            { id: 'golden-bokeh', label: isVi ? 'Bokeh Vàng Ấm' : 'Warm Golden Bokeh', color: '#f59e0b' },
+                            { id: 'neon-glow', label: isVi ? 'Neon Tím Hồng' : 'Cyber Neon', color: '#ec4899' },
+                            { id: 'pure-clear', label: isVi ? 'Trong Suốt Tự Nhiên' : 'Natural Clear', color: '#e2e8f0' },
+                          ].map((light) => {
+                            const active = (particles.waterGlassLighting || 'cinematic-blue') === light.id;
+                            return (
+                              <button
+                                key={light.id}
+                                type="button"
+                                onClick={() => updatePt({ waterGlassLighting: light.id as any })}
+                                className={`px-2 py-1.5 rounded text-[11px] font-medium flex items-center gap-1.5 border transition-all ${
+                                  active
+                                    ? 'bg-cyan-950/60 border-cyan-500/60 text-cyan-200'
+                                    : 'bg-neutral-800/60 border-neutral-700/50 text-neutral-400 hover:text-neutral-200'
+                                }`}
+                              >
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: light.color }} />
+                                <span className="truncate">{light.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Wipe Mist & Micro-Condensation Toggle */}
+                      <label className="flex items-center gap-2 p-1.5 rounded-lg bg-neutral-800/60 border border-neutral-700/60 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={particles.waterGlassWipeMist !== false}
+                          onChange={(e) => updatePt({ waterGlassWipeMist: e.target.checked })}
+                          className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700"
+                        />
+                        <span className="text-xs font-semibold text-neutral-300">
+                          {isVi ? 'Lớp Hơi Nước Sương Mù & Bụi Nước Li Ti' : 'Window Mist & Micro-Condensation'}
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SPEED LINES DEDICATED CONTROLS */}
+            {particles.type === 'speed-lines' && (
+              <div className="p-3.5 bg-gradient-to-br from-sky-950/40 to-neutral-900/80 border border-sky-500/30 rounded-2xl space-y-3.5 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-sky-500/20 border border-sky-500/40 flex items-center justify-center">
+                      <Zap className="w-3.5 h-3.5 text-sky-400" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">
+                        {isVi ? 'Tùy Chỉnh Vệt Tốc Độ (Speed Lines)' : 'Speed Lines Dynamics'}
+                      </span>
+                      <span className="text-[10px] text-neutral-400">
+                        {isVi ? 'Vệt line tốc độ cao phong cách Anime / Manga' : 'High-speed action streak overlays'}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 font-semibold">
+                    {particles.speedLineMode === 'converge-center' ? (isVi ? 'Về tâm' : 'Converge') : (isVi ? 'Song song ngang' : 'Horizontal')}
+                  </span>
+                </div>
+
+                {/* 1. Mode selection: Horizontal vs Converge to Center */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-neutral-300 block">
+                    {isVi ? 'Kiểu Đường Chạy (Speed Line Motion)' : 'Speed Line Motion Pattern'}
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => updatePt({ speedLineMode: 'horizontal' })}
+                      className={`p-2 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer ${
+                        (particles.speedLineMode || 'horizontal') === 'horizontal'
+                          ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
+                          : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <div className="font-bold">{isVi ? '1. Song Song Chiều Ngang' : '1. Horizontal Parallel'}</div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">{isVi ? 'Chạy ngang khung hình' : 'Lateral speed streaks'}</div>
+                    </button>
+                    <button
+                      onClick={() => updatePt({ speedLineMode: 'converge-center' })}
+                      className={`p-2 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer ${
+                        particles.speedLineMode === 'converge-center'
+                          ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
+                          : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <div className="font-bold">{isVi ? '2. Chiều Đứng Về Tâm' : '2. Inward to Center'}</div>
+                      <div className="text-[10px] text-neutral-400 mt-0.5">{isVi ? 'Tụ về tâm như phác thảo' : 'Anime focal warp lines'}</div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 1B. Direction & Tilt Angle selector for Horizontal mode */}
+                {(!particles.speedLineMode || particles.speedLineMode === 'horizontal') && (
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="text-[11px] font-bold text-neutral-300 block mb-1.5">
+                        {isVi ? 'Hướng Chạy Chiều Ngang' : 'Horizontal Direction'}
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updatePt({ speedLineDirection: 'right-to-left' })}
+                          className={`py-1.5 px-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
+                            (particles.speedLineDirection || 'right-to-left') === 'right-to-left'
+                              ? 'bg-sky-500/20 border-sky-500 text-sky-200 font-bold'
+                              : 'bg-neutral-900/70 border-neutral-800 text-neutral-400'
+                          }`}
+                        >
+                          {isVi ? '← Phải sang Trái' : '← Right to Left'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updatePt({ speedLineDirection: 'left-to-right' })}
+                          className={`py-1.5 px-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
+                            particles.speedLineDirection === 'left-to-right'
+                              ? 'bg-sky-500/20 border-sky-500 text-sky-200 font-bold'
+                              : 'bg-neutral-900/70 border-neutral-800 text-neutral-400'
+                          }`}
+                        >
+                          {isVi ? 'Trái sang Phải →' : 'Left to Right →'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Speed Line Tilt (Độ nghiêng -45 -> 45 độ) */}
+                    <div className="pt-1">
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-neutral-300 font-medium">{isVi ? 'Độ nghiêng vệt line (Tilt Angle)' : 'Line Tilt Angle'}</span>
+                          {(particles.speedLineTilt !== undefined && particles.speedLineTilt !== 0) && (
+                            <button
+                              type="button"
+                              onClick={() => updatePt({ speedLineTilt: 0 })}
+                              className="text-[10px] text-sky-400 hover:text-sky-300 underline cursor-pointer"
+                            >
+                              {isVi ? 'Đặt lại 0°' : 'Reset 0°'}
+                            </button>
+                          )}
+                        </div>
+                        <span className="text-sky-400 font-mono font-bold">
+                          {(particles.speedLineTilt || 0) > 0 ? `+${particles.speedLineTilt}°` : `${particles.speedLineTilt || 0}°`}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={-45}
+                        max={45}
+                        step={1}
+                        value={particles.speedLineTilt || 0}
+                        onChange={(e) => updatePt({ speedLineTilt: parseInt(e.target.value) })}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                      />
+                      <div className="flex justify-between text-[10px] text-neutral-500 mt-0.5 font-mono">
+                        <button
+                          type="button"
+                          onClick={() => updatePt({ speedLineTilt: -45 })}
+                          className="hover:text-sky-300 cursor-pointer transition-colors"
+                        >
+                          -45° {isVi ? '(Lên)' : '(Up)'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updatePt({ speedLineTilt: 0 })}
+                          className="hover:text-sky-300 cursor-pointer transition-colors"
+                        >
+                          0° {isVi ? '(Ngang)' : '(Flat)'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updatePt({ speedLineTilt: 45 })}
+                          className="hover:text-sky-300 cursor-pointer transition-colors"
+                        >
+                          +45° {isVi ? '(Xuống)' : '(Down)'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 1C. Inward to Center settings: Vertical Center & Horizontal Center */}
+                {particles.speedLineMode === 'converge-center' && (
+                  <div className="space-y-3 pt-1 border-t border-sky-500/20">
+                    {/* Vertical Center */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-neutral-300 block">
+                          {isVi ? 'Tâm Tụ Chiều Đứng (Vertical Center)' : 'Vertical Center Position'}
+                        </label>
+                        <span className="text-[11px] text-sky-400 font-mono">
+                          {particles.speedLineCenterY !== undefined
+                            ? particles.speedLineCenterY
+                            : (particles.speedLineVerticalCenter === 'top' ? 25 : particles.speedLineVerticalCenter === 'bottom' ? 75 : 50)}%
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updatePt({ speedLineVerticalCenter: 'top', speedLineCenterY: 25 })}
+                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
+                            (particles.speedLineVerticalCenter === 'top' || (particles.speedLineCenterY !== undefined && particles.speedLineCenterY <= 35))
+                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
+                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <div className="font-bold">{isVi ? 'Top Center' : 'Top Center'}</div>
+                          <div className="text-[10px] text-neutral-400">{isVi ? 'Phía trên (25%)' : 'Upper (25%)'}</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => updatePt({ speedLineVerticalCenter: 'center', speedLineCenterY: 50 })}
+                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
+                            ((particles.speedLineVerticalCenter || 'center') === 'center' && (particles.speedLineCenterY === undefined || (particles.speedLineCenterY > 35 && particles.speedLineCenterY < 65)))
+                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
+                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <div className="font-bold">{isVi ? 'Center Center' : 'Center Center'}</div>
+                          <div className="text-[10px] text-neutral-400">{isVi ? 'Ở giữa (50%)' : 'Middle (50%)'}</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => updatePt({ speedLineVerticalCenter: 'bottom', speedLineCenterY: 75 })}
+                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
+                            (particles.speedLineVerticalCenter === 'bottom' || (particles.speedLineCenterY !== undefined && particles.speedLineCenterY >= 65))
+                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
+                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <div className="font-bold">{isVi ? 'Bottom Center' : 'Bottom Center'}</div>
+                          <div className="text-[10px] text-neutral-400">{isVi ? 'Phía dưới (75%)' : 'Lower (75%)'}</div>
+                        </button>
+                      </div>
+
+                      {/* Fine-tune Center Y % slider */}
+                      <div className="pt-1">
+                        <div className="flex justify-between text-[11px] mb-1">
+                          <span className="text-neutral-400">{isVi ? 'Tinh chỉnh vị trí tâm theo % chiều cao (Fine-tune Center Y %)' : 'Fine-tune Center Y %'}</span>
+                          <span className="text-sky-400 font-mono">
+                            {particles.speedLineCenterY !== undefined
+                              ? particles.speedLineCenterY
+                              : (particles.speedLineVerticalCenter === 'top' ? 25 : particles.speedLineVerticalCenter === 'bottom' ? 75 : 50)}%
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={10}
+                          max={90}
+                          step={5}
+                          value={particles.speedLineCenterY !== undefined
+                            ? particles.speedLineCenterY
+                            : (particles.speedLineVerticalCenter === 'top' ? 25 : particles.speedLineVerticalCenter === 'bottom' ? 75 : 50)}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            let vCenter: 'top' | 'center' | 'bottom' = 'center';
+                            if (val <= 35) vCenter = 'top';
+                            else if (val >= 65) vCenter = 'bottom';
+                            updatePt({ speedLineCenterY: val, speedLineVerticalCenter: vCenter });
+                          }}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Horizontal Center Position */}
+                    <div className="space-y-1.5 pt-2 border-t border-sky-500/15">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-neutral-300 block">
+                          {isVi ? 'Tâm Tụ Chiều Ngang (Horizontal Center)' : 'Horizontal Center Position'}
+                        </label>
+                        <span className="text-[11px] text-sky-400 font-mono">
+                          {particles.speedLineCenterX !== undefined
+                            ? particles.speedLineCenterX
+                            : (particles.speedLineHorizontalCenter === 'left' ? 25 : particles.speedLineHorizontalCenter === 'right' ? 75 : 50)}%
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => updatePt({ speedLineHorizontalCenter: 'left', speedLineCenterX: 25 })}
+                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
+                            (particles.speedLineHorizontalCenter === 'left' || (particles.speedLineCenterX !== undefined && particles.speedLineCenterX <= 35))
+                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
+                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <div className="font-bold">{isVi ? 'Left Center' : 'Left Center'}</div>
+                          <div className="text-[10px] text-neutral-400">{isVi ? 'Bên trái (25%)' : 'Left (25%)'}</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => updatePt({ speedLineHorizontalCenter: 'center', speedLineCenterX: 50 })}
+                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
+                            ((particles.speedLineHorizontalCenter || 'center') === 'center' && (particles.speedLineCenterX === undefined || (particles.speedLineCenterX > 35 && particles.speedLineCenterX < 65)))
+                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
+                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <div className="font-bold">{isVi ? 'Center Center' : 'Center Center'}</div>
+                          <div className="text-[10px] text-neutral-400">{isVi ? 'Ở giữa (50%)' : 'Middle (50%)'}</div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => updatePt({ speedLineHorizontalCenter: 'right', speedLineCenterX: 75 })}
+                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
+                            (particles.speedLineHorizontalCenter === 'right' || (particles.speedLineCenterX !== undefined && particles.speedLineCenterX >= 65))
+                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
+                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <div className="font-bold">{isVi ? 'Right Center' : 'Right Center'}</div>
+                          <div className="text-[10px] text-neutral-400">{isVi ? 'Bên phải (75%)' : 'Right (75%)'}</div>
+                        </button>
+                      </div>
+
+                      {/* Fine-tune Center X % slider */}
+                      <div className="pt-1">
+                        <div className="flex justify-between text-[11px] mb-1">
+                          <span className="text-neutral-400">{isVi ? 'Tinh chỉnh vị trí tâm theo % chiều rộng (Fine-tune Center X %)' : 'Fine-tune Center X %'}</span>
+                          <span className="text-sky-400 font-mono">
+                            {particles.speedLineCenterX !== undefined
+                              ? particles.speedLineCenterX
+                              : (particles.speedLineHorizontalCenter === 'left' ? 25 : particles.speedLineHorizontalCenter === 'right' ? 75 : 50)}%
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={10}
+                          max={90}
+                          step={5}
+                          value={particles.speedLineCenterX !== undefined
+                            ? particles.speedLineCenterX
+                            : (particles.speedLineHorizontalCenter === 'left' ? 25 : particles.speedLineHorizontalCenter === 'right' ? 75 : 50)}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            let hCenter: 'left' | 'center' | 'right' = 'center';
+                            if (val <= 35) hCenter = 'left';
+                            else if (val >= 65) hCenter = 'right';
+                            updatePt({ speedLineCenterX: val, speedLineHorizontalCenter: hCenter });
+                          }}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sliders: Speed, Length, Random Length, Width, Blur */}
+                <div className="space-y-3 pt-1 border-t border-sky-500/20">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-neutral-300 font-medium">{isVi ? 'Tốc độ vệt line' : 'Line Speed'}</span>
+                      <span className="text-sky-400 font-mono">{(particles.speedLineSpeed !== undefined ? particles.speedLineSpeed : 1.0).toFixed(1)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.2}
+                      max={3.5}
+                      step={0.1}
+                      value={particles.speedLineSpeed !== undefined ? particles.speedLineSpeed : 1.0}
+                      onChange={(e) => updatePt({ speedLineSpeed: parseFloat(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-neutral-300 font-medium">{isVi ? 'Chiều dài vệt line' : 'Line Length'}</span>
+                      <span className="text-sky-400 font-mono">{particles.speedLineLength || 140}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={40}
+                      max={420}
+                      step={5}
+                      value={particles.speedLineLength || 140}
+                      onChange={(e) => updatePt({ speedLineLength: parseInt(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-neutral-300 font-medium">{isVi ? 'Độ dài ngẫu nhiên' : 'Random Length Variance'}</span>
+                      <span className="text-sky-400 font-mono">{particles.speedLineRandomLength !== undefined ? particles.speedLineRandomLength : 55}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={particles.speedLineRandomLength !== undefined ? particles.speedLineRandomLength : 55}
+                      onChange={(e) => updatePt({ speedLineRandomLength: parseInt(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-neutral-300 font-medium">{isVi ? 'Độ dày nét line' : 'Line Width'}</span>
+                        <span className="text-sky-400 font-mono">{particles.speedLineWidth || 2.5}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={1}
+                        max={12}
+                        step={0.5}
+                        value={particles.speedLineWidth || 2.5}
+                        onChange={(e) => updatePt({ speedLineWidth: parseFloat(e.target.value) })}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-neutral-300 font-medium">{isVi ? 'Độ nhòe mờ (Blur)' : 'Motion Blur'}</span>
+                        <span className="text-sky-400 font-mono">{particles.speedLineBlur !== undefined ? particles.speedLineBlur : 5}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={20}
+                        step={1}
+                        value={particles.speedLineBlur !== undefined ? particles.speedLineBlur : 5}
+                        onChange={(e) => updatePt({ speedLineBlur: parseInt(e.target.value) })}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SILK RIBBON RAIN DEDICATED CONTROLS */}
+            {(particles.type === 'spaghetti' || (particles.type as any) === 'silk-ribbon') && (
+              <div className="p-3.5 bg-gradient-to-br from-pink-950/40 to-neutral-900/80 border border-pink-500/30 rounded-2xl space-y-3.5 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-pink-500/20 border border-pink-500/40 flex items-center justify-center">
+                      <Waves className="w-3.5 h-3.5 text-pink-400" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">
+                        {isVi ? 'Mưa Mảnh Ruy Băng Lụa (Silk Ribbon)' : 'Silk Ribbon Rain Dynamics'}
+                      </span>
+                      <span className="text-[10px] text-neutral-400">
+                        {isVi ? 'Dải ruy băng lụa óng ánh uốn lượn bồng bềnh' : 'Flowing glossy silk ribbon strips'}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 font-semibold">
+                    {isVi ? 'Mềm Mại 🎀' : 'Silky 🎀'}
+                  </span>
+                </div>
+
+                <div className="space-y-3 pt-1 border-t border-pink-500/20">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-neutral-300 font-medium">{isVi ? 'Độ dài ruy băng' : 'Ribbon Length'}</span>
+                        <span className="text-pink-400 font-mono">{particles.ribbonLength || 160}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={50}
+                        max={480}
+                        step={10}
+                        value={particles.ribbonLength || 160}
+                        onChange={(e) => updatePt({ ribbonLength: parseInt(e.target.value) })}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-neutral-300 font-medium">{isVi ? 'Bản rộng / Độ dày' : 'Thickness'}</span>
+                        <span className="text-pink-400 font-mono">{particles.ribbonThickness || 8}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={3}
+                        max={30}
+                        step={1}
+                        value={particles.ribbonThickness || 8}
+                        onChange={(e) => updatePt({ ribbonThickness: parseInt(e.target.value) })}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-neutral-300 font-medium">{isVi ? 'Độ xoắn uốn lượn' : '3D Twist Amount'}</span>
+                        <span className="text-pink-400 font-mono">{particles.ribbonTwist !== undefined ? particles.ribbonTwist : 1.8}x</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0.5}
+                        max={4.0}
+                        step={0.1}
+                        value={particles.ribbonTwist !== undefined ? particles.ribbonTwist : 1.8}
+                        onChange={(e) => updatePt({ ribbonTwist: parseFloat(e.target.value) })}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="text-neutral-300 font-medium">{isVi ? 'Độ phát sáng dạ quang' : 'Silk Sheen Glow'}</span>
+                        <span className="text-pink-400 font-mono">{particles.ribbonGlow !== undefined ? particles.ribbonGlow : 15}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={35}
+                        step={1}
+                        value={particles.ribbonGlow !== undefined ? particles.ribbonGlow : 15}
+                        onChange={(e) => updatePt({ ribbonGlow: parseInt(e.target.value) })}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
             {/* A. Particle Shape Selector */}
-            {particles.type !== 'snow' && particles.type !== 'rain' && particles.type !== 'hyperspace' && (
+            {particles.type !== 'snow' && particles.type !== 'rain' && particles.type !== 'hyperspace' && particles.type !== 'speed-lines' && particles.type !== 'spaghetti' && (
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">
-                  {isVi ? 'Hình Dáng Hạt (Particle Shape)' : 'Particle Geometry'}
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">
+                    {isVi ? 'Hình Dáng Hạt (Particle Shape)' : 'Particle Geometry'}
+                  </label>
+                  {(particles.type === 'dust' || particles.type === 'stars') && (
+                    <span className="text-[10px] text-cyan-400 font-semibold">
+                      {isVi ? 'Mở khóa hình học cho Lofi & Stars' : 'Unlocked for Lofi & Stars'}
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-3 gap-1.5">
                   {PARTICLE_SHAPES.map((shapeItem) => {
                     const Icon = shapeItem.icon;
-                    const currentShape = particles.shape || (particles.type === 'stars' ? 'star' : 'circle');
+                    const defaultShape = particles.type === 'dust' ? 'silk-fluff' : (particles.type === 'stars' ? 'star' : 'circle');
+                    const currentShape = particles.shape || defaultShape;
                     const isSelected = currentShape === shapeItem.id;
                     return (
                       <button
@@ -1354,6 +2189,57 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                     );
                   })}
                 </div>
+
+                {/* Fluffy Silk Ball & Glow enhancement for Lofi / Stars / Custom shapes */}
+                {(particles.type === 'dust' || particles.type === 'stars' || particles.shape === 'silk-fluff' || particles.shape === 'circle') && (
+                  <div className="mt-2.5 p-3 bg-neutral-900/70 border border-neutral-800 rounded-xl space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={particles.silkFluffGlow !== undefined ? particles.silkFluffGlow : true}
+                          onChange={(e) => updatePt({ silkFluffGlow: e.target.checked })}
+                          className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-cyan-500 focus:ring-cyan-500/30 accent-cyan-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-neutral-200">
+                          {isVi ? 'Hiệu ứng quả bóng tơ mờ viền (Fluffy Silk Ball)' : 'Fluffy Silk Ball Glow Effect'}
+                        </span>
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          (particles.silkFluffGlow !== undefined ? particles.silkFluffGlow : true)
+                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                            : 'bg-neutral-800 text-neutral-500 border border-neutral-700'
+                        }`}>
+                          {(particles.silkFluffGlow !== undefined ? particles.silkFluffGlow : true)
+                            ? (isVi ? 'BẬT' : 'ON')
+                            : (isVi ? 'TẮT' : 'OFF')}
+                        </span>
+                        <span className="text-[10px] text-cyan-400 font-mono">
+                          {(particles.silkFluffGlow !== undefined ? particles.silkFluffGlow : true)
+                            ? `${particles.particleGlowRadius !== undefined ? particles.particleGlowRadius : 18}px`
+                            : '0px'}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-neutral-400 leading-relaxed">
+                      {isVi
+                        ? 'Tăng độ mờ viền sâu và vầng phát sáng bồng bềnh xung quanh hạt nhìn giống quả bóng tơ xốp mịn.'
+                        : 'Softens particle edges with multi-layered feathered glow aura for a fluffy silk pom-pom aesthetic.'}
+                    </p>
+                    <div className={(particles.silkFluffGlow !== undefined ? particles.silkFluffGlow : true) ? 'opacity-100' : 'opacity-40'}>
+                      <input
+                        type="range"
+                        min={0}
+                        max={45}
+                        step={1}
+                        value={particles.particleGlowRadius !== undefined ? particles.particleGlowRadius : 18}
+                        onChange={(e) => updatePt({ particleGlowRadius: parseInt(e.target.value) })}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1499,7 +2385,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                 <input
                   type="range"
                   min={0}
-                  max={30}
+                  max={50}
                   value={particles.glowIntensity !== undefined ? particles.glowIntensity : 12}
                   onChange={(e) => updatePt({ glowIntensity: parseInt(e.target.value) })}
                   className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"

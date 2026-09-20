@@ -1,7 +1,8 @@
 import React from 'react';
 import { Language, getTranslation, setSavedLanguage, SUPPORTED_LANGUAGES } from '../utils/i18n';
-import { MasterEQConfig, AspectRatio } from '../types';
+import { MasterEQConfig, AspectRatio, HardwareAccelerationConfig, HardwareInfo, HardwareAccelerationMode } from '../types';
 import { DEFAULT_MASTER_EQ } from '../utils/presets';
+import { DEFAULT_HARDWARE_CONFIG } from '../utils/hardwareAcceleration';
 import { 
   Settings, 
   Globe, 
@@ -14,7 +15,14 @@ import {
   Monitor,
   Smartphone,
   Square,
-  Tv
+  Tv,
+  Zap,
+  Gauge,
+  Activity,
+  Layers,
+  Film,
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
 
 interface GlobalSettingsModalProps {
@@ -26,6 +34,11 @@ interface GlobalSettingsModalProps {
   onOpenMasterEq?: () => void;
   aspectRatio?: AspectRatio;
   onSelectAspectRatio?: (ar: AspectRatio) => void;
+  highPerformanceRender?: boolean;
+  onToggleHighPerformanceRender?: (enabled: boolean) => void;
+  hardwareConfig?: HardwareAccelerationConfig;
+  onUpdateHardwareConfig?: (config: HardwareAccelerationConfig) => void;
+  hardwareInfo?: HardwareInfo;
 }
 
 export const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({
@@ -37,6 +50,11 @@ export const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({
   onOpenMasterEq,
   aspectRatio,
   onSelectAspectRatio,
+  highPerformanceRender = false,
+  onToggleHighPerformanceRender,
+  hardwareConfig = DEFAULT_HARDWARE_CONFIG,
+  onUpdateHardwareConfig,
+  hardwareInfo,
 }) => {
   const t = getTranslation(language);
   const safeEq = masterEqConfig || DEFAULT_MASTER_EQ;
@@ -242,21 +260,250 @@ export const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({
             </div>
           </div>
 
-          {/* 5. Performance & Persistence */}
-          <div className="space-y-3 p-4 rounded-2xl bg-neutral-900/40 border border-neutral-800/80">
-            <div className="flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-emerald-400" />
-              <label className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
-                {t.performanceOptions}
-              </label>
+          {/* 5. Hardware Acceleration (CPU / GPU) Engine */}
+          <div className="space-y-4 p-4 sm:p-5 rounded-2xl bg-neutral-900/60 border border-neutral-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-emerald-400" />
+                <label className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+                  {t.hardwareAcceleration}
+                </label>
+              </div>
+              <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold border bg-emerald-500/15 border-emerald-500/30 text-emerald-300 flex items-center gap-1">
+                <Activity className="w-3 h-3 text-emerald-400 animate-pulse" />
+                <span>GPU Active</span>
+              </span>
             </div>
-            
-            <div className="flex items-center justify-between text-xs text-neutral-300">
-              <span className="flex items-center gap-2">
+
+            <p className="text-xs text-neutral-400 leading-relaxed">
+              {t.hardwareAccelerationDesc}
+            </p>
+
+            {/* Hardware Diagnostics Card */}
+            {hardwareInfo && (
+              <div className="p-3.5 rounded-2xl bg-neutral-950/80 border border-neutral-800/90 space-y-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-neutral-400 font-medium flex items-center gap-1.5">
+                    <Gauge className="w-3.5 h-3.5 text-cyan-400" />
+                    {t.gpuDeviceDetected}:
+                  </span>
+                  <span className="font-mono text-cyan-300 font-bold text-[11px] truncate max-w-[280px]">
+                    {hardwareInfo.gpuRenderer}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-neutral-900">
+                  <span className="text-neutral-400 font-medium flex items-center gap-1.5">
+                    <Cpu className="w-3.5 h-3.5 text-rose-400" />
+                    {t.cpuCoresDetected}:
+                  </span>
+                  <span className="font-mono text-neutral-200 text-[11px]">
+                    {hardwareInfo.cpuCores} Logical Cores {hardwareInfo.deviceMemoryGb ? `• ${hardwareInfo.deviceMemoryGb}GB RAM` : ''}
+                  </span>
+                </div>
+
+                {/* Hardware Feature Capability Pills */}
+                <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                  <span className="text-[9px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-medium flex items-center gap-1">
+                    <Check className="w-2.5 h-2.5" /> WebGL 2.0 Direct
+                  </span>
+                  {hardwareInfo.hasOffscreenCanvas && (
+                    <span className="text-[9px] px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-medium flex items-center gap-1">
+                      <Check className="w-2.5 h-2.5" /> OffscreenCanvas VRAM
+                    </span>
+                  )}
+                  {hardwareInfo.supportsHardwareVideoEncoding && (
+                    <span className="text-[9px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 border border-purple-500/20 font-medium flex items-center gap-1">
+                      <Check className="w-2.5 h-2.5" /> GPU Video Encoder (NVENC/QSV)
+                    </span>
+                  )}
+                  {hardwareInfo.isWebGpuSupported && (
+                    <span className="text-[9px] px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-300 border border-rose-500/20 font-medium flex items-center gap-1">
+                      <Check className="w-2.5 h-2.5" /> WebGPU Pipeline
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Hardware Acceleration Mode Selector */}
+            <div className="space-y-2 pt-1">
+              <label className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider block">
+                Chế độ tăng tốc phần cứng (Acceleration Mode)
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {[
+                  {
+                    id: 'gpu-max' as HardwareAccelerationMode,
+                    title: t.hardwareModeGpuMax,
+                    desc: t.hardwareModeGpuMaxDesc,
+                    icon: Zap,
+                    badge: '60 FPS',
+                    color: 'rose',
+                  },
+                  {
+                    id: 'balanced' as HardwareAccelerationMode,
+                    title: t.hardwareModeBalanced,
+                    desc: t.hardwareModeBalancedDesc,
+                    icon: Sliders,
+                    badge: 'Hybrid',
+                    color: 'cyan',
+                  },
+                  {
+                    id: 'cpu-safe' as HardwareAccelerationMode,
+                    title: t.hardwareModeCpuSafe,
+                    desc: t.hardwareModeCpuSafeDesc,
+                    icon: HardDrive,
+                    badge: 'Eco',
+                    color: 'emerald',
+                  },
+                ].map((modeItem) => {
+                  const isSel = hardwareConfig.mode === modeItem.id;
+                  const Icon = modeItem.icon;
+                  return (
+                    <button
+                      key={modeItem.id}
+                      type="button"
+                      onClick={() => {
+                        if (onUpdateHardwareConfig) {
+                          onUpdateHardwareConfig({
+                            ...hardwareConfig,
+                            mode: modeItem.id,
+                          });
+                        }
+                        if (onToggleHighPerformanceRender) {
+                          onToggleHighPerformanceRender(modeItem.id === 'cpu-safe');
+                        }
+                      }}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                        isSel
+                          ? 'bg-neutral-900 border-rose-500 ring-1 ring-rose-500/50 shadow-md shadow-rose-950/20'
+                          : 'bg-neutral-950/60 border-neutral-800 hover:border-neutral-700 hover:bg-neutral-900/60'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <div className={`p-1 rounded-lg ${isSel ? 'bg-rose-500/20 text-rose-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                          <Icon className="w-3.5 h-3.5" />
+                        </div>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                          isSel ? 'bg-rose-500 text-white' : 'bg-neutral-800 text-neutral-400'
+                        }`}>
+                          {modeItem.badge}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-xs font-bold text-white block">
+                          {modeItem.title}
+                        </span>
+                        <p className="text-[10px] text-neutral-400 line-clamp-2 mt-0.5">
+                          {modeItem.desc}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Fine-grained Toggles */}
+            <div className="space-y-2 pt-1 border-t border-neutral-800/70">
+              {/* 1. Direct GPU Presentation (Desynchronized Canvas) */}
+              <div 
+                onClick={() => {
+                  if (onUpdateHardwareConfig) {
+                    onUpdateHardwareConfig({
+                      ...hardwareConfig,
+                      desynchronized: !hardwareConfig.desynchronized,
+                    });
+                  }
+                }}
+                className="p-3 rounded-xl bg-neutral-950/70 border border-neutral-800/80 hover:border-neutral-700 flex items-center justify-between gap-3 cursor-pointer transition-colors"
+              >
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-neutral-200 block">
+                    {t.directGpuPresentation}
+                  </span>
+                  <p className="text-[10px] text-neutral-400 leading-tight">
+                    {t.directGpuPresentationDesc}
+                  </p>
+                </div>
+                <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors shrink-0 ${
+                  hardwareConfig.desynchronized ? 'bg-rose-600' : 'bg-neutral-800'
+                }`}>
+                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    hardwareConfig.desynchronized ? 'translate-x-4' : 'translate-x-0'
+                  }`} />
+                </div>
+              </div>
+
+              {/* 2. GPU Hardware Video Encoding */}
+              <div 
+                onClick={() => {
+                  if (onUpdateHardwareConfig) {
+                    onUpdateHardwareConfig({
+                      ...hardwareConfig,
+                      preferHardwareEncoder: !hardwareConfig.preferHardwareEncoder,
+                    });
+                  }
+                }}
+                className="p-3 rounded-xl bg-neutral-950/70 border border-neutral-800/80 hover:border-neutral-700 flex items-center justify-between gap-3 cursor-pointer transition-colors"
+              >
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-neutral-200 block">
+                    {t.hardwareVideoEncoding}
+                  </span>
+                  <p className="text-[10px] text-neutral-400 leading-tight">
+                    {t.hardwareVideoEncodingDesc}
+                  </p>
+                </div>
+                <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors shrink-0 ${
+                  hardwareConfig.preferHardwareEncoder ? 'bg-rose-600' : 'bg-neutral-800'
+                }`}>
+                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    hardwareConfig.preferHardwareEncoder ? 'translate-x-4' : 'translate-x-0'
+                  }`} />
+                </div>
+              </div>
+
+              {/* 3. Real-time Performance HUD Overlay */}
+              <div 
+                onClick={() => {
+                  if (onUpdateHardwareConfig) {
+                    onUpdateHardwareConfig({
+                      ...hardwareConfig,
+                      showOverlay: !hardwareConfig.showOverlay,
+                    });
+                  }
+                }}
+                className="p-3 rounded-xl bg-neutral-950/70 border border-neutral-800/80 hover:border-neutral-700 flex items-center justify-between gap-3 cursor-pointer transition-colors"
+              >
+                <div className="space-y-0.5">
+                  <span className="text-xs font-semibold text-neutral-200 block">
+                    {t.performanceOverlay}
+                  </span>
+                  <p className="text-[10px] text-neutral-400 leading-tight">
+                    {t.performanceOverlayDesc}
+                  </p>
+                </div>
+                <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors shrink-0 ${
+                  hardwareConfig.showOverlay ? 'bg-rose-600' : 'bg-neutral-800'
+                }`}>
+                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    hardwareConfig.showOverlay ? 'translate-x-4' : 'translate-x-0'
+                  }`} />
+                </div>
+              </div>
+            </div>
+
+            {/* Auto-save Status Info */}
+            <div className="flex items-center justify-between text-xs text-neutral-300 pt-2 border-t border-neutral-800/60">
+              <span className="flex items-center gap-2 text-neutral-400 text-[11px]">
                 <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
                 {t.autoSaveEnabled}
               </span>
-              <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                 Active
               </span>
             </div>
