@@ -2794,9 +2794,16 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
             </div>
           </div>
 
-          <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
-            {isVi ? 'Vị Trí & Nét Vẽ Trên Màn Hình 2D' : '2D Position & Stroke Thickness'}
-          </label>
+          <div>
+            <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
+              {isVi ? 'Vị Trí & Nét Vẽ Trên Màn Hình 2D' : '2D Position & Stroke Thickness'}
+            </label>
+            <p className="text-[10px] text-neutral-400 mt-0.5">
+              {isVi
+                ? 'Tùy chỉnh vị trí chỉ tác động lên các mẫu sóng 2D (Không ảnh hưởng đến không gian 3D)'
+                : 'Position settings only apply to 2D waveforms (Does not affect 3D spatial visualizers)'}
+            </p>
+          </div>
 
           {/* Position X & Position Y Sliders */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800/80">

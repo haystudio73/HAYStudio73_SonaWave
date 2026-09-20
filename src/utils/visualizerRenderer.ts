@@ -5604,12 +5604,8 @@ export class VisualizerRenderer {
 
         if (threeCanvas) {
           ctx.save();
-          // Offset if user shifted positionX or positionY away from default 50%
-          const offX = (width * ((v.positionX !== undefined ? v.positionX : 50) - 50)) / 100;
-          const offY = (height * (v.positionY - 50)) / 100;
-          ctx.translate(offX, offY);
 
-          // Apply visualizer scale & mirror if enabled
+          // Apply visualizer scale if enabled (shared scale factor)
           if (v.scale !== 1.0) {
             ctx.translate(width / 2, height / 2);
             ctx.scale(v.scale, v.scale);
