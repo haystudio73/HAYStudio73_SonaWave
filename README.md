@@ -9,57 +9,60 @@ Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">
 ## ✨ Features
 
 ### Core Functionality
-- **Audio Wave Visualization**: Create stunning visual representations of audio waveforms
-- **Lyrics Synchronization**: Support for SRT and LRC subtitle formats for precise lyric timing
-- **Multiple Visualizer Effects**: Diverse animation styles to match different music genres and moods
-- **Customizable Backgrounds**: Choose from a built-in library or upload custom background images
-- **Professional Video Export**: High-quality MP4 output optimized for social media platforms
+- **Audio Wave Visualization**: Create stunning 2D and real-time 3D WebGL representations of audio waveforms (26 visualizer styles).
+- **Lyrics Synchronization**: Support for SRT and LRC subtitle formats with independent karaoke timing editor and auto-overlap repair.
+- **3D Three.js WebGL Engine**: Full 3D spatial visualizers with post-processing bloom, flowing neon wave lights, and free camera orbits.
+- **Scene Transitions & Multi-Slide Timeline**: Seamless image slideshow transitions and per-timestamp scene/visualizer switching.
+- **Multi-Layer Text Boxes & Smart Tracklist**: Freely place animated custom text, titles, timestamps, and auto-generated playlist tracklists.
+- **Audio-Reactive Lottie & DotLottie Stickers**: Overlay scalable vector animations with beat-responsive bounce and custom blending.
+- **10-Band Studio Master Graphic EQ**: Hardware-grade 10-band audio equalizer with real-time spectrum and custom sound presets.
+- **Multi-Track Audio Playlist**: Continuous background playback, track queue management, and individual song metadata.
+- **Customizable Backgrounds**: High-resolution curated library, custom image (JPG/PNG), dynamic video (MP4), gradients, and 10 particle systems.
+- **Professional Video Export**: High-quality MP4 output (9:16, 1:1, 16:9, 4:5) up to 60FPS optimized for TikTok, YouTube Shorts, and Instagram Reels.
 
-### New & Upcoming Features
-These are planned enhancements and newly introduced features to improve workflow, customization, and automation. If you'd like to help implement or test any of them, see the Contributing section below.
-
-- **Real-time Waveform Preview** — Instant visual feedback while adjusting effects and lyrics timing.
-- **Multiple Audio Track Support** — Mix and visualize multiple audio tracks in a single video (stem support).
-- **Batch Processing & CLI** — Command-line batch export for processing multiple songs/videos automatically.
-- **Cloud Export & Storage Integration** — Upload finished videos to S3-compatible storage or Google Drive automatically.
-- **Plugin System & Visualizer Marketplace** — Allow third-party visualizers, transitions, and export plugins.
-- **Advanced Color Grading Tools** — Per-effect color controls and LUT support for professional results.
-- **Auto-Captioning (AI)** — Generate initial lyric timing suggestions from audio using the Gemini API (post-edit recommended).
-- **Webhooks & Export Callbacks** — Configure callbacks to notify your service when an export finishes.
-- **Template Presets** — Save and apply presets (dimensions, colors, effects) for consistent branding.
-- **Undo/Redo & History** — Non-destructive editing with history states during a session.
-- **Docker Image & Reproducible Exports** — Official Dockerfile for consistent server-side rendering environments.
-- **Mobile App (Planned)** — Lightweight mobile companion for previewing and triggering exports remotely.
-
-> Note: Items listed here marked as "Upcoming" may be in planning, in development, or available as experimental features. Check issues and PRs for current status.
+### New & Enhanced Features
+- **3D WebGL Particle & Mesh Visualizers** — 8 ultra-realistic 3D soundscapes powered by Three.js with hardware-accelerated Post-Processing Bloom.
+- **Independent 2D & 3D Positioning** — 2D position controls strictly affect 2D waveforms, leaving 3D spatial camera coordinates completely clean and centered.
+- **Multi-Slide Background Transitions** — Smooth crossfade, directional slides, and zoom pushes for lyric video slideshows.
+- **Studio Master Graphic EQ** — Live 10-band equalizer with +12dB boost, Preamp gain, and audio-reactive spectrum analyzer.
+- **Lottie & DotLottie Vector Engine** — Import and animate lightweight JSON/dotLottie stickers synchronized with beat drops.
+- **Karaoke Timing Fine-Tuning** — Split-second independent color sweep timing detached from sentence display lifespans.
+- **In-App Sandboxed Dialogs** — Safe confirmation modals for resetting and project operations fully compatible with web iframes.
+- **Multi-Project Management & Local AutoSave** — Real-time crash protection, JSON backup/restore, and instant project switcher.
 
 ### Supported Formats
-- **Audio Input**: MP3, WAV files
-- **Subtitle Formats**: SRT (SubRip), LRC (LyRiCs)
-- **Background Input Formats**: JPG / PNG / MP4
-- **Video Export**: MP4 with configurable quality and dimensions
+- **Audio Input**: MP3, WAV, AAC, OGG files (Single or Multi-track Playlist)
+- **Subtitle Formats**: SRT (SubRip), LRC (LyRiCs with millisecond precision)
+- **Background Input Formats**: JPG / PNG / WebP / MP4 Video
+- **Vector Animation Formats**: Lottie (.json) & dotLottie (.lottie)
+- **Video Export**: MP4 (H.264 / AAC) with configurable resolution, framerate (30/60 FPS), and bitrate
 - **Optimal Dimensions**: 
-  - TikTok: 1080x1920 (9:16)
-  - YouTube Shorts: 1080x1920 (9:16)
-  - Instagram Reels: 1080x1920 (9:16)
+  - TikTok / Reels / Shorts: 1080x1920 (9:16 Vertical)
+  - Instagram Feed / Square: 1080x1080 (1:1 Square)
+  - YouTube / Facebook Video: 1920x1080 (16:9 Landscape)
+  - Facebook / Instagram Portrait: 1080x1350 (4:5 Portrait)
   
-### Visual Effects
-- Dynamic waveform animations & 17 visualizer styles
-- Customizable color schemes (Solid, Gradient 2/3, Rainbow, Neon)
-- Background blur, overlay, beat zoom & glitch options
-- 6 Lyric styles & advanced karaoke timing editor
-- 8 Cinematic Film Light & burn effects
+### Visual Effects Overview
+- 26 Visualizer styles: 18 advanced 2D waveforms & 8 cutting-edge 3D WebGL scenes
+- Post-processing Bloom glow & Universal flowing neon wave lights
+- Customizable color palettes (Solid, Gradient 2/3, Rainbow, Neon Glow, Audio-Reactive)
+- Background optical filters, Beat Zoom dynamics & 4 Glitch distortion styles
+- 10 Audio-reactive particle systems (Rain, Snow, Spinning Dashes, Spaghetti, Sparks, Hyperspace 3D, etc.)
+- 6 Lyric styles, 3 karaoke sweep modes & advanced timing micro-editor
+- 8 Cinematic Film Light & vintage 35mm burn effects
 - 13 Professional Color Grading LUT presets
-- 8 Track info badge styles with beat jumping dynamics
-- And more ...
+- 8 Track info badge styles with vinyl 360° spin & beat jumping dynamics
+- Unlimited draggable Text Boxes with smart playlist tracklist formatting
+- Multi-scene timeline transitions & curated image slideshows
 
 ---
 
 ## 🎨 Danh Sách Hiệu Ứng & Tính Năng Chi Tiết
 
-### 1. 🌊 Danh Sách Sóng Âm Hiện Có (Visualizer Waves)
-Ứng dụng tích hợp **17 phong cách sóng âm** đa dạng từ cổ điển đến hiện đại 3D không gian:
+### 1. 🌊 Danh Sách Sóng Âm Hiện Có (2D & 3D WebGL Visualizers)
+Ứng dụng tích hợp tổng cộng **26 phong cách sóng âm đỉnh cao** gồm **18 phong cách sóng 2D** siêu mượt và **8 không gian 3D Three.js WebGL** thời gian thực:
 
+#### A. 18 Phong Cách Sóng Âm 2D Nghệ Thuật
 1. **Spectrum Cột Hạt Rơi (`bars-peaks` - Spectrum Peak Drops)**: Thanh phổ âm equalizer kèm hạt đỉnh rơi vật lý siêu thực phong cách Winamp kinh điển. *(Hot)*
 2. **Sóng Đối Xứng Hạt Đỉnh (`bars-mirrored-peaks` - Mirrored Peaks)**: Cột đối xứng 2 đầu kèm hạt rơi lơ lửng phía trên và dưới theo nhịp đập.
 3. **Dải Phổ Gradient Mịn (`spectrum-line` - Smooth Area Curve)**: Đường cong sóng mềm mại phủ màu gradient với các đỉnh sáng phát quang mượt mà.
@@ -69,16 +72,34 @@ These are planned enhancements and newly introduced features to improve workflow
 7. **Tia Laser Sân Khấu EDM (`laser-beams` - EDM Concert Lasers)**: Dàn chùm tia laser quét góc rộng bùng nổ theo nhịp kick drum sân khấu lễ hội âm nhạc.
 8. **Lõi Siêu Tân Tinh Tỏa Sáng (`starburst-core` - Starburst Nova Core)**: Vụ nổ hạt sao đa giác 360° với tâm phát quang năng lượng vũ trụ.
 9. **Ma Trận EQ Khối Nổi (`audio-equalizer-grid` - Cyber EQ Matrix Grid)**: Lưới tầng bậc LED đa sắc màu xếp chồng phản ứng cực nhạy theo từng dải tần số.
-10. **Sóng Cột Đối Xứng (`bars-mirrored` - Twin Mirrored Beams)**: Chùm sóng đối xứng trục giữa 2 hướng trên - dưới với lõi laser phát sáng trung tâm (laser core), vạch phân tách trục rõ rệt và dải màu gradient đối xứng độc đáo, hoàn toàn phân biệt với các kiểu sóng khác.
-11. **Cột Cổ Điển EQ (`bars` - Classic Studio Hardware EQ)**: Dạng thang đèn LED ngắt tầng cổ điển (segmented LED ladder) của các thiết bị âm thanh phòng thu chuyên nghiệp, có bóng đổ phản chiếu mặt sàn (floor reflection) và vạch đỉnh (cap peak) riêng biệt.
-12. **Tia Tròn Tỏa Sáng (`circular-spikes` - Radial Spikes)**: Tia sóng xoay tròn quanh tâm đĩa phát sáng phong cách đĩa nhạc điện tử.
-13. **Sóng Nước Mềm Mại (`smooth-wave` - Liquid Wave)**: Dạng sóng dao động chất lỏng mềm mại, êm ái thích hợp cho bản nhạc Lofi & Acoustic.
-14. **Ma Trận LED Cyber (`cyber-matrix` - Cyber Matrix)**: Khối gạch LED kỹ thuật số nhảy theo từng quãng tần số âm thanh.
-15. **Ngọn Lửa Plasma (`flame-spectrum` - Plasma Fire)**: Ngọn lửa âm nhạc rực cháy bốc cao theo nhịp kick drum và bass drop mạnh mẽ.
-16. **Dải Ruy Băng Đôi (`double-ribbon` - Dual Ribbon)**: Hai dải neon sóng uốn lượn đan xen mềm mại và uyển chuyển.
-17. **Chấm Tối Giản (`minimal-pulse` - Minimal Dots)**: Đường ngang ma trận chấm tần số tinh gọn dành cho người theo đuổi phong cách audiophile tối giản.
+10. **Sóng Cột Đối Xứng (`bars-mirrored` - Twin Mirrored Beams)**: Chùm sóng đối xứng trục giữa 2 hướng trên - dưới với lõi laser phát sáng trung tâm (laser core), vạch phân tách trục rõ rệt và dải màu gradient đối xứng độc đáo.
+11. **Cột Cổ Điển EQ (`bars` - Classic Studio Hardware EQ)**: Dạng thang đèn LED ngắt tầng cổ điển (segmented LED ladder) của các thiết bị âm thanh phòng thu chuyên nghiệp, có bóng đổ phản chiếu mặt sàn và vạch đỉnh riêng biệt.
+12. **Cột Phổ Tối Giản (`spectrum-bars-simple` - Simple Column Spectrum)**: Các cột thẳng đứng thanh lịch, tinh giản cho phong cách hiện đại.
+13. **Tia Tròn Tỏa Sáng (`circular-spikes` - Radial Spikes)**: Tia sóng xoay tròn quanh tâm đĩa phát sáng phong cách đĩa nhạc điện tử.
+14. **Sóng Nước Mềm Mại (`smooth-wave` - Liquid Wave)**: Dạng sóng dao động chất lỏng mềm mại, êm ái thích hợp cho bản nhạc Lofi & Acoustic.
+15. **Ma Trận LED Cyber (`cyber-matrix` - Cyber Matrix)**: Khối gạch LED kỹ thuật số nhảy theo từng quãng tần số âm thanh.
+16. **Ngọn Lửa Plasma (`flame-spectrum` - Plasma Fire)**: Ngọn lửa âm nhạc rực cháy bốc cao theo nhịp kick drum và bass drop mạnh mẽ.
+17. **Dải Ruy Băng Đôi (`double-ribbon` - Dual Ribbon)**: Hai dải neon sóng uốn lượn đan xen mềm mại và uyển chuyển.
+18. **Chấm Tối Giản (`minimal-pulse` - Minimal Dots)**: Đường ngang ma trận chấm tần số tinh gọn dành cho người theo đuổi phong cách audiophile tối giản.
 
-*Các tùy chỉnh chuyên sâu cho sóng âm*:
+#### B. 8 Không Gian Visualizer 3D Three.js WebGL Siêu Thực
+1. **Ma Trận Khối Lập Phương 3D (`3d-cube-matrix` - 3D Cube Equalizer Matrix)**: Lưới khối lập phương kim loại 3D nhấp nhô theo phổ tần số, hỗ trợ chất liệu Kim loại (Metallic), Phong bóng bẩy, Khung dây (Wireframe) và Viền phát sáng Neon.
+2. **Quả Cầu Tần Số 3D (`3d-sphere-waveform` - 3D Cyber Wireframe & Crystal Audio Sphere)**: Khối cầu đa diện Icosahedron biến dạng lồi lõm theo nhịp nhạc, chất liệu Thủy tinh pha lê (Crystal Glass), Neon huỳnh quang hoặc Kim loại phản chiếu.
+3. **Địa Hình Cyberpunk 3D (`3d-wave-terrain` - 3D Synthwave Landscape)**: Bình nguyên lưới neon trải dài vô tận uốn lượn sóng cuộn, hỗ trợ phản chiếu môi trường hình nền sống động.
+4. **Hệ Mặt Trời & Thiên Hà 3D (`3d-solar-system` - Cosmic Planetary System)**: Mặt trời trung tâm phập phồng theo tiếng Bass, các hành tinh quay trên quỹ đạo elip, vành đai tiểu hành tinh và vành đai Sao Thổ rực sáng.
+5. **Khối Chất Lỏng Biến Hình 3D (`3d-fluid-shape` - Morphing Glass Fluid Blob)**: Khối chất lỏng trong suốt khúc xạ ánh sáng với các hạt nước li ti văng xung quanh, uốn lượn biến hình theo từng tiết tấu giai điệu.
+6. **Mạng Lưới Đa Giác Bezier 3D (`3d-bezier-mesh` - Plexus Constellation Web)**: Mạng lưới chòm sao không gian liên kết các điểm nút phát sáng bằng sợi dây mạng nhện 3D nảy bung theo tần số.
+7. **Trường Tia Phóng Phổ Âm 3D (`3d-raycaster` - Stanford Mesh & Normal Ray Field)**: Mô hình lõi 3D phóng ra hàng trăm tia laser hướng tâm kèm hạt đỉnh đầu (vuông, tròn, sao 5 cánh) phản hồi theo xung nhịp âm thanh.
+8. **Dải Ngân Hà Xoắn Ốc 3D (`3d-spiral-galaxy` - Spiral Nebula Particle Galaxy)**: Hàng nghìn hạt sao xoay tròn quanh tâm hố đen rực sáng, các cánh tay xoắn ốc tinh vân bung tỏa và nhấp nháy theo âm sắc.
+
+#### C. Công Nghệ Quang Học 3D & Phân Tách Không Gian Độc Lập
+- **Hào quang hậu kỳ Three.js (Global Post-Processing Bloom)**: Thuật toán Bloom quang học đa tầng làm rực sáng các vật thể 3D, tích hợp cơ chế **Bass Boost Bloom** tự động bùng sáng chói lóa khi có cú Kick drum hoặc Bass Drop.
+- **Sóng Ánh Sáng Chạy (Universal Flowing Light)**: Luồng sáng neon, laser pulse hoặc cầu vồng luân chuyển liên tục quét dọc bề mặt các mô hình 3D.
+- **Camera Không Gian Đa Hướng**: Điều khiển góc nghiêng Tilt X, góc xoay Orbit Y, cự ly Camera Distance, tự động xoay quanh tâm (Auto-Rotate) với tốc độ tùy biến.
+- **Tọa Độ & Dịch Chuyển Không Gian 3D**: Tự do dịch chuyển vật thể theo 3 trục X, Y, Z (`moveX`, `moveY`, `moveZ`) và xoay lật 3 chiều (`rotateX`, `rotateY`, `rotateZ`).
+- **Phân Tách Tuyệt Đối 2D & 3D**: Thanh trượt căn chỉnh vị trí 2D (X, Y) chỉ điều khiển sóng 2D, hoàn toàn không làm lệch tâm khung cảnh 3D.
+
+#### D. Tùy Chỉnh Chuyên Sâu Cho Sóng Âm 2D
 - **Chế độ màu**: Màu đơn (Solid), Gradient 2 màu, Gradient 3 màu, Cầu vồng (Rainbow), Neon Glow.
 - **Hào quang đa tầng (Bloom & Glow)**: Công nghệ Multi-pass Neon Bloom làm rực sáng viền sóng âm.
 - **Tách sắc sai RGB Glitch (Chromatic Aberration)**: Tách kênh màu quang học phản hồi trực tiếp theo biên độ âm thanh.
@@ -277,6 +298,106 @@ Cung cấp **8 phong cách hiển thị thẻ bài hát & bìa đĩa**:
 - **Bộ Công Cụ Cân Chỉnh Phông Chữ Chi Tiết (Typography Stepper & Preview)**:
   - Chỉnh độc lập Phông chữ (Font Family), Kiểu chữ (Font Style: Thường, Nghiêng, Đậm, Đậm & Nghiêng, Viết Hoa), và Cỡ chữ (Font Size) cho từng dòng Sub Title, Main Title và Artist Info.
   - Nút bấm tăng giảm cỡ chữ nhanh (+ / -), thanh trượt mượt mà và thẻ xem trước (Live Font Preview) trực quan ngay trên bảng điều khiển.
+
+---
+
+### 7. 🔀 Hệ Thống Chuyển Cảnh & Trình Chiếu Ảnh (Scene Transitions & Multi-Slide Timeline)
+Hỗ trợ tạo video âm nhạc với nhiều hình ảnh và phân cảnh biến đổi đa dạng xuyên suốt bài hát:
+
+#### A. Chế Độ Trình Chiếu Ảnh Nhiều Slide (Slide Presentation Mode)
+- **Tự động chuyển đổi hình nền**: Luân phiên hiển thị danh sách nhiều ảnh nền theo chu kỳ giây hoặc tự động chia đều theo tổng thời lượng bài hát.
+- **6 Hiệu ứng chuyển cảnh mượt mà**:
+  1. **Mờ dần chồng ảnh (Crossfade)**: Hòa quyện êm ái giữa 2 bức ảnh không bị giật.
+  2. **Trượt sang trái (Slide Left)**: Ảnh mới lướt từ phải sang trái.
+  3. **Trượt sang phải (Slide Right)**: Ảnh mới lướt từ trái sang phải.
+  4. **Trượt lên trên (Slide Up)**: Ảnh mới đẩy từ dưới lên trên.
+  5. **Trượt xuống dưới (Slide Down)**: Ảnh mới đẩy từ trên xuống dưới.
+  6. **Đẩy thu phóng (Zoom In Push)**: Hiệu ứng phóng to đẩy ảnh trước ra sau điện ảnh.
+- **Tùy chỉnh thời gian chuyển tiếp (Transition Duration)**: Tinh chỉnh tốc độ hòa trộn từ 0.2 giây đến 2.5 giây.
+- **Kho ảnh slide mẫu sẵn có**: Tích hợp các bộ sưu tập ảnh độ phân giải cao theo chủ đề (Cyberpunk Neon, Galaxy Vũ trụ, Hoàng hôn Sunset, Anime Lofi, Thiên nhiên hùng vĩ) hoặc tự do tải lên ảnh từ máy tính.
+
+#### B. Chế Độ Dòng Thời Gian Phân Cảnh (Timeline Scenes Mode)
+- Đặt các mốc thời gian cụ thể (theo giây) để tự động thay đổi:
+  - Hình nền mới tương ứng với từng đoạn nhạc (Intro, Verse, Chorus, Drop, Outro).
+  - Tự động đổi kiểu sóng âm Visualizer (ví dụ: Verse dùng sóng dải lụa mềm, Điệp khúc bùng nổ chuyển sang Ma trận 3D hoặc Laser EDM).
+  - Tự động thay đổi bảng màu sắc sóng âm theo cao trào của bản nhạc.
+
+---
+
+### 8. 📝 Hộp Văn Bản Nhiều Lớp & Tạo Tracklist Tự Động (Multi-Layer TextBox & Smart Tracklist)
+Công cụ dàn trang văn bản tự do, chuyên nghiệp cho video âm nhạc:
+
+- **Thêm không giới hạn hộp chữ (Multiple Text Boxes)**: Tạo bao nhiêu hộp chữ tùy ý để ghi lời nhắn, lời chúc, danh sách bài hát, mạng xã hội, ngày tháng hoặc trích dẫn ý nghĩa.
+- **Tự động tạo danh sách bài hát thông minh (Smart Tracklist Generator)**:
+  - Đồng bộ 1 chạm với Danh sách phát nhạc (Audio Playlist).
+  - **3 định dạng hiển thị thông dụng**:
+    1. Số thứ tự + Tiêu đề + Thời lượng: `01. Tên Bài Hát (03:45)`
+    2. Mốc thời gian phát: `00:00 - Tên Bài Hát`
+    3. Tên bài hát kèm Ca sĩ trình bày: `01. Tên Bài Hát - Ca Sĩ`
+- **Tùy biến vị trí & bố cục tự do**:
+  - Tọa độ X (0% - 100%), Tọa độ Y (0% - 100%), độ rộng tối đa giới hạn (Max Width).
+  - Căn chỉnh dòng: Căn lề Trái (Left), Căn Giữa (Center), Căn Lề Phải (Right).
+- **Thứ tự lớp hiển thị (Layer Ordering)**:
+  - Nằm sau sóng âm (Behind Wave)
+  - Nằm trước sóng âm (In Front of Wave)
+  - Nằm dưới hạt rơi (Below Particles)
+  - Lớp trên cùng tuyệt đối (Topmost Overlay)
+- **Tùy biến Typography & Hiệu ứng chữ phong phú**:
+  - Hỗ trợ đầy đủ phông chữ tiếng Việt Unicode.
+  - Cỡ chữ, độ đậm, in nghiêng, viết hoa, màu chữ và 7 hiệu ứng chữ nghệ thuật (Neon Glow, Double Stroke, 3D Shadow, Chrome, Comic Pop).
+  - Khung nền hộp (Background Pill Box) với tùy chỉnh màu sắc, độ mờ đục và độ nhòe kính mờ (Frosted Blur).
+
+---
+
+### 9. 🎭 Hoạt Họa Lottie & Sticker Vector Phản Hồi Âm Nhạc (Lottie & DotLottie Engine)
+Tích hợp trực tiếp công nghệ hoạt họa vector cao cấp hàng đầu thế giới:
+
+- **Hỗ trợ đa định dạng vector**: Nhập trực tiếp tệp Lottie `.json` truyền thống và định dạng nén siêu nhẹ `.lottie` (dotLottie) mà không bị vỡ hạt hay giảm chất lượng khi phóng to.
+- **Thư viện Sticker hoạt họa tuyển chọn sẵn**:
+  - Đĩa DJ xoay tròn, Tai nghe rung nhịp, Mèo chill lofi, Ngôi sao nhấp nháy, Trái tim đập, Ngọn lửa âm nhạc, Dải sóng neon, v.v.
+- **Nhập từ máy tính & URL trực tuyến**: Tải tệp từ thiết bị hoặc dán trực tiếp liên kết hoạt họa từ kho LottieFiles.
+- **Phản hồi nhịp âm thanh (Audio-Reactive Bounce)**: Sticker tự động co giãn, phóng to và giật nảy đồng bộ tuyệt đối theo từng nhịp trống Bass / Beat Kick của bài hát.
+- **Chế độ hòa trộn màu sắc (Blend Modes)**: Tích hợp các chế độ Screen, Add, Overlay, Multiply giúp sticker tan vào hình nền cực kỳ nghệ thuật.
+- **Điều khiển kích thước & vị trí**: Tự do kéo chỉnh tọa độ X/Y, xoay góc, phóng to/thu nhỏ (Scale), độ trong suốt (Opacity) và tốc độ chuyển động (Playback Speed).
+
+---
+
+### 10. 🎚️ Bàn Trộn Âm Thanh Equalizer 10 Băng Tần (Studio Master Graphic EQ)
+Bộ tinh chỉnh chất lượng âm thanh chuẩn phần cứng phòng thu chuyên nghiệp:
+
+- **10 Băng tần cân bằng âm học**: Điều chỉnh chi tiết các dải tần số `31Hz`, `62Hz`, `125Hz`, `250Hz`, `500Hz`, `1kHz`, `2kHz`, `4kHz`, `8kHz`, `16kHz` với khoảng khuếch đại rộng từ `-12dB` đến `+12dB`.
+- **Đồng hồ phân tích phổ thời gian thực (Real-time Spectrum Canvas)**: Đồ thị hiển thị trực quan các đỉnh sóng âm thanh phản hồi tức thì theo bài hát đang phát.
+- **Bộ tiền khuếch đại (Preamp Gain)**: Tăng giảm âm lượng tổng thể an toàn chống vỡ tiếng (-12dB đến +12dB).
+- **Tăng cường âm trầm sâu (Bass Boost Kick)**: Kích hoạt mạch tăng âm bass cho tiếng trống chắc khỏe, uy lực.
+- **Bộ Presets âm thanh chuyên nghiệp cài sẵn**:
+  - **Bass Boost**: Tăng cường âm trầm cho nhạc Remix, Vinahouse, EDM.
+  - **EDM Club**: Đẩy mạnh dải trầm và dải cao cho không khí lễ hội.
+  - **Rock Energy**: Tăng lực dải trung và âm cao cho tiếng guitar điện và trống rock.
+  - **Vocal Clarity**: Nâng sáng dải âm trung giúp giọng hát ca sĩ trong trẻo, rõ nét.
+  - **Acoustic Air**: Âm thanh mộc mạc, chi tiết, thoáng đãng cho nhạc cụ acoustic.
+  - **Flat Studio**: Cân bằng tuyến tính chuẩn kiểm âm phòng thu.
+- **Hệ thống Preset cá nhân**: Cho phép người dùng tự lưu các cấu hình EQ yêu thích, đặt tên, chỉnh sửa và tải lại bất cứ lúc nào.
+
+---
+
+### 11. 🎶 Danh Sách Phát Nhiều Bài Hát (Audio Playlist & Continuous Playback)
+Không chỉ dừng lại ở việc làm video cho 1 bài đơn lẻ, Sona Wave Pro hỗ trợ danh sách phát hoàn chỉnh:
+
+- **Hàng đợi phát nhạc liên tục (Audio Queue)**: Tải lên cùng lúc nhiều bài hát, hệ thống sẽ tự động phát nối tiếp từng bài mượt mà không bị ngắt quãng.
+- **Quản lý siêu dữ liệu từng bài**: Đặt tên bài hát, nghệ sĩ và gán ảnh bìa riêng biệt cho từng bản nhạc trong danh sách phát.
+- **Chế độ phát linh hoạt**: Phát tuần tự, lặp lại toàn bộ danh sách phát (Loop All), hoặc lặp lại một bài duy nhất (Loop One).
+- **Liên kết với Thẻ bài hát & Tracklist**: Khi chuyển bài, thông tin trên Track Info Badge và Hộp văn bản danh sách phát sẽ tự động cập nhật đồng bộ tức thì.
+
+---
+
+### 12. 💾 Hệ Thống Quản Lý Dự Án, AutoSave & Hộp Thoại An Toàn (Project Storage & Safety Modals)
+Bảo vệ tuyệt đối công sức sáng tạo của người dùng:
+
+- **Tự động lưu dự phòng (AutoSave Engine)**: Mọi thao tác chỉnh sửa sóng âm, lời bài hát, màu sắc, hình nền đều được lưu tức thì vào bộ nhớ máy; tự động khôi phục hoàn hảo khi tải lại trang web.
+- **Quản lý đa dự án (Projects Manager)**: Lưu lại nhiều video khác nhau với tên gọi riêng, dễ dàng chuyển đổi giữa các dự án đang làm dở chỉ trong 1 giây.
+- **Sao lưu & Nhập dự án (Export/Import JSON)**: Xuất toàn bộ cấu hình dự án ra tệp tin JSON để lưu trữ lâu dài hoặc chia sẻ cho người khác cùng làm việc.
+- **Thư viện mẫu dựng sẵn (Presets Modal)**: Lưu các bộ giao diện ưng ý thành mẫu (Template) và áp dụng nhanh cho các bài hát mới.
+- **Hộp thoại xác nhận nội bộ In-App (NewProjectModal)**: Thay thế hoàn toàn các hộp thoại mặc định của trình duyệt (`alert`, `confirm`) bằng các Modal thiết kế riêng tương thích hoàn hảo với môi trường iframe sandboxed, đảm bảo nút **New (Tạo Mới)** và các thao tác nhạy cảm luôn hoạt động mượt mà, ổn định và an toàn.
 
 ---
 
@@ -493,15 +614,26 @@ For issues, questions, or feature requests:
 - Open an [Issue](https://github.com/haystudio73/HAYStudio73_SonaWave/issues) on GitHub
 - Check existing [Discussions](https://github.com/haystudio73/HAYStudio73_SonaWave/discussions)
 
-## 🎯 Roadmap
+## 🎯 Roadmap & Completed Milestones
 
-- [x] Real-time waveform preview (experimental)
-- [x] Advanced color grading tools (basic)
-- [x] Video effect plugins
-- [ ] Cloud storage integration
-- [ ] Batch processing capability
-- [x] Mobile UIX version support
-- [x] Multi lang VI/EN 
+- [x] Real-time waveform preview & 60FPS canvas rendering
+- [x] 18 Advanced 2D audio spectrum & visualizer styles
+- [x] 8 Real-time 3D WebGL scenes with Three.js & Post-Processing Bloom
+- [x] Independent 2D and 3D positioning separation
+- [x] 13 Professional Color Grading LUT presets & film grain tools
+- [x] 8 Cinematic Film Light & vintage 35mm burn optical leaks
+- [x] Advanced lyrics synchronization & independent karaoke sweep timing editor
+- [x] Scene transitions & multi-slide timeline slideshow engine
+- [x] Multi-layer text boxes with automated playlist tracklist generator
+- [x] Audio-reactive Lottie & DotLottie vector animation engine
+- [x] 10-band studio master graphic equalizer & custom preset manager
+- [x] Multi-track audio playlist & continuous background player
+- [x] Multi-project management, JSON backup, and local AutoSave recovery
+- [x] Safe in-app confirmation dialogs (iframe sandbox compatible)
+- [x] Fully responsive mobile UI/UX support
+- [x] Bilingual interface (Vietnamese & English)
+- [ ] Cloud storage export integration (Google Drive / S3)
+- [ ] Server-side batch processing CLI 
 
 ## 📊 Project Stats
 
