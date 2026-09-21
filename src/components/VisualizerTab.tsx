@@ -361,11 +361,18 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
   return (
     <div className="space-y-6 text-neutral-200">
       {/* 00. Visualizer Visibility (Toggle Hidden / Show) */}
-      <div className={`p-4 rounded-2xl border shadow-lg transition-all ${
-        config.visible !== false
-          ? 'bg-gradient-to-br from-neutral-900 via-neutral-900/90 to-neutral-950 border-rose-500/30 shadow-rose-950/20'
-          : 'bg-neutral-900/60 border-neutral-800'
-      }`}>
+      <div 
+        onClick={(e) => {
+          if ((e.target as HTMLElement).tagName !== 'INPUT') {
+            update({ visible: config.visible === false ? true : false });
+          }
+        }}
+        className={`p-4 rounded-2xl border shadow-lg transition-all cursor-pointer select-none ${
+          config.visible !== false
+            ? 'bg-gradient-to-br from-neutral-900 via-neutral-900/90 to-neutral-950 border-rose-500/30 shadow-rose-950/20 hover:border-rose-500/50'
+            : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700'
+        }`}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition ${
@@ -396,7 +403,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
             </div>
           </div>
 
-          <label className="relative inline-flex items-center cursor-pointer">
+          <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
             <input
               type="checkbox"
               checked={config.visible !== false}
@@ -408,8 +415,10 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
         </div>
       </div>
 
-      {/* 0. BPM Detection & Rhythm Pulse Rate Synchronization */}
-      <div className="p-3.5 rounded-2xl bg-gradient-to-br from-rose-950/40 via-neutral-900/90 to-neutral-950 border border-rose-500/25 shadow-lg space-y-3">
+      {config.visible !== false ? (
+        <div className="space-y-6 animate-fade-in">
+          {/* 0. BPM Detection & Rhythm Pulse Rate Synchronization */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-rose-950/40 via-neutral-900/90 to-neutral-950 border border-rose-500/25 shadow-lg space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
@@ -3162,5 +3171,31 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
         </div>
       )}
     </div>
+  ) : (
+    <div className="p-6 rounded-2xl bg-neutral-900/40 border border-neutral-800/80 text-center space-y-3.5 animate-fade-in">
+      <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 mx-auto flex items-center justify-center">
+        <EyeOff className="w-6 h-6 opacity-60" />
+      </div>
+      <div className="max-w-xs mx-auto space-y-1">
+        <p className="text-sm font-semibold text-neutral-200">
+          {isVi ? 'Sóng Âm Đang Được Ẩn' : 'Visualizer is Hidden'}
+        </p>
+        <p className="text-xs text-neutral-400 leading-relaxed">
+          {isVi 
+            ? 'Nhạc, hình nền và các hiệu ứng khác vẫn phát bình thường. Bật công tắc phía trên để hiển thị sóng âm và tùy chỉnh 26 kiểu sóng nhạc 2D/3D.' 
+            : 'Audio playback, background video, and other effects continue playing normally. Turn on the switch above to display and customize 26 2D/3D visualizer styles.'}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => update({ visible: true })}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all shadow-md shadow-rose-600/20 active:scale-95 cursor-pointer"
+      >
+        <Eye className="w-4 h-4" />
+        <span>{isVi ? 'Bật Hiển Thị Sóng Âm' : 'Show Visualizer'}</span>
+      </button>
+    </div>
+  )}
+</div>
   );
 };

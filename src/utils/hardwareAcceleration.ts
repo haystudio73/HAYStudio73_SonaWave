@@ -8,6 +8,14 @@ export const DEFAULT_HARDWARE_CONFIG: HardwareAccelerationConfig = {
   multiThreadedAudio: true, // Multi-core CPU audio processing
 };
 
+export const DEFAULT_LOW_HARDWARE_CONFIG: HardwareAccelerationConfig = {
+  mode: 'cpu-safe', // Eco & CPU safe mode for low-end hardware, mobile, weak VGA
+  desynchronized: false, // Direct GPU presentation can cause stutter on low-end iGPUs
+  preferHardwareEncoder: false, // Reliable software fallback
+  showOverlay: false,
+  multiThreadedAudio: true,
+};
+
 const STORAGE_KEY = 'sonawave_hardware_accel_config';
 
 /**
@@ -129,6 +137,45 @@ export function detectHardwareInfo(): HardwareInfo {
 }
 
 /**
+ * Check if the device is a mobile device, low RAM (<=4GB), or lacks dedicated high-performance GPU
+ */
+export function isLowEndDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  // 1. Mobile or tablet user-agent check
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+  if (isMobile) return true;
+
+  // 2. Low RAM check (deviceMemory <= 4 GB)
+  const deviceMemory = (navigator as any).deviceMemory;
+  if (typeof deviceMemory === 'number' && deviceMemory <= 4) {
+    return true;
+  }
+
+  // 3. Low CPU logical cores (<= 4)
+  const cpuCores = navigator.hardwareConcurrency || 4;
+
+  // 4. Integrated / software GPU check
+  const info = detectHardwareInfo();
+  const gpu = (info.gpuRenderer || '').toLowerCase();
+  const isWeakGpu =
+    gpu.includes('llvmpipe') ||
+    gpu.includes('swiftshader') ||
+    gpu.includes('basic render') ||
+    gpu.includes('mali') ||
+    gpu.includes('adreno') ||
+    gpu.includes('intel hd') ||
+    gpu.includes('intel uhd') ||
+    gpu.includes('microsoft basic');
+
+  if (isWeakGpu || cpuCores <= 2) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Retrieve saved hardware acceleration configuration
  */
 export function getSavedHardwareConfig(): HardwareAccelerationConfig {
@@ -140,6 +187,10 @@ export function getSavedHardwareConfig(): HardwareAccelerationConfig {
         ...DEFAULT_HARDWARE_CONFIG,
         ...parsed,
       };
+    }
+    // Default to low-hardware eco mode if low-end device is detected
+    if (isLowEndDevice()) {
+      return { ...DEFAULT_LOW_HARDWARE_CONFIG };
     }
   } catch {
     // fallback

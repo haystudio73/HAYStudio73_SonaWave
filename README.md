@@ -390,14 +390,17 @@ Không chỉ dừng lại ở việc làm video cho 1 bài đơn lẻ, Sona Wave
 
 ---
 
-### 12. 💾 Hệ Thống Quản Lý Dự Án, AutoSave & Hộp Thoại An Toàn (Project Storage & Safety Modals)
-Bảo vệ tuyệt đối công sức sáng tạo của người dùng:
+### 12. 💾 Hệ Thống Quản Lý Dự Án, AutoSave & Tùy Chọn Cấu Hình Cho Máy Yếu (New Project & Low Hardware Defaults)
+Bảo vệ tuyệt đối công sức sáng tạo của người dùng và tối ưu tài nguyên:
 
-- **Tự động lưu dự phòng (AutoSave Engine)**: Mọi thao tác chỉnh sửa sóng âm, lời bài hát, màu sắc, hình nền đều được lưu tức thì vào bộ nhớ máy; tự động khôi phục hoàn hảo khi tải lại trang web.
+- **Tự động lưu dự phòng (AutoSave Engine - Có thể Bật/Tắt)**: Mọi thao tác chỉnh sửa sóng âm, lời bài hát, màu sắc, hình nền đều được tự động lưu vào bộ nhớ máy; dễ dàng bật hoặc tắt tính năng tự động lưu trong mục Cài Đặt (Global Settings) tùy theo nhu cầu làm việc.
 - **Quản lý đa dự án (Projects Manager)**: Lưu lại nhiều video khác nhau với tên gọi riêng, dễ dàng chuyển đổi giữa các dự án đang làm dở chỉ trong 1 giây.
 - **Sao lưu & Nhập dự án (Export/Import JSON)**: Xuất toàn bộ cấu hình dự án ra tệp tin JSON để lưu trữ lâu dài hoặc chia sẻ cho người khác cùng làm việc.
 - **Thư viện mẫu dựng sẵn (Presets Modal)**: Lưu các bộ giao diện ưng ý thành mẫu (Template) và áp dụng nhanh cho các bài hát mới.
-- **Hộp thoại xác nhận nội bộ In-App (NewProjectModal)**: Thay thế hoàn toàn các hộp thoại mặc định của trình duyệt (`alert`, `confirm`) bằng các Modal thiết kế riêng tương thích hoàn hảo với môi trường iframe sandboxed, đảm bảo nút **New (Tạo Mới)** và các thao tác nhạy cảm luôn hoạt động mượt mà, ổn định và an toàn.
+- **Tùy chọn cấu hình mặc định khi Tạo Mới (New Project Hardware Profile)**: Hộp thoại tạo mới dự án cung cấp bộ chọn cấu hình phần cứng ngay lập tức:
+  - **⚡ Cấu hình Thấp / Tiết Kiệm (Mobile, PC VGA yếu, RAM thấp) [Mặc định & Khuyên dùng]**: Tự động kích hoạt *Chế độ Render Hiệu Năng Cao* (giảm 60% tải GPU fill), tắt các hiệu ứng phát sáng Bloom nặng, sử dụng 36 dải sóng tối ưu, chuyển cơ chế gia tốc sang *Eco CPU-Safe* để chống tràn RAM/VGA trên các thiết bị di động hoặc máy tính văn phòng.
+  - **🚀 Cấu hình Tiêu Chuẩn / Đồ Họa Cao (PC Mạnh, Card VGA Rời)**: Chế độ chất lượng cao đầy đủ hiệu ứng Neon Bloom đa tầng, 48 dải sóng âm sắc nét, phục vụ máy tính có card đồ họa chuyên dụng.
+- **Hộp thoại xác nhận nội bộ In-App (NewProjectModal)**: Thay thế hoàn toàn các hộp thoại mặc định của trình duyệt (`alert`, `confirm`) bằng Modal tùy biến mượt mà, hỗ trợ phím ESC, tương thích hoàn toàn môi trường iframe sandboxed.
 
 ---
 

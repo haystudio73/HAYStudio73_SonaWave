@@ -601,6 +601,21 @@ export const DEFAULT_VISUALIZER: VisualizerConfig = {
   },
 };
 
+export const DEFAULT_LOW_HARDWARE_VISUALIZER: VisualizerConfig = {
+  ...DEFAULT_VISUALIZER,
+  barCount: 36, // Lightweight bar count for fast drawing and low memory overhead
+  barWidth: 6,
+  barGap: 3,
+  barRoundness: 3,
+  glowIntensity: 8, // Minimal shadow blur
+  bloomEffect: false, // Disables multi-pass bloom filter for maximum FPS on low VGA / mobile
+  bloomIntensity: 0,
+  amplitude: 1.15,
+  smoothing: 0.80,
+  verticalReflection: false, // Disables reflection canvas pass
+  chromaticAberration: false, // Disables chromatic aberration pass
+};
+
 export const DEFAULT_LYRICS: LyricsConfig = {
   enabled: true,
   fontFamily: 'Be Vietnam Pro',
@@ -709,6 +724,12 @@ export const DEFAULT_PARTICLES: ParticleConfig = {
   // Fluffy silk ball defaults
   particleGlowRadius: 18,
   silkFluffGlow: true,
+};
+
+export const DEFAULT_LOW_HARDWARE_PARTICLES: ParticleConfig = {
+  ...DEFAULT_PARTICLES,
+  count: 20, // Light particle load for mobile and integrated graphics
+  glowIntensity: 0, // Avoid expensive shadow blurs
 };
 
 export const DEFAULT_FILM_LIGHT: FilmLightConfig = {

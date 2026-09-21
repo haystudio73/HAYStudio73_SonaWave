@@ -88,6 +88,9 @@ export interface TranslationDictionary {
   highPerformanceStandard: string;
   targetFps: string;
   autoSaveEnabled: string;
+  autoSaveDesc: string;
+  autoSaveActive: string;
+  autoSaveDisabled: string;
   close: string;
   activePresetLabel: string;
   defaultAspectRatio: string;

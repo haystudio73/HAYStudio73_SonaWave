@@ -24,9 +24,11 @@ import {
 } from './types';
 import {
   DEFAULT_VISUALIZER,
+  DEFAULT_LOW_HARDWARE_VISUALIZER,
   DEFAULT_LYRICS,
   DEFAULT_BACKGROUND,
   DEFAULT_PARTICLES,
+  DEFAULT_LOW_HARDWARE_PARTICLES,
   DEFAULT_TRACK,
   DEFAULT_TEXT_BOXES,
   DEFAULT_FILM_LIGHT,
@@ -45,6 +47,9 @@ import {
   detectHardwareInfo,
   getSavedHardwareConfig,
   saveHardwareConfig,
+  DEFAULT_HARDWARE_CONFIG,
+  DEFAULT_LOW_HARDWARE_CONFIG,
+  isLowEndDevice,
   HardwarePerformanceTracker,
 } from './utils/hardwareAcceleration';
 import {
@@ -70,7 +75,7 @@ import { ProjectsModal } from './components/ProjectsModal';
 import { ExportModal } from './components/ExportModal';
 import { MasterEQModal } from './components/MasterEQModal';
 import { GlobalSettingsModal } from './components/GlobalSettingsModal';
-import { NewProjectModal } from './components/NewProjectModal';
+import { NewProjectModal, NewProjectHardwareProfile } from './components/NewProjectModal';
 import { AudioPlaylistTab } from './components/AudioPlaylistTab';
 import { LottieTab } from './components/LottieTab';
 import {
@@ -94,6 +99,8 @@ import {
   Type,
   ListMusic,
   Check,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 export function App() {
@@ -176,6 +183,54 @@ export function App() {
   const [activeTab, setActiveTab] = useState<
     'visualizer' | 'lyrics' | 'background' | 'transitions' | 'filmlight' | 'colorgrading' | 'track' | 'textboxes' | 'playlist' | 'lottie'
   >('visualizer');
+
+  // Desktop Horizontal Tab Scrolling State & Navigation
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollTabsLeft, setCanScrollTabsLeft] = useState(false);
+  const [canScrollTabsRight, setCanScrollTabsRight] = useState(true);
+
+  const checkTabsScroll = useCallback(() => {
+    const el = tabsContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollTabsLeft(scrollLeft > 4);
+    setCanScrollTabsRight(scrollLeft + clientWidth < scrollWidth - 4);
+  }, []);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    const el = tabsContainerRef.current;
+    if (!el) return;
+    const scrollAmount = 180;
+    el.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+    setTimeout(checkTabsScroll, 320);
+  };
+
+  useEffect(() => {
+    const el = tabsContainerRef.current;
+    if (!el) return;
+    checkTabsScroll();
+    el.addEventListener('scroll', checkTabsScroll, { passive: true });
+    window.addEventListener('resize', checkTabsScroll);
+    return () => {
+      el.removeEventListener('scroll', checkTabsScroll);
+      window.removeEventListener('resize', checkTabsScroll);
+    };
+  }, [checkTabsScroll]);
+
+  // Scroll active tab into view whenever activeTab changes
+  useEffect(() => {
+    const el = tabsContainerRef.current;
+    if (!el) return;
+    const activeBtn = el.querySelector(`[data-tab="${activeTab}"]`) as HTMLElement | null;
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+    const timer = setTimeout(checkTabsScroll, 350);
+    return () => clearTimeout(timer);
+  }, [activeTab, checkTabsScroll]);
 
   // 4. Global Language & Pro Master EQ State
   const [language, setLanguage] = useState<Language>(() => getSavedLanguage());
@@ -296,7 +351,11 @@ export function App() {
   // High Performance Render Path (Reduces load on lower-end devices during editing by simplifying particle calculations)
   const [highPerformanceRender, setHighPerformanceRender] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('sonawave_high_perf_render') === 'true';
+      const saved = localStorage.getItem('sonawave_high_perf_render');
+      if (saved !== null) {
+        return saved === 'true';
+      }
+      return isLowEndDevice();
     } catch {
       return false;
     }
@@ -311,6 +370,24 @@ export function App() {
       // ignore
     }
   }, [highPerformanceRender]);
+
+  // Auto-Save background toggle state (Default: enabled, persists to localStorage)
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('sonawave_autosave_enabled');
+      return saved === null ? true : saved === 'true';
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sonawave_autosave_enabled', String(autoSaveEnabled));
+    } catch {
+      // ignore
+    }
+  }, [autoSaveEnabled]);
 
   // Hardware Acceleration (GPU/CPU) State & Diagnostics
   const [hardwareConfig, setHardwareConfig] = useState<HardwareAccelerationConfig>(getSavedHardwareConfig);
@@ -409,6 +486,8 @@ export function App() {
 
   // Auto-Save Effect (Debounced 800ms)
   useEffect(() => {
+    if (!autoSaveEnabled) return;
+
     const timer = setTimeout(() => {
       saveAutoSave({
         aspectRatio,
@@ -434,6 +513,7 @@ export function App() {
 
     return () => clearTimeout(timer);
   }, [
+    autoSaveEnabled,
     aspectRatio,
     visualizer,
     lyricsConfig,
@@ -1152,7 +1232,7 @@ export function App() {
   };
 
   // Complete Reset to Defaults / New Project
-  const executeResetToDefaults = useCallback(() => {
+  const executeResetToDefaults = useCallback((profile: NewProjectHardwareProfile = 'low-hardware') => {
     // 1. Stop audio playback cleanly
     if (audioRef.current) {
       audioRef.current.pause();
@@ -1161,14 +1241,20 @@ export function App() {
     setIsPlaying(false);
     setCurrentTime(0);
 
-    // 2. Reset all visualizer and scene configurations
+    const isLowHardware = profile === 'low-hardware';
+
+    // 2. Set performance and hardware acceleration profile
+    setHighPerformanceRender(isLowHardware);
+    setHardwareConfig(isLowHardware ? { ...DEFAULT_LOW_HARDWARE_CONFIG } : { ...DEFAULT_HARDWARE_CONFIG });
+
+    // 3. Reset all visualizer and scene configurations
     setAspectRatio('9:16');
-    setVisualizer(DEFAULT_VISUALIZER);
+    setVisualizer(isLowHardware ? { ...DEFAULT_LOW_HARDWARE_VISUALIZER } : { ...DEFAULT_VISUALIZER });
     setLyricsConfig(DEFAULT_LYRICS);
     setLyricsData([]);
     setBackground(DEFAULT_BACKGROUND);
     setDefaultBackground(DEFAULT_BACKGROUND);
-    setParticles(DEFAULT_PARTICLES);
+    setParticles(isLowHardware ? { ...DEFAULT_LOW_HARDWARE_PARTICLES } : { ...DEFAULT_PARTICLES });
     setFilmLight(DEFAULT_FILM_LIGHT);
     setColorGrading(DEFAULT_COLOR_GRADING);
     setMasterEqConfig(DEFAULT_MASTER_EQ);
@@ -1180,7 +1266,7 @@ export function App() {
     setSelectedLottieId(null);
     setAudioFileName('Neon_Synthwave_Demo.wav');
 
-    // 3. Reset visualizer canvas renderer background and cover
+    // 4. Reset visualizer canvas renderer background and cover
     if (rendererRef.current) {
       rendererRef.current.setBackgroundVideo('');
       rendererRef.current.setBackgroundImage(DEFAULT_BACKGROUND.url);
@@ -1188,10 +1274,10 @@ export function App() {
       rendererRef.current.syncVideoSeek(0);
     }
 
-    // 4. Reload clean default sample track
+    // 5. Reload clean default sample track
     loadSampleTrack('synthwave', false);
 
-    // 5. Clean stored local autosave
+    // 6. Clean stored local autosave
     try {
       localStorage.removeItem('sonawave_project_data_v1');
       localStorage.removeItem('sonawave_lotties_v1');
@@ -1200,7 +1286,15 @@ export function App() {
       // ignore
     }
 
-    setToastMessage(language === 'vi' ? '✨ Đã tạo dự án mới thành công!' : '✨ New project created successfully!');
+    setToastMessage(
+      isLowHardware
+        ? (language === 'vi'
+            ? '⚡ Đã tạo dự án mới với Cấu hình Tối ưu cho Máy yếu & Mobile!'
+            : '⚡ New project created with Low Hardware & Mobile optimization!')
+        : (language === 'vi'
+            ? '✨ Đã tạo dự án mới (Đồ họa cao / Full GPU)!'
+            : '✨ New project created (High-End GPU / Full Graphics)!')
+    );
   }, [language, loadSampleTrack]);
 
   // Reset to default blank state
@@ -1731,150 +1825,200 @@ export function App() {
         {/* Right Area: Customization Panel Tabs */}
         <div className="w-full lg:w-[420px] xl:w-[460px] border-t lg:border-t-0 lg:border-l border-neutral-800/80 bg-neutral-950/90 backdrop-blur-xl flex flex-col shrink-0 h-[50vh] lg:h-[calc(100vh-4rem)]">
           {/* Tabs Navigation (Reorganized in logical production workflow) */}
-          <div className="flex items-center border-b border-neutral-800/90 bg-neutral-900/50 p-1.5 gap-1 shrink-0 overflow-x-auto custom-scrollbar">
-            {/* 1. Playlist - Danh Sách Nhạc */}
+          <div className="relative flex items-center border-b border-neutral-800/90 bg-neutral-900/50 px-1 py-1 shrink-0">
+            {/* Desktop Left Scroll Button - Hidden on Mobile */}
             <button
-              onClick={() => setActiveTab('playlist')}
-              title={TRANSLATIONS[language].tabPlaylist}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'playlist'
-                  ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-md shadow-rose-600/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+              type="button"
+              id="tab-scroll-left-btn"
+              onClick={() => scrollTabs('left')}
+              disabled={!canScrollTabsLeft}
+              title={language === 'vi' ? 'Cuộn tab sang trái' : 'Scroll tabs left'}
+              aria-label="Scroll tabs left"
+              className={`hidden lg:flex items-center justify-center w-7 h-8 rounded-lg transition-all shrink-0 z-10 mr-1 border ${
+                canScrollTabsLeft
+                  ? 'text-neutral-300 hover:text-white bg-neutral-800/80 hover:bg-neutral-700/80 border-neutral-700/60 shadow-sm cursor-pointer active:scale-90 hover:border-neutral-600'
+                  : 'text-neutral-600 bg-neutral-900/40 border-neutral-800/40 opacity-30 cursor-default pointer-events-none'
               }`}
             >
-              <ListMusic className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabPlaylist}</span>
+              <ChevronLeft className="w-4 h-4" />
             </button>
 
-            {/* 2. Track - Thông Tin Bài Hát */}
-            <button
-              onClick={() => setActiveTab('track')}
-              title={TRANSLATIONS[language].tabTrack}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'track'
-                  ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
+            {/* Scrollable Tabs Container */}
+            <div
+              ref={tabsContainerRef}
+              className="flex-1 flex items-center gap-1 overflow-x-auto custom-scrollbar no-scrollbar scroll-smooth py-0.5"
             >
-              <Disc className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabTrack}</span>
-            </button>
+              {/* 1. Playlist - Danh Sách Nhạc */}
+              <button
+                data-tab="playlist"
+                onClick={() => setActiveTab('playlist')}
+                title={TRANSLATIONS[language].tabPlaylist}
+                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'playlist'
+                    ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-md shadow-rose-600/20'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                }`}
+              >
+                <ListMusic className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <span className="inline">{TRANSLATIONS[language].tabPlaylist}</span>
+              </button>
 
-            {/* 3. Visualizer - Sóng Nhạc */}
-            <button
-              onClick={() => setActiveTab('visualizer')}
-              title={TRANSLATIONS[language].tabVisualizer}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'visualizer'
-                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
-            >
-              <BarChart2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabVisualizer}</span>
-            </button>
+              {/* 2. Track - Thông Tin Bài Hát */}
+              <button
+                data-tab="track"
+                onClick={() => setActiveTab('track')}
+                title={TRANSLATIONS[language].tabTrack}
+                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'track'
+                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                }`}
+              >
+                <Disc className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <span className="inline">{TRANSLATIONS[language].tabTrack}</span>
+              </button>
 
-            {/* 4. Lyrics - Lời Nhạc / Karaoke */}
-            <button
-              onClick={() => setActiveTab('lyrics')}
-              title={TRANSLATIONS[language].tabLyrics}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'lyrics'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
-            >
-              <FileText className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabLyrics}</span>
-            </button>
+              {/* 3. Visualizer - Sóng Nhạc */}
+              <button
+                data-tab="visualizer"
+                onClick={() => setActiveTab('visualizer')}
+                title={TRANSLATIONS[language].tabVisualizer}
+                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'visualizer'
+                    ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                }`}
+              >
+                <BarChart2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <span className="inline">{TRANSLATIONS[language].tabVisualizer}</span>
+              </button>
 
-            {/* 5. Text Boxes - Chữ & Hộp Tracklist */}
-            <button
-              onClick={() => setActiveTab('textboxes')}
-              title={TRANSLATIONS[language].tabTextBoxes}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'textboxes'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
-            >
-              <Type className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabTextBoxes}</span>
-            </button>
+              {/* 4. Lyrics - Lời Nhạc / Karaoke */}
+              <button
+                data-tab="lyrics"
+                onClick={() => setActiveTab('lyrics')}
+                title={TRANSLATIONS[language].tabLyrics}
+                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'lyrics'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                }`}
+              >
+                <FileText className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <span className="inline">{TRANSLATIONS[language].tabLyrics}</span>
+              </button>
 
-            {/* 6. Lottie Animation FX / LottieFiles (placed before Background) */}
-            <button
-              onClick={() => setActiveTab('lottie')}
-              title={TRANSLATIONS[language].tabLottie || 'LottieFiles'}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap relative ${
-                activeTab === 'lottie'
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md shadow-indigo-600/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
-            >
-              <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-300" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabLottie || 'LottieFiles'}</span>
-              {lotties.length > 0 && (
-                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-400 text-neutral-950 ml-0.5">
-                  {lotties.length}
-                </span>
-              )}
-            </button>
+              {/* 5. Text Boxes - Chữ & Hộp Tracklist */}
+              <button
+                data-tab="textboxes"
+                onClick={() => setActiveTab('textboxes')}
+                title={TRANSLATIONS[language].tabTextBoxes}
+                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'textboxes'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                }`}
+              >
+                <Type className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <span className="inline">{TRANSLATIONS[language].tabTextBoxes}</span>
+              </button>
 
-            {/* 7. Background - Hình Nền & Hạt Bay */}
-            <button
-              onClick={() => setActiveTab('background')}
-              title={TRANSLATIONS[language].tabBackground}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'background'
-                  ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
-            >
-              <ImageIcon className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabBackground}</span>
-            </button>
+              {/* 6. Lottie Animation FX / LottieFiles (placed before Background) */}
+              <button
+                data-tab="lottie"
+                onClick={() => setActiveTab('lottie')}
+                title={TRANSLATIONS[language].tabLottie || 'LottieFiles'}
+                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 relative ${
+                  activeTab === 'lottie'
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md shadow-indigo-600/20'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                }`}
+              >
+                <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-300" />
+                <span className="inline">{TRANSLATIONS[language].tabLottie || 'LottieFiles'}</span>
+                {lotties.length > 0 && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-400 text-neutral-950 ml-0.5">
+                    {lotties.length}
+                  </span>
+                )}
+              </button>
 
-            {/* 8. Scene Transitions - Hiệu Ứng Chuyển Cảnh */}
-            <button
-              onClick={() => setActiveTab('transitions')}
-              title={TRANSLATIONS[language].tabTransitions}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'transitions'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
-            >
-              <Layers className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabTransitions}</span>
-            </button>
+              {/* 7. Background - Hình Nền & Hạt Bay */}
+              <button
+                data-tab="background"
+                onClick={() => setActiveTab('background')}
+                title={TRANSLATIONS[language].tabBackground}
+                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'background'
+                    ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                }`}
+              >
+                <ImageIcon className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <span className="inline">{TRANSLATIONS[language].tabBackground}</span>
+              </button>
 
-            {/* 9. Film Light - Ánh Sáng Phim & Bụi Điện Ảnh */}
-            <button
-              onClick={() => setActiveTab('filmlight')}
-              title={TRANSLATIONS[language].tabFilmLight}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'filmlight'
-                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
-              }`}
-            >
-              <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabFilmLight}</span>
-            </button>
+              {/* 8. Scene Transitions - Hiệu Ứng Chuyển Cảnh */}
+              <button
+                data-tab="transitions"
+                onClick={() => setActiveTab('transitions')}
+                title={TRANSLATIONS[language].tabTransitions}
+                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'transitions'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                }`}
+              >
+                <Layers className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <span className="inline">{TRANSLATIONS[language].tabTransitions}</span>
+              </button>
 
-            {/* 10. Color Grading - Chỉnh Màu & LUTs */}
+              {/* 9. Film Light - Ánh Sáng Phim & Bụi Điện Ảnh */}
+              <button
+                data-tab="filmlight"
+                onClick={() => setActiveTab('filmlight')}
+                title={TRANSLATIONS[language].tabFilmLight}
+                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'filmlight'
+                    ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                }`}
+              >
+                <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
+                <span className="inline">{TRANSLATIONS[language].tabFilmLight}</span>
+              </button>
+
+              {/* 10. Color Grading - Chỉnh Màu & LUTs */}
+              <button
+                data-tab="colorgrading"
+                onClick={() => setActiveTab('colorgrading')}
+                title={TRANSLATIONS[language].tabColorGrading}
+                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  activeTab === 'colorgrading'
+                    ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md shadow-amber-500/20'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                }`}
+              >
+                <Palette className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
+                <span className="inline">{TRANSLATIONS[language].tabColorGrading}</span>
+              </button>
+            </div>
+
+            {/* Desktop Right Scroll Button - Hidden on Mobile */}
             <button
-              onClick={() => setActiveTab('colorgrading')}
-              title={TRANSLATIONS[language].tabColorGrading}
-              className={`flex-1 py-2 px-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === 'colorgrading'
-                  ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md shadow-amber-500/20'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+              type="button"
+              id="tab-scroll-right-btn"
+              onClick={() => scrollTabs('right')}
+              disabled={!canScrollTabsRight}
+              title={language === 'vi' ? 'Cuộn tab sang phải' : 'Scroll tabs right'}
+              aria-label="Scroll tabs right"
+              className={`hidden lg:flex items-center justify-center w-7 h-8 rounded-lg transition-all shrink-0 z-10 ml-1 border ${
+                canScrollTabsRight
+                  ? 'text-neutral-300 hover:text-white bg-neutral-800/80 hover:bg-neutral-700/80 border-neutral-700/60 shadow-sm cursor-pointer active:scale-90 hover:border-neutral-600'
+                  : 'text-neutral-600 bg-neutral-900/40 border-neutral-800/40 opacity-30 cursor-default pointer-events-none'
               }`}
             >
-              <Palette className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
-              <span className="hidden sm:inline">{TRANSLATIONS[language].tabColorGrading}</span>
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
@@ -2086,6 +2230,8 @@ export function App() {
         hardwareConfig={hardwareConfig}
         onUpdateHardwareConfig={setHardwareConfig}
         hardwareInfo={hardwareInfo}
+        autoSaveEnabled={autoSaveEnabled}
+        onToggleAutoSave={setAutoSaveEnabled}
       />
 
       {/* High Definition Video Export Modal */}

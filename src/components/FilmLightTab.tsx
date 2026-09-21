@@ -169,7 +169,14 @@ export const FilmLightTab: React.FC<FilmLightTabProps> = ({
   return (
     <div className="space-y-6 text-neutral-200">
       {/* 1. Master Toggle Banner */}
-      <div className="flex items-center justify-between p-3.5 bg-gradient-to-r from-amber-950/40 via-neutral-900/80 to-rose-950/40 border border-amber-500/30 rounded-2xl shadow-lg">
+      <div 
+        onClick={(e) => {
+          if ((e.target as HTMLElement).tagName !== 'INPUT') {
+            update({ enabled: !filmLight.enabled });
+          }
+        }}
+        className="flex items-center justify-between p-3.5 bg-gradient-to-r from-amber-950/40 via-neutral-900/80 to-rose-950/40 border border-amber-500/30 rounded-2xl shadow-lg cursor-pointer select-none hover:border-amber-500/50 transition-all"
+      >
         <div className="flex items-center gap-3">
           <div className={`p-2.5 rounded-xl transition-all ${
             filmLight.enabled
@@ -181,11 +188,13 @@ export const FilmLightTab: React.FC<FilmLightTabProps> = ({
           <div>
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               {isVi ? 'Hiệu Ứng Ánh Sáng Phim (Film Light Leaks)' : 'Film Light Leaks & Optical Flares'}
-              {filmLight.enabled && (
-                <span className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
-                  {isVi ? 'Đang Bật' : 'Active'}
-                </span>
-              )}
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
+                filmLight.enabled
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  : 'bg-neutral-800/80 text-neutral-400 border-neutral-700'
+              }`}>
+                {filmLight.enabled ? (isVi ? 'Đang Bật' : 'Active') : (isVi ? 'Đang Tắt' : 'Disabled')}
+              </span>
             </h3>
             <p className="text-xs text-neutral-400">
               {isVi 
@@ -195,7 +204,7 @@ export const FilmLightTab: React.FC<FilmLightTabProps> = ({
           </div>
         </div>
 
-        <label className="relative inline-flex items-center cursor-pointer">
+        <label className="relative inline-flex items-center cursor-pointer" onClick={(e) => e.stopPropagation()}>
           <input
             type="checkbox"
             checked={filmLight.enabled}
@@ -206,8 +215,10 @@ export const FilmLightTab: React.FC<FilmLightTabProps> = ({
         </label>
       </div>
 
-      {/* 2. Quick 1-Click Presets */}
-      <div className="space-y-2.5">
+      {filmLight.enabled ? (
+        <div className="space-y-6 animate-fade-in">
+          {/* 2. Quick 1-Click Presets */}
+          <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -669,5 +680,31 @@ export const FilmLightTab: React.FC<FilmLightTabProps> = ({
         </div>
       </div>
     </div>
+  ) : (
+    <div className="p-6 rounded-2xl bg-neutral-900/40 border border-neutral-800/80 text-center space-y-3.5 animate-fade-in">
+      <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mx-auto flex items-center justify-center">
+        <Sun className="w-6 h-6 opacity-60" />
+      </div>
+      <div className="max-w-xs mx-auto space-y-1">
+        <p className="text-sm font-semibold text-neutral-200">
+          {isVi ? 'Hiệu Ứng Ánh Sáng Phim Đang Tắt' : 'Film Light Leaks are Disabled'}
+        </p>
+        <p className="text-xs text-neutral-400 leading-relaxed">
+          {isVi 
+            ? 'Bật công tắc phía trên để kích hoạt và tùy chỉnh các kiểu vệt sáng Anamorphic, cháy phim 35mm, tán sắc lăng kính và bụi xước điện ảnh.' 
+            : 'Turn on the switch above to activate and customize 35mm film burns, anamorphic flares, prism refractions, and cinematic dust textures.'}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => update({ enabled: true })}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs transition-all shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
+      >
+        <Sparkles className="w-4 h-4" />
+        <span>{isVi ? 'Bật Hiệu Ứng Ngay' : 'Enable Film Light'}</span>
+      </button>
+    </div>
+  )}
+</div>
   );
 };

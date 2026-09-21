@@ -39,6 +39,8 @@ interface GlobalSettingsModalProps {
   hardwareConfig?: HardwareAccelerationConfig;
   onUpdateHardwareConfig?: (config: HardwareAccelerationConfig) => void;
   hardwareInfo?: HardwareInfo;
+  autoSaveEnabled?: boolean;
+  onToggleAutoSave?: (enabled: boolean) => void;
 }
 
 export const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({
@@ -55,6 +57,8 @@ export const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({
   hardwareConfig = DEFAULT_HARDWARE_CONFIG,
   onUpdateHardwareConfig,
   hardwareInfo,
+  autoSaveEnabled = true,
+  onToggleAutoSave,
 }) => {
   const t = getTranslation(language);
   const safeEq = masterEqConfig || DEFAULT_MASTER_EQ;
@@ -497,15 +501,42 @@ export const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({
               </div>
             </div>
 
-            {/* Auto-save Status Info */}
-            <div className="flex items-center justify-between text-xs text-neutral-300 pt-2 border-t border-neutral-800/60">
-              <span className="flex items-center gap-2 text-neutral-400 text-[11px]">
-                <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
-                {t.autoSaveEnabled}
-              </span>
-              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                Active
-              </span>
+            {/* Auto-save Status & Interactive Turn On/Off Toggle */}
+            <div 
+              onClick={() => {
+                if (onToggleAutoSave) {
+                  onToggleAutoSave(!autoSaveEnabled);
+                }
+              }}
+              className="p-3 rounded-xl bg-neutral-950/70 border border-neutral-800/80 hover:border-neutral-700 flex items-center justify-between gap-3 cursor-pointer transition-colors"
+            >
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <HardDrive className={`w-3.5 h-3.5 transition-colors ${autoSaveEnabled ? 'text-emerald-400' : 'text-neutral-500'}`} />
+                  <span className="text-xs font-semibold text-neutral-200">
+                    {t.autoSaveEnabled}
+                  </span>
+                </div>
+                <p className="text-[10px] text-neutral-400 leading-tight">
+                  {t.autoSaveDesc}
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border transition-colors ${
+                  autoSaveEnabled 
+                    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
+                    : 'text-neutral-500 bg-neutral-800/50 border-neutral-700/50'
+                }`}>
+                  {autoSaveEnabled ? t.autoSaveActive : t.autoSaveDisabled}
+                </span>
+                <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors ${
+                  autoSaveEnabled ? 'bg-emerald-600' : 'bg-neutral-800'
+                }`}>
+                  <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    autoSaveEnabled ? 'translate-x-4' : 'translate-x-0'
+                  }`} />
+                </div>
+              </div>
             </div>
           </div>
 
