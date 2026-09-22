@@ -155,7 +155,9 @@ export function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((item: any) => ({
+          // Filter out legacy default vinyl-record-spin if it was auto-seeded
+          const filtered = parsed.filter((item: any) => item && item.id !== 'vinyl-record-spin');
+          return filtered.map((item: any) => ({
             ...item,
             // Clean out external failing CDN URLs on default items
             url: item.url && item.url.includes('assets2.lottiefiles.com/packages/lf20_m6cuL6') ? '' : (item.url || ''),

@@ -199,6 +199,11 @@ export interface VisualizerConfig {
   reflectionFade?: boolean;     // Mờ dần theo khoảng cách Gradient Fade (mặc định true)
   lineThickness: number;
   fillOpacity: number;
+  // Minimalist Dots (Chấm Tối Giản) Custom Options
+  minimalPulseLayout?: 'center-peak' | 'left-to-right'; // Căn đỉnh giữa (audiophile) hoặc trải đều tần số trái qua phải
+  minimalPulseStems?: boolean;       // Hiển thị tia nối từ đường kẻ đến chấm (mặc định true)
+  minimalPulseBaseline?: boolean;    // Hiển thị đường kẻ ngang nền audiophile (mặc định true)
+  minimalPulsePeakDots?: boolean;    // Hiển thị chấm đỉnh rơi chậm theo trọng lực (mặc định true)
   // 3D.js Visualizer Custom Settings
   threeDSettings?: ThreeDVisualizerSettings;
 }
@@ -280,6 +285,10 @@ export interface BackgroundConfig {
   color1: string;
   color2: string;
   gradientAngle: number;
+  gradientType?: 'linear' | 'radial';
+  radialOrigin?: 'center' | 'top' | 'bottom';
+  color3?: string;
+  useThreeColors?: boolean;
   blur: number;         // px 0 to 30
   brightness: number;   // 0 to 200% (default 85%)
   contrast: number;     // 50 to 150%
@@ -887,25 +896,6 @@ export interface LottieLibraryItem {
   animationData?: any;
 }
 
-export const DEFAULT_LOTTIES: LottieItem[] = [
-  {
-    id: 'vinyl-record-spin',
-    name: 'Đĩa Than Cổ Điển Xoay (Vinyl Spin)',
-    category: 'music',
-    url: '',
-    x: 50,
-    y: 50,
-    scale: 1.0,
-    width: 240,
-    height: 240,
-    opacity: 0.9,
-    rotation: 0,
-    speed: 1.0,
-    loop: true,
-    visible: true,
-    layerOrder: 'behind-visualizer',
-    audioReactive: true,
-  },
-];
+export const DEFAULT_LOTTIES: LottieItem[] = [];
 
 

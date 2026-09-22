@@ -58,7 +58,10 @@ import {
   Check,
   Trash2,
   Copy,
-  Feather
+  Feather,
+  ArrowRightLeft,
+  RotateCw,
+  Paintbrush
 } from 'lucide-react';
 
 interface BackgroundTabProps {
@@ -173,6 +176,191 @@ const GLITCH_STYLES: { id: BackgroundGlitchStyle; nameVi: string; nameEn: string
   { id: 'cyber-digital', nameVi: 'Cyber Data Matrix', nameEn: 'Cyber Data Matrix', descVi: 'Số hóa dữ liệu khối giật chớp Cyberpunk', descEn: 'Digital pixelation block artifacts', icon: Tv },
 ];
 
+const SOLID_COLOR_PALETTES = [
+  {
+    categoryVi: 'AMOLED & Tối Sâu (Dark Studio)',
+    categoryEn: 'AMOLED & Deep Studio',
+    colors: [
+      { nameVi: 'Đen Tuyệt Đối', nameEn: 'Pure Black', hex: '#000000' },
+      { nameVi: 'Đá Obsidian', nameEn: 'Obsidian Night', hex: '#0a0a0f' },
+      { nameVi: 'Xanh Đêm Slate', nameEn: 'Midnight Slate', hex: '#0f172a' },
+      { nameVi: 'Tím Đen Velvet', nameEn: 'Velvet Violet', hex: '#13091f' },
+      { nameVi: 'Xanh Đại Dương', nameEn: 'Deep Navy', hex: '#071a2c' },
+      { nameVi: 'Xám Than Ấm', nameEn: 'Warm Charcoal', hex: '#1c1917' },
+      { nameVi: 'Rượu Vang Đen', nameEn: 'Wine Noir', hex: '#1c070f' },
+    ],
+  },
+  {
+    categoryVi: 'Sắc Màu Neon & Sôi Động (Neon & Mood)',
+    categoryEn: 'Neon & Mood Vibrance',
+    colors: [
+      { nameVi: 'Chàm Điện Tử', nameEn: 'Electric Indigo', hex: '#1e1b4b' },
+      { nameVi: 'Tím Laser', nameEn: 'Laser Violet', hex: '#2e1065' },
+      { nameVi: 'Ngọc Lục Bảo', nameEn: 'Deep Emerald', hex: '#022c22' },
+      { nameVi: 'Đỏ Nhung', nameEn: 'Crimson Velvet', hex: '#3f0713' },
+      { nameVi: 'Lam Hoàng Gia', nameEn: 'Royal Sapphire', hex: '#172554' },
+      { nameVi: 'Mận Cyberpunk', nameEn: 'Cyberpunk Plum', hex: '#3b0764' },
+    ],
+  },
+  {
+    categoryVi: 'Tối Giản & Sáng (Light & Clean)',
+    categoryEn: 'Light & Clean Minimal',
+    colors: [
+      { nameVi: 'Trắng Tinh Khiết', nameEn: 'Pure White', hex: '#ffffff' },
+      { nameVi: 'Xám Khói Sáng', nameEn: 'Clean Slate', hex: '#f8fafc' },
+      { nameVi: 'Cát Ấm', nameEn: 'Warm Sand', hex: '#f5f5f4' },
+      { nameVi: 'Cánh Hoa Pastel', nameEn: 'Pastel Iris', hex: '#fdf4ff' },
+      { nameVi: 'Băng Xanh Nhạt', nameEn: 'Soft Aqua', hex: '#ecfeff' },
+    ],
+  },
+];
+
+const GRADIENT_PRESETS = [
+  {
+    id: 'sunset-horizon',
+    nameVi: 'Hoàng Hôn Cam Tím',
+    nameEn: 'Sunset Horizon',
+    color1: '#ea580c',
+    color2: '#3b0764',
+    color3: '#ec4899',
+    useThreeColors: true,
+    angle: 135,
+    type: 'linear' as const,
+  },
+  {
+    id: 'deep-ocean',
+    nameVi: 'Biển Đêm Huyền Bí',
+    nameEn: 'Deep Ocean Blue',
+    color1: '#0f172a',
+    color2: '#06b6d4',
+    color3: '#1e3a8a',
+    useThreeColors: true,
+    angle: 160,
+    type: 'linear' as const,
+  },
+  {
+    id: 'cyberpunk-neon',
+    nameVi: 'Neon Cyberpunk',
+    nameEn: 'Cyberpunk Neon',
+    color1: '#3b0764',
+    color2: '#06b6d4',
+    color3: '#ec4899',
+    useThreeColors: true,
+    angle: 135,
+    type: 'linear' as const,
+  },
+  {
+    id: 'aurora-borealis',
+    nameVi: 'Cực Quang Xanh',
+    nameEn: 'Aurora Borealis',
+    color1: '#022c22',
+    color2: '#06b6d4',
+    color3: '#059669',
+    useThreeColors: true,
+    angle: 120,
+    type: 'linear' as const,
+  },
+  {
+    id: 'velvet-luxury',
+    nameVi: 'Tím Nhung Sang Trọng',
+    nameEn: 'Velvet Luxury',
+    color1: '#000000',
+    color2: '#831843',
+    color3: '#2e1065',
+    useThreeColors: true,
+    angle: 135,
+    type: 'linear' as const,
+  },
+  {
+    id: 'midnight-blue',
+    nameVi: 'Đêm Xanh Vô Tận',
+    nameEn: 'Midnight Twilight',
+    color1: '#090d16',
+    color2: '#31103f',
+    color3: '#1e1b4b',
+    useThreeColors: true,
+    angle: 180,
+    type: 'linear' as const,
+  },
+  {
+    id: 'fire-amber',
+    nameVi: 'Lửa Đỏ Rực Cháy',
+    nameEn: 'Fire & Amber',
+    color1: '#450a0a',
+    color2: '#facc15',
+    color3: '#ea580c',
+    useThreeColors: true,
+    angle: 45,
+    type: 'linear' as const,
+  },
+  {
+    id: 'emerald-forest',
+    nameVi: 'Rừng Ngọc Bích',
+    nameEn: 'Emerald Forest',
+    color1: '#022c22',
+    color2: '#10b981',
+    color3: '#064e3b',
+    useThreeColors: true,
+    angle: 135,
+    type: 'linear' as const,
+  },
+  {
+    id: 'cosmic-galaxy',
+    nameVi: 'Ngân Hà Vũ Trụ',
+    nameEn: 'Cosmic Galaxy',
+    color1: '#05050a',
+    color2: '#0e2a47',
+    color3: '#1e112a',
+    useThreeColors: true,
+    angle: 225,
+    type: 'linear' as const,
+  },
+  {
+    id: 'monochrome-noir',
+    nameVi: 'Đen Trắng Điện Ảnh',
+    nameEn: 'Monochrome Noir',
+    color1: '#000000',
+    color2: '#374151',
+    color3: '#1f2937',
+    useThreeColors: true,
+    angle: 90,
+    type: 'linear' as const,
+  },
+  {
+    id: 'pastel-dawn',
+    nameVi: 'Bình Minh Pastel',
+    nameEn: 'Pastel Dawn',
+    color1: '#fdf4ff',
+    color2: '#cffafe',
+    color3: '#e0e7ff',
+    useThreeColors: true,
+    angle: 135,
+    type: 'linear' as const,
+  },
+  {
+    id: 'minimal-dark',
+    nameVi: 'Tối Giản Hiện Đại',
+    nameEn: 'Minimalist Stealth',
+    color1: '#0a0a0c',
+    color2: '#27272a',
+    color3: '#18181b',
+    useThreeColors: true,
+    angle: 180,
+    type: 'linear' as const,
+  },
+];
+
+const GRADIENT_ANGLES = [
+  { angle: 0, label: '0°', arrow: '↑', nameVi: 'Dưới lên' },
+  { angle: 45, label: '45°', arrow: '↗', nameVi: 'Chéo phải lên' },
+  { angle: 90, label: '90°', arrow: '→', nameVi: 'Trái sang phải' },
+  { angle: 135, label: '135°', arrow: '↘', nameVi: 'Chéo phải xuống' },
+  { angle: 180, label: '180°', arrow: '↓', nameVi: 'Trên xuống' },
+  { angle: 225, label: '225°', arrow: '↙', nameVi: 'Chéo trái xuống' },
+  { angle: 270, label: '270°', arrow: '←', nameVi: 'Phải sang trái' },
+  { angle: 315, label: '315°', arrow: '↖', nameVi: 'Chéo trái lên' },
+];
+
 export const BackgroundTab: React.FC<BackgroundTabProps> = ({
   background,
   onBackgroundChange,
@@ -266,6 +454,29 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
       videoUrl: url,
     });
   };
+
+  const [copiedHex, setCopiedHex] = useState<string | null>(null);
+
+  const handleCopyHex = (hex: string) => {
+    navigator.clipboard?.writeText(hex);
+    setCopiedHex(hex);
+    setTimeout(() => setCopiedHex(null), 1800);
+  };
+
+  const handleHexChange = (key: 'color1' | 'color2' | 'color3', val: string) => {
+    let hex = val.trim();
+    if (hex && !hex.startsWith('#')) hex = '#' + hex;
+    updateBg({ [key]: hex });
+  };
+
+  const handleSwapColors = () => {
+    updateBg({
+      color1: background.color2 || '#312e81',
+      color2: background.color1 || '#0f172a',
+    });
+  };
+
+  const isColorMode = background.type === 'solid' || background.type === 'gradient';
 
   const filteredPresets =
     activeCategory === 'all'
@@ -421,14 +632,15 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
         </div>
       )}
 
-      {/* 1. Background Source Selection (Preset, Custom Image / Video Upload) */}
-      <div className="space-y-3">
+      {/* 1. Background Source Selection (Preset, Custom Color: Solid & Gradient, Custom Image / Video Upload) */}
+      <div className="space-y-3.5">
         <div className="flex items-center justify-between">
           <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
             {isVi ? 'Hình / Video Nền (Background Source)' : 'Background Image & Video Source'}
           </label>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => imageInputRef.current?.click()}
               className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition-all cursor-pointer"
               title={isVi ? 'Tải ảnh PNG/JPG từ máy tính' : 'Upload custom PNG/JPG image'}
@@ -437,6 +649,7 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
               <span>{isVi ? 'Tải Ảnh' : 'Upload Image'}</span>
             </button>
             <button
+              type="button"
               onClick={() => videoInputRef.current?.click()}
               className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-semibold transition-all cursor-pointer shadow-sm"
               title={isVi ? 'Tải video MP4 làm nền chuyển động' : 'Upload custom MP4 video background'}
@@ -463,70 +676,708 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
           onChange={handleCustomVideoUpload}
         />
 
-        {/* Video Mode Active Notice */}
-        {background.isVideo && (
-          <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-200 text-xs">
-            <div className="flex items-center gap-2">
-              <Film className="w-4 h-4 text-rose-400 animate-pulse" />
-              <span className="font-semibold">{isVi ? 'Đang phát nền Video MP4 động' : 'Active MP4 Video Background'}</span>
+        {/* Source Mode Primary Switcher: Preset Images / Video vs Custom Color (Solid & Gradient) */}
+        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-neutral-900/90 border border-neutral-800">
+          <button
+            type="button"
+            onClick={() => {
+              if (isColorMode) {
+                updateBg({
+                  type: 'preset',
+                  isVideo: false,
+                  url: background.url || BACKGROUND_PRESETS[0].url,
+                });
+              }
+            }}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              !isColorMode && !background.isVideo
+                ? 'bg-neutral-800 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
+            }`}
+          >
+            <ImageIcon className="w-3.5 h-3.5" />
+            <span>{isVi ? 'Ảnh Mẫu (Presets)' : 'Image Presets'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (!isColorMode) {
+                updateBg({
+                  type: background.type === 'solid' ? 'solid' : 'gradient',
+                  isVideo: false,
+                  color1: background.color1 || '#0f172a',
+                  color2: background.color2 || '#312e81',
+                  color3: background.color3 || '#7c3aed',
+                  gradientAngle: background.gradientAngle ?? 135,
+                  gradientType: background.gradientType || 'linear',
+                  radialOrigin: background.radialOrigin || 'center',
+                  useThreeColors: background.useThreeColors ?? false,
+                });
+              }
+            }}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              isColorMode
+                ? 'bg-neutral-800 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
+            }`}
+          >
+            <Palette className="w-3.5 h-3.5" />
+            <span>{isVi ? 'Màu Tùy Chỉnh (Solid & Gradient)' : 'Custom Color (Solid & Gradient)'}</span>
+          </button>
+        </div>
+
+        {/* --- VIEW 1: IMAGE PRESETS & UPLOADS --- */}
+        {!isColorMode && (
+          <div className="space-y-3">
+            {/* Video Mode Active Notice */}
+            {background.isVideo && (
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-200 text-xs">
+                <div className="flex items-center gap-2">
+                  <Film className="w-4 h-4 text-rose-400 animate-pulse" />
+                  <span className="font-semibold">{isVi ? 'Đang phát nền Video MP4 động' : 'Active MP4 Video Background'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateBg({ type: 'preset', isVideo: false, url: BACKGROUND_PRESETS[0].url })}
+                  className="px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-[11px] font-medium text-rose-300 transition-all cursor-pointer"
+                >
+                  {isVi ? 'Trở về Preset Ảnh' : 'Return to Image Preset'}
+                </button>
+              </div>
+            )}
+
+            {/* Custom Uploaded Image Active Notice */}
+            {background.type === 'upload' && !background.isVideo && (
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-200 text-xs">
+                <div className="flex items-center gap-2 truncate">
+                  <div className="w-6 h-6 rounded-md overflow-hidden bg-neutral-800 shrink-0 border border-cyan-500/40">
+                    <img src={background.url} alt="Uploaded" className="w-full h-full object-cover" />
+                  </div>
+                  <span className="font-semibold truncate">{isVi ? 'Đang dùng Ảnh tải lên từ máy tính' : 'Active Custom Uploaded Image'}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateBg({ type: 'preset', isVideo: false, url: BACKGROUND_PRESETS[0].url })}
+                  className="px-2 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-[11px] font-medium text-cyan-300 transition-all cursor-pointer shrink-0"
+                >
+                  {isVi ? 'Về Preset Ảnh' : 'Return to Presets'}
+                </button>
+              </div>
+            )}
+
+            {/* Category Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium shrink-0 transition-all cursor-pointer ${
+                    activeCategory === cat.id
+                      ? 'bg-cyan-600 text-white shadow-sm'
+                      : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                  }`}
+                >
+                  {isVi ? cat.nameVi : cat.nameEn}
+                </button>
+              ))}
             </div>
+
+            {/* Preset Gallery Grid */}
+            <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1 bg-neutral-900/40 border border-neutral-800/80 rounded-2xl custom-scrollbar">
+              {filteredPresets.map((preset) => {
+                const isSelected = !background.isVideo && background.type === 'preset' && background.url === preset.url;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => updateBg({ type: 'preset', isVideo: false, url: preset.url })}
+                    className={`relative aspect-video rounded-xl overflow-hidden border transition-all group cursor-pointer ${
+                      isSelected
+                        ? 'border-cyan-400 ring-2 ring-cyan-500/50 scale-[0.98]'
+                        : 'border-neutral-800 hover:border-neutral-600'
+                    }`}
+                  >
+                    <img
+                      src={preset.thumbnail}
+                      alt={isVi ? preset.nameVi : (preset.nameEn || preset.name)}
+                      loading="lazy"
+                      crossOrigin="anonymous"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1.5">
+                      <span className="text-[10px] font-medium text-white truncate drop-shadow">
+                        {isVi ? preset.nameVi : (preset.nameEn || preset.name)}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Quick Discover Banner for Custom Color & Gradient */}
             <button
-              onClick={() => updateBg({ type: 'preset', isVideo: false, url: BACKGROUND_PRESETS[0].url })}
-              className="px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-[11px] font-medium text-rose-300 transition-all cursor-pointer"
+              type="button"
+              onClick={() => {
+                updateBg({
+                  type: 'gradient',
+                  isVideo: false,
+                  color1: background.color1 || '#0f172a',
+                  color2: background.color2 || '#312e81',
+                  color3: background.color3 || '#7c3aed',
+                  gradientAngle: background.gradientAngle ?? 135,
+                  gradientType: background.gradientType || 'linear',
+                  radialOrigin: background.radialOrigin || 'center',
+                });
+              }}
+              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-950/40 via-purple-950/40 to-indigo-950/40 hover:from-cyan-900/50 hover:to-indigo-900/50 border border-cyan-500/30 hover:border-cyan-400/50 text-xs text-neutral-300 hover:text-white flex items-center justify-between transition-all cursor-pointer group shadow-sm"
             >
-              {isVi ? 'Trở về Preset Ảnh' : 'Return to Image Preset'}
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-md bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Palette className="w-3 h-3" />
+                </div>
+                <div className="text-left">
+                  <span className="font-semibold text-white block text-xs">
+                    {isVi ? 'Màu Nền Tùy Chỉnh (Solid & Gradient)' : 'Custom Color & Gradient Background'}
+                  </span>
+                  <span className="text-[10px] text-neutral-400 block">
+                    {isVi ? 'Tùy biến màu đơn AMOLED hoặc dải chuyển sắc 360°' : 'Set solid AMOLED colors or multi-color 360° gradients'}
+                  </span>
+                </div>
+              </div>
+              <span className="text-xs text-cyan-400 font-bold group-hover:translate-x-0.5 transition-transform">→</span>
             </button>
           </div>
         )}
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium shrink-0 transition-all cursor-pointer ${
-                activeCategory === cat.id
-                  ? 'bg-cyan-600 text-white shadow-sm'
-                  : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200'
-              }`}
-            >
-              {isVi ? cat.nameVi : cat.nameEn}
-            </button>
-          ))}
-        </div>
-
-        {/* Preset Gallery Grid */}
-        <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1 bg-neutral-900/40 border border-neutral-800/80 rounded-2xl custom-scrollbar">
-          {filteredPresets.map((preset) => {
-            const isSelected = !background.isVideo && background.url === preset.url;
-            return (
+        {/* --- VIEW 2: CUSTOM COLOR SETTINGS (SOLID & GRADIENT) --- */}
+        {isColorMode && (
+          <div className="space-y-3.5 p-3 rounded-2xl bg-neutral-900/70 border border-neutral-800">
+            {/* Sub-type Mode Toggle: Solid Color vs Gradient */}
+            <div className="flex items-center gap-1.5 p-1 bg-neutral-950/80 rounded-xl border border-neutral-800">
               <button
-                key={preset.id}
-                onClick={() => updateBg({ type: 'preset', isVideo: false, url: preset.url })}
-                className={`relative aspect-video rounded-xl overflow-hidden border transition-all group cursor-pointer ${
-                  isSelected
-                    ? 'border-cyan-400 ring-2 ring-cyan-500/50 scale-[0.98]'
-                    : 'border-neutral-800 hover:border-neutral-600'
+                type="button"
+                onClick={() => updateBg({ type: 'solid', isVideo: false })}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  background.type === 'solid'
+                    ? 'bg-neutral-800 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
                 }`}
               >
-                <img
-                  src={preset.thumbnail}
-                  alt={isVi ? preset.nameVi : (preset.nameEn || preset.name)}
-                  loading="lazy"
-                  crossOrigin="anonymous"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                <div
+                  className="w-3.5 h-3.5 rounded-full border border-white/40 shadow-xs"
+                  style={{ backgroundColor: background.color1 || '#0f172a' }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1.5">
-                  <span className="text-[10px] font-medium text-white truncate drop-shadow">
-                    {isVi ? preset.nameVi : (preset.nameEn || preset.name)}
+                <span>{isVi ? 'Màu Đơn (Solid Color)' : 'Solid Color'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => updateBg({ type: 'gradient', isVideo: false })}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  background.type === 'gradient'
+                    ? 'bg-neutral-800 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
+                }`}
+              >
+                <div
+                  className="w-3.5 h-3.5 rounded-full border border-white/40 shadow-xs"
+                  style={{
+                    background: `linear-gradient(135deg, ${background.color1 || '#0f172a'}, ${
+                      background.useThreeColors && background.color3 ? background.color3 + ', ' : ''
+                    }${background.color2 || '#312e81'})`,
+                  }}
+                />
+                <span>{isVi ? 'Chuyển Sắc (Gradient)' : 'Gradient'}</span>
+              </button>
+            </div>
+
+            {/* Live Visual Preview Card */}
+            <div
+              className="relative h-20 rounded-xl border border-neutral-700/60 shadow-inner overflow-hidden flex items-end p-2 transition-all"
+              style={{
+                background:
+                  background.type === 'solid'
+                    ? background.color1 || '#0f172a'
+                    : background.gradientType === 'radial'
+                    ? `radial-gradient(circle at ${
+                        background.radialOrigin === 'top' ? 'top' : background.radialOrigin === 'bottom' ? 'bottom' : 'center'
+                      }, ${background.color1 || '#0f172a'}, ${
+                        background.useThreeColors && background.color3 ? background.color3 + ', ' : ''
+                      }${background.color2 || '#312e81'})`
+                    : `linear-gradient(${background.gradientAngle ?? 135}deg, ${background.color1 || '#0f172a'}, ${
+                        background.useThreeColors && background.color3 ? background.color3 + ', ' : ''
+                      }${background.color2 || '#312e81'})`,
+              }}
+            >
+              <div className="flex items-center justify-between w-full bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10 text-white">
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <span className="font-bold uppercase tracking-wider">
+                    {background.type === 'solid'
+                      ? (background.color1 || '#0f172a')
+                      : `${background.color1 || '#0f172a'} ➔ ${background.color2 || '#312e81'}`}
+                  </span>
+                  {background.type === 'gradient' && (
+                    <span className="px-1.5 py-0.5 rounded bg-white/15 text-[10px] text-cyan-300 font-sans font-medium">
+                      {background.gradientType === 'radial'
+                        ? (isVi ? 'Tỏa tròn' : 'Radial')
+                        : `${background.gradientAngle ?? 135}°`}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-neutral-300 font-medium">
+                    {background.type === 'solid'
+                      ? (isVi ? 'Màu Đơn' : 'Solid')
+                      : (isVi ? 'Chuyển Sắc' : 'Gradient')}
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* === CONTROLS FOR SOLID COLOR === */}
+            {background.type === 'solid' && (
+              <div className="space-y-3">
+                {/* Color Picker & Hex Input */}
+                <div className="flex items-center justify-between gap-3 p-2 rounded-xl bg-neutral-950/70 border border-neutral-800">
+                  <div className="flex items-center gap-2.5">
+                    <label className="relative cursor-pointer group">
+                      <input
+                        type="color"
+                        value={background.color1 || '#0f172a'}
+                        onChange={(e) => updateBg({ color1: e.target.value })}
+                        className="sr-only"
+                      />
+                      <div
+                        className="w-9 h-9 rounded-xl border border-white/20 shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center"
+                        style={{ backgroundColor: background.color1 || '#0f172a' }}
+                      >
+                        <Paintbrush className="w-4 h-4 text-white/70 drop-shadow" />
+                      </div>
+                    </label>
+                    <div>
+                      <span className="text-xs font-semibold text-neutral-200 block">
+                        {isVi ? 'Màu Nền Chính' : 'Main Color'}
+                      </span>
+                      <span className="text-[11px] text-neutral-400 font-mono">
+                        {background.color1 || '#0f172a'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={background.color1 || '#0f172a'}
+                      onChange={(e) => handleHexChange('color1', e.target.value)}
+                      placeholder="#0f172a"
+                      maxLength={7}
+                      className="w-24 px-2 py-1 rounded-lg bg-neutral-900 border border-neutral-700 text-xs font-mono text-cyan-300 uppercase focus:outline-none focus:border-cyan-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleCopyHex(background.color1 || '#0f172a')}
+                      className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-400 hover:text-white transition-all cursor-pointer"
+                      title={isVi ? 'Sao chép mã HEX' : 'Copy HEX code'}
+                    >
+                      {copiedHex === (background.color1 || '#0f172a') ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Curated Solid Color Swatches */}
+                <div className="space-y-2 pt-1">
+                  <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                    {isVi ? 'Bảng Màu Đơn Chuẩn Studio (Curated Palettes)' : 'Curated Studio Palettes'}
+                  </label>
+                  {SOLID_COLOR_PALETTES.map((palette, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <span className="text-[10px] text-neutral-400 font-medium block">
+                        {isVi ? palette.categoryVi : palette.categoryEn}
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {palette.colors.map((c) => {
+                          const isPicked = (background.color1 || '#0f172a').toLowerCase() === c.hex.toLowerCase();
+                          return (
+                            <button
+                              key={c.hex}
+                              type="button"
+                              onClick={() => updateBg({ color1: c.hex })}
+                              title={`${isVi ? c.nameVi : c.nameEn} (${c.hex})`}
+                              className={`relative w-7 h-7 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                                isPicked
+                                  ? 'border-cyan-400 ring-2 ring-cyan-500/60 scale-110'
+                                  : 'border-neutral-700 hover:border-neutral-400 hover:scale-105'
+                              }`}
+                              style={{ backgroundColor: c.hex }}
+                            >
+                              {isPicked && <Check className="w-3 h-3 text-white drop-shadow-md" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* === CONTROLS FOR GRADIENT COLOR === */}
+            {background.type === 'gradient' && (
+              <div className="space-y-3.5">
+                {/* Gradient Style (Linear vs Radial) & Stops Count */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Style */}
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                      {isVi ? 'Kiểu Gradient' : 'Gradient Type'}
+                    </label>
+                    <div className="grid grid-cols-2 gap-1 p-0.5 bg-neutral-950 rounded-lg border border-neutral-800">
+                      <button
+                        type="button"
+                        onClick={() => updateBg({ gradientType: 'linear' })}
+                        className={`py-1 text-center rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                          background.gradientType !== 'radial'
+                            ? 'bg-neutral-800 text-cyan-300 shadow-sm border border-cyan-500/30'
+                            : 'text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {isVi ? 'Tuyến tính' : 'Linear'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateBg({ gradientType: 'radial' })}
+                        className={`py-1 text-center rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                          background.gradientType === 'radial'
+                            ? 'bg-neutral-800 text-cyan-300 shadow-sm border border-cyan-500/30'
+                            : 'text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {isVi ? 'Tỏa tròn' : 'Radial'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Stop count (2 Colors vs 3 Colors) */}
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                      {isVi ? 'Số Lượng Màu' : 'Color Stops'}
+                    </label>
+                    <div className="grid grid-cols-2 gap-1 p-0.5 bg-neutral-950 rounded-lg border border-neutral-800">
+                      <button
+                        type="button"
+                        onClick={() => updateBg({ useThreeColors: false })}
+                        className={`py-1 text-center rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                          !background.useThreeColors
+                            ? 'bg-neutral-800 text-cyan-300 shadow-sm border border-cyan-500/30'
+                            : 'text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {isVi ? '2 Màu' : '2 Colors'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateBg({ useThreeColors: true, color3: background.color3 || '#7c3aed' })}
+                        className={`py-1 text-center rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                          background.useThreeColors
+                            ? 'bg-neutral-800 text-cyan-300 shadow-sm border border-cyan-500/30'
+                            : 'text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {isVi ? '3 Màu' : '3 Colors'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Color Pickers Row */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                      {isVi ? 'Các Điểm Màu Chuyển' : 'Color Stops'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleSwapColors}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-300 text-[11px] font-medium transition-all cursor-pointer"
+                      title={isVi ? 'Đảo ngược vị trí Màu 1 và Màu 2' : 'Swap Color 1 and Color 2'}
+                    >
+                      <ArrowRightLeft className="w-3 h-3 text-cyan-400" />
+                      <span>{isVi ? 'Đảo Chiều' : 'Swap Colors'}</span>
+                    </button>
+                  </div>
+
+                  <div className={`grid gap-2 ${background.useThreeColors ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                    {/* Color 1 (Start) */}
+                    <div className="p-2 rounded-xl bg-neutral-950/70 border border-neutral-800 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-neutral-400 uppercase">
+                          {isVi ? 'Màu 1 (Đầu)' : 'Color 1'}
+                        </span>
+                        <div
+                          className="w-3.5 h-3.5 rounded-full border border-white/20"
+                          style={{ backgroundColor: background.color1 || '#0f172a' }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <label className="relative cursor-pointer shrink-0">
+                          <input
+                            type="color"
+                            value={background.color1 || '#0f172a'}
+                            onChange={(e) => updateBg({ color1: e.target.value })}
+                            className="sr-only"
+                          />
+                          <div
+                            className="w-7 h-7 rounded-lg border border-white/20 shadow-xs hover:scale-105 transition-transform"
+                            style={{ backgroundColor: background.color1 || '#0f172a' }}
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          value={background.color1 || '#0f172a'}
+                          onChange={(e) => handleHexChange('color1', e.target.value)}
+                          className="w-full px-1.5 py-1 rounded bg-neutral-900 border border-neutral-700 text-[11px] font-mono text-cyan-300 uppercase focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Color 3 (Middle) - Only if 3-color mode */}
+                    {background.useThreeColors && (
+                      <div className="p-2 rounded-xl bg-neutral-950/70 border border-neutral-800 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-neutral-400 uppercase">
+                            {isVi ? 'Màu Giữa' : 'Color 3'}
+                          </span>
+                          <div
+                            className="w-3.5 h-3.5 rounded-full border border-white/20"
+                            style={{ backgroundColor: background.color3 || '#7c3aed' }}
+                          />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <label className="relative cursor-pointer shrink-0">
+                            <input
+                              type="color"
+                              value={background.color3 || '#7c3aed'}
+                              onChange={(e) => updateBg({ color3: e.target.value })}
+                              className="sr-only"
+                            />
+                            <div
+                              className="w-7 h-7 rounded-lg border border-white/20 shadow-xs hover:scale-105 transition-transform"
+                              style={{ backgroundColor: background.color3 || '#7c3aed' }}
+                            />
+                          </label>
+                          <input
+                            type="text"
+                            value={background.color3 || '#7c3aed'}
+                            onChange={(e) => handleHexChange('color3', e.target.value)}
+                            className="w-full px-1.5 py-1 rounded bg-neutral-900 border border-neutral-700 text-[11px] font-mono text-cyan-300 uppercase focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Color 2 (End) */}
+                    <div className="p-2 rounded-xl bg-neutral-950/70 border border-neutral-800 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-neutral-400 uppercase">
+                          {isVi ? 'Màu 2 (Cuối)' : 'Color 2'}
+                        </span>
+                        <div
+                          className="w-3.5 h-3.5 rounded-full border border-white/20"
+                          style={{ backgroundColor: background.color2 || '#312e81' }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <label className="relative cursor-pointer shrink-0">
+                          <input
+                            type="color"
+                            value={background.color2 || '#312e81'}
+                            onChange={(e) => updateBg({ color2: e.target.value })}
+                            className="sr-only"
+                          />
+                          <div
+                            className="w-7 h-7 rounded-lg border border-white/20 shadow-xs hover:scale-105 transition-transform"
+                            style={{ backgroundColor: background.color2 || '#312e81' }}
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          value={background.color2 || '#312e81'}
+                          onChange={(e) => handleHexChange('color2', e.target.value)}
+                          className="w-full px-1.5 py-1 rounded bg-neutral-900 border border-neutral-700 text-[11px] font-mono text-cyan-300 uppercase focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Linear Angle Slider & Direction Shortcuts (Only if Linear) */}
+                {background.gradientType !== 'radial' && (
+                  <div className="space-y-2 p-2.5 rounded-xl bg-neutral-950/70 border border-neutral-800">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <RotateCw className="w-3.5 h-3.5 text-cyan-400" />
+                        <span className="text-xs font-semibold text-neutral-200">
+                          {isVi ? 'Góc Xoay Dải Màu (Linear Angle)' : 'Linear Gradient Angle'}
+                        </span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-cyan-300 px-2 py-0.5 rounded bg-neutral-900 border border-neutral-700">
+                        {background.gradientAngle ?? 135}°
+                      </span>
+                    </div>
+
+                    <input
+                      type="range"
+                      min="0"
+                      max="360"
+                      step="5"
+                      value={background.gradientAngle ?? 135}
+                      onChange={(e) => updateBg({ gradientAngle: Number(e.target.value) })}
+                      className="w-full accent-cyan-500 cursor-pointer"
+                    />
+
+                    {/* Quick Direction Buttons */}
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 pt-1">
+                      {GRADIENT_ANGLES.map((d) => {
+                        const isCurrent = (background.gradientAngle ?? 135) === d.angle;
+                        return (
+                          <button
+                            key={d.angle}
+                            type="button"
+                            onClick={() => updateBg({ gradientAngle: d.angle })}
+                            title={`${d.label} - ${d.nameVi}`}
+                            className={`py-1 rounded text-center transition-all cursor-pointer text-[11px] font-semibold flex items-center justify-center gap-0.5 ${
+                              isCurrent
+                                ? 'bg-cyan-600 text-white shadow-xs'
+                                : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-800'
+                            }`}
+                          >
+                            <span>{d.arrow}</span>
+                            <span>{d.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Radial Origin Controls (Only if Radial) */}
+                {background.gradientType === 'radial' && (
+                  <div className="space-y-2 p-2.5 rounded-xl bg-neutral-950/70 border border-neutral-800">
+                    <label className="block text-xs font-semibold text-neutral-200">
+                      {isVi ? 'Vị Trí Tâm Tỏa Tròn (Radial Origin)' : 'Radial Center Origin'}
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[
+                        { id: 'center', labelVi: 'Tâm Giữa', labelEn: 'Center' },
+                        { id: 'top', labelVi: 'Đỉnh Trên', labelEn: 'Top' },
+                        { id: 'bottom', labelVi: 'Đáy Dưới', labelEn: 'Bottom' },
+                      ].map((pos) => {
+                        const isPos = (background.radialOrigin || 'center') === pos.id;
+                        return (
+                          <button
+                            key={pos.id}
+                            type="button"
+                            onClick={() => updateBg({ radialOrigin: pos.id as 'center' | 'top' | 'bottom' })}
+                            className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer text-center ${
+                              isPos
+                                ? 'bg-neutral-800 text-cyan-300 border border-cyan-500/40 shadow-xs'
+                                : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
+                            }`}
+                          >
+                            {isVi ? pos.labelVi : pos.labelEn}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Curated Gradient Presets */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                      {isVi ? 'Mẫu Gradient Chuẩn Studio (Presets)' : 'Studio Gradient Presets'}
+                    </label>
+                    <span className="text-[10px] text-neutral-500 font-medium">12 presets</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {GRADIENT_PRESETS.map((gp) => {
+                      const isApplied =
+                        background.color1 === gp.color1 &&
+                        background.color2 === gp.color2 &&
+                        (!gp.useThreeColors || background.color3 === gp.color3);
+
+                      return (
+                        <button
+                          key={gp.id}
+                          type="button"
+                          onClick={() => {
+                            updateBg({
+                              type: 'gradient',
+                              isVideo: false,
+                              color1: gp.color1,
+                              color2: gp.color2,
+                              color3: gp.color3,
+                              useThreeColors: gp.useThreeColors,
+                              gradientAngle: gp.angle,
+                              gradientType: gp.type,
+                            });
+                          }}
+                          className={`p-1.5 rounded-xl border text-left transition-all cursor-pointer group ${
+                            isApplied
+                              ? 'border-cyan-400 ring-2 ring-cyan-500/50 bg-neutral-800/80 scale-[0.98]'
+                              : 'border-neutral-800 hover:border-neutral-600 bg-neutral-950/60'
+                          }`}
+                        >
+                          <div
+                            className="h-8 rounded-lg mb-1.5 border border-white/10 group-hover:scale-102 transition-transform shadow-inner"
+                            style={{
+                              background: `linear-gradient(${gp.angle}deg, ${gp.color1}, ${
+                                gp.useThreeColors && gp.color3 ? gp.color3 + ', ' : ''
+                              }${gp.color2})`,
+                            }}
+                          />
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-medium text-neutral-200 truncate group-hover:text-cyan-300">
+                              {isVi ? gp.nameVi : gp.nameEn}
+                            </span>
+                            {isApplied && <Check className="w-3 h-3 text-cyan-400 shrink-0" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Switch back to Preset Gallery */}
+            <div className="pt-2 border-t border-neutral-800/80">
+              <button
+                type="button"
+                onClick={() => {
+                  updateBg({
+                    type: 'preset',
+                    isVideo: false,
+                    url: background.url || BACKGROUND_PRESETS[0].url,
+                  });
+                }}
+                className="w-full py-1.5 px-3 rounded-xl bg-neutral-800/80 hover:bg-neutral-800 border border-neutral-700 text-xs font-semibold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
+                <span>{isVi ? 'Quay Lại Thư Viện Ảnh (Preset Gallery)' : 'Return to Image Presets'}</span>
               </button>
-            );
-          })}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 2. Image Filters & Adjustments */}

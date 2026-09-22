@@ -2926,7 +2926,11 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
           {/* Line Thickness for Waveforms (2D) */}
           <div className="bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800/80">
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-neutral-400">{isVi ? 'Độ dày nét vẽ sóng âm 2D (Line Thickness)' : '2D Waveform Line Thickness'}</span>
+              <span className="text-neutral-400">
+                {isVi 
+                  ? (config.type === 'minimal-pulse' ? 'Độ dày nét kẻ ngang & tia cuống sóng' : 'Độ dày nét vẽ sóng âm 2D (Line Thickness)')
+                  : (config.type === 'minimal-pulse' ? 'Baseline & Stem Line Thickness' : '2D Waveform Line Thickness')}
+              </span>
               <span className="text-rose-400 font-mono font-bold text-[11px]">{config.lineThickness || 3}px</span>
             </div>
             <input
@@ -2945,18 +2949,26 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-rose-400" />
-                {isVi ? 'Cấu hình cột sóng âm (Bars & Spacing)' : 'Bar & Spacing Configuration'}
+                {isVi 
+                  ? (config.type === 'minimal-pulse' ? 'Cấu hình ma trận chấm (Minimal Dots & Spacing)' : 'Cấu hình cột sóng âm (Bars & Spacing)')
+                  : (config.type === 'minimal-pulse' ? 'Dot Matrix & Spacing Configuration' : 'Bar & Spacing Configuration')}
               </span>
               <span className="text-[10px] text-neutral-400 font-mono">
-                {config.barCount} bars • {config.barWidth}px • {config.barGap ?? 3}px gap
+                {config.type === 'minimal-pulse'
+                  ? `${config.barCount} dots • ${config.barWidth}px dot size • ${config.barGap ?? 3}px gap`
+                  : `${config.barCount} bars • ${config.barWidth}px • ${config.barGap ?? 3}px gap`}
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* 1. Số lượng cột (Bar Count) */}
+              {/* 1. Số lượng cột / chấm */}
               <div>
                 <div className="flex justify-between items-center text-xs mb-1">
-                  <span className="text-neutral-300">{isVi ? 'Số lượng cột' : 'Bar Count'}</span>
+                  <span className="text-neutral-300">
+                    {isVi 
+                      ? (config.type === 'minimal-pulse' ? 'Số lượng chấm' : 'Số lượng cột')
+                      : (config.type === 'minimal-pulse' ? 'Dot Count' : 'Bar Count')}
+                  </span>
                   <span className="text-rose-400 font-mono font-bold text-[11px]">{config.barCount}</span>
                 </div>
                 <input
@@ -2975,10 +2987,14 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                 </div>
               </div>
 
-              {/* 2. Khoảng cách giữa cột (Bar Gap) */}
+              {/* 2. Khoảng cách giữa cột / chấm */}
               <div>
                 <div className="flex justify-between items-center text-xs mb-1">
-                  <span className="text-neutral-300">{isVi ? 'Khoảng cách giữa cột' : 'Bar Gap'}</span>
+                  <span className="text-neutral-300">
+                    {isVi 
+                      ? (config.type === 'minimal-pulse' ? 'Khoảng cách giữa chấm' : 'Khoảng cách giữa cột')
+                      : (config.type === 'minimal-pulse' ? 'Dot Spacing / Gap' : 'Bar Gap')}
+                  </span>
                   <span className="text-rose-400 font-mono font-bold text-[11px]">
                     {config.barGap !== undefined ? config.barGap : 3}px
                   </span>
@@ -2999,10 +3015,14 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                 </div>
               </div>
 
-              {/* 3. Độ rộng cột (Bar Width) */}
+              {/* 3. Độ rộng cột / Kích thước chấm */}
               <div>
                 <div className="flex justify-between items-center text-xs mb-1">
-                  <span className="text-neutral-300">{isVi ? 'Độ rộng cột' : 'Bar Width'}</span>
+                  <span className="text-neutral-300">
+                    {isVi 
+                      ? (config.type === 'minimal-pulse' ? 'Kích thước chấm' : 'Độ rộng cột')
+                      : (config.type === 'minimal-pulse' ? 'Dot Size (Diameter)' : 'Bar Width')}
+                  </span>
                   <span className="text-rose-400 font-mono font-bold text-[11px]">{config.barWidth}px</span>
                 </div>
                 <input
@@ -3017,35 +3037,217 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                 <div className="flex justify-between text-[9px] text-neutral-500 mt-1">
                   <span>1px ({isVi ? 'Mảnh' : 'Slim'})</span>
                   <span>6px</span>
-                  <span>28px ({isVi ? 'Dày' : 'Thick'})</span>
+                  <span>28px ({isVi ? 'Lớn' : 'Thick'})</span>
                 </div>
               </div>
             </div>
 
-            {/* Quick presets for bar styling */}
+            {/* Quick presets for bar/dot styling */}
             <div className="pt-2 border-t border-neutral-800/80 flex items-center justify-between gap-2 flex-wrap">
               <span className="text-[10px] text-neutral-400">
                 {isVi ? 'Kiểu mẫu nhanh:' : 'Quick Presets:'}
               </span>
               <div className="flex items-center gap-1.5 flex-wrap">
-                {[
-                  { labelVi: 'Dày đặc (Nhỏ)', labelEn: 'Dense (Fine)', count: 96, width: 3, gap: 2, round: 1 },
-                  { labelVi: 'Cân đối (Chuẩn)', labelEn: 'Balanced (Std)', count: 48, width: 6, gap: 3, round: 4 },
-                  { labelVi: 'Cột lớn (Chunky)', labelEn: 'Chunky Bars', count: 24, width: 14, gap: 5, round: 6 },
-                  { labelVi: 'Khít liền kề', labelEn: 'Seamless (No Gap)', count: 64, width: 8, gap: 0, round: 0 },
-                ].map((bp, bidx) => (
-                  <button
-                    key={bidx}
-                    type="button"
-                    onClick={() => update({ barCount: bp.count, barWidth: bp.width, barGap: bp.gap, barRoundness: bp.round })}
-                    className="px-2 py-0.5 text-[10px] font-medium bg-neutral-800/80 hover:bg-rose-500/20 hover:text-rose-300 text-neutral-300 border border-neutral-700/60 rounded-md transition-colors cursor-pointer"
-                  >
-                    {isVi ? bp.labelVi : bp.labelEn}
-                  </button>
-                ))}
+                {config.type === 'minimal-pulse' ? (
+                  [
+                    { labelVi: 'Tinh xảo (Fine Dots)', labelEn: 'Fine Dots', count: 80, width: 4, gap: 4, round: 4 },
+                    { labelVi: 'Cân đối (Audiophile)', labelEn: 'Audiophile Std', count: 48, width: 6, gap: 6, round: 4 },
+                    { labelVi: 'Chấm lớn (Bold)', labelEn: 'Bold Dots', count: 28, width: 12, gap: 8, round: 6 },
+                    { labelVi: 'Vuông Pixel (Square)', labelEn: 'Square LED', count: 56, width: 6, gap: 4, round: 0 },
+                  ].map((bp, bidx) => (
+                    <button
+                      key={bidx}
+                      type="button"
+                      onClick={() => update({ barCount: bp.count, barWidth: bp.width, barGap: bp.gap, barRoundness: bp.round })}
+                      className="px-2 py-0.5 text-[10px] font-medium bg-neutral-800/80 hover:bg-rose-500/20 hover:text-rose-300 text-neutral-300 border border-neutral-700/60 rounded-md transition-colors cursor-pointer"
+                    >
+                      {isVi ? bp.labelVi : bp.labelEn}
+                    </button>
+                  ))
+                ) : (
+                  [
+                    { labelVi: 'Dày đặc (Nhỏ)', labelEn: 'Dense (Fine)', count: 96, width: 3, gap: 2, round: 1 },
+                    { labelVi: 'Cân đối (Chuẩn)', labelEn: 'Balanced (Std)', count: 48, width: 6, gap: 3, round: 4 },
+                    { labelVi: 'Cột lớn (Chunky)', labelEn: 'Chunky Bars', count: 24, width: 14, gap: 5, round: 6 },
+                    { labelVi: 'Khít liền kề', labelEn: 'Seamless (No Gap)', count: 64, width: 8, gap: 0, round: 0 },
+                  ].map((bp, bidx) => (
+                    <button
+                      key={bidx}
+                      type="button"
+                      onClick={() => update({ barCount: bp.count, barWidth: bp.width, barGap: bp.gap, barRoundness: bp.round })}
+                      className="px-2 py-0.5 text-[10px] font-medium bg-neutral-800/80 hover:bg-rose-500/20 hover:text-rose-300 text-neutral-300 border border-neutral-700/60 rounded-md transition-colors cursor-pointer"
+                    >
+                      {isVi ? bp.labelVi : bp.labelEn}
+                    </button>
+                  ))
+                )}
               </div>
             </div>
           </div>
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR MINIMAL DOTS */}
+          {config.type === 'minimal-pulse' && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-rose-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>{isVi ? 'Tùy Chỉnh Chuyên Biệt: Chấm Tối Giản' : 'Minimal Dots Studio Customizer'}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
+                        Audiophile
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tùy biến đường chuẩn, tia kết nối, dạng chấm và phân bổ dải tần' : 'Customize baseline, connecting stems, dot shape and frequency distribution'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Layout Mode & Dot Shape */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Frequency Layout Mode */}
+                <div>
+                  <span className="text-[11px] text-neutral-300 font-medium block mb-1.5">
+                    {isVi ? 'Phân bổ dải tần số' : 'Frequency Curve Layout'}
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                    <button
+                      type="button"
+                      onClick={() => update({ minimalPulseLayout: 'center-peak' })}
+                      className={`py-1.5 px-1.5 text-center rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        (config.minimalPulseLayout || 'center-peak') === 'center-peak'
+                          ? 'bg-rose-600 text-white font-semibold shadow-sm'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {isVi ? 'Đỉnh giữa (Núi)' : 'Center Peak'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => update({ minimalPulseLayout: 'left-to-right' })}
+                      className={`py-1.5 px-1.5 text-center rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        config.minimalPulseLayout === 'left-to-right'
+                          ? 'bg-rose-600 text-white font-semibold shadow-sm'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {isVi ? 'Trái ➔ Phải' : 'Left ➔ Right'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dot Shape */}
+                <div>
+                  <span className="text-[11px] text-neutral-300 font-medium block mb-1.5">
+                    {isVi ? 'Hình dạng chấm' : 'Dot Geometry'}
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                    <button
+                      type="button"
+                      onClick={() => update({ barRoundness: 4 })}
+                      className={`py-1.5 px-1.5 text-center rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        config.barRoundness !== 0
+                          ? 'bg-rose-600 text-white font-semibold shadow-sm'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {isVi ? 'Tròn Mịn (Circle)' : 'Smooth Circle'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => update({ barRoundness: 0 })}
+                      className={`py-1.5 px-1.5 text-center rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        config.barRoundness === 0
+                          ? 'bg-rose-600 text-white font-semibold shadow-sm'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {isVi ? 'Vuông LED (Square)' : 'Digital Square'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Toggles Grid */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-neutral-800/70">
+                {/* Mirror Mode (Dual Sided) */}
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.mirror === true}
+                    onChange={(e) => update({ mirror: e.target.checked })}
+                    className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Đối xứng 2 chiều' : 'Dual-Sided Mirror'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Nảy cả trên & dưới' : 'Bounce up & down'}
+                    </span>
+                  </div>
+                </label>
+
+                {/* Audiophile Baseline */}
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.minimalPulseBaseline !== false}
+                    onChange={(e) => update({ minimalPulseBaseline: e.target.checked })}
+                    className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Đường kẻ chuẩn âm học' : 'Audiophile Baseline'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Thanh ngang điểm tựa' : 'Reference horizontal bar'}
+                    </span>
+                  </div>
+                </label>
+
+                {/* Connecting Stems */}
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.minimalPulseStems !== false}
+                    onChange={(e) => update({ minimalPulseStems: e.target.checked })}
+                    className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Tia cuống kết nối' : 'Connecting Stems'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Nối thanh ngang đến chấm' : 'Stem lines to dots'}
+                    </span>
+                  </div>
+                </label>
+
+                {/* Peak Gravity Dots */}
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.minimalPulsePeakDots !== false}
+                    onChange={(e) => update({ minimalPulsePeakDots: e.target.checked })}
+                    className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Hạt đỉnh rơi chậm' : 'Gravity Peak Dots'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Chấm đỉnh màu phụ' : 'Secondary color peaks'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
 
           {/* NEW: Vertical Reflection of Visualizer */}
           <div className="p-3.5 rounded-2xl bg-neutral-900/80 border border-neutral-800 space-y-3">

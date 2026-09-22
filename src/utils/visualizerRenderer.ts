@@ -1473,17 +1473,77 @@ export class VisualizerRenderer {
         ctx.fillRect(0, 0, width, height);
       }
     } else if (bg.type === 'gradient') {
-      const angleRad = (bg.gradientAngle * Math.PI) / 180;
-      const x2 = width * Math.cos(angleRad);
-      const y2 = height * Math.sin(angleRad);
-      const grad = ctx.createLinearGradient(0, 0, x2, y2);
-      grad.addColorStop(0, bg.color1);
-      grad.addColorStop(1, bg.color2);
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, width, height);
+      const needBlur = bg.blur > 0;
+      const needBrightness = bg.brightness !== undefined && bg.brightness !== 100;
+      const needContrast = bg.contrast !== undefined && bg.contrast !== 100;
+      const hasFilter = needBlur || needBrightness || needContrast;
+
+      if (hasFilter) {
+        const filters: string[] = [];
+        if (needBlur) filters.push(`blur(${bg.blur}px)`);
+        if (needBrightness) filters.push(`brightness(${bg.brightness}%)`);
+        if (needContrast) filters.push(`contrast(${bg.contrast}%)`);
+        ctx.filter = filters.join(' ');
+      }
+
+      if (bg.gradientType === 'radial') {
+        let gradX = centerX;
+        let gradY = centerY;
+        if (bg.radialOrigin === 'top') {
+          gradY = 0;
+        } else if (bg.radialOrigin === 'bottom') {
+          gradY = height;
+        }
+        const gradR = Math.hypot(width, height) / 1.4;
+        const grad = ctx.createRadialGradient(gradX, gradY, 0, gradX, gradY, gradR);
+        grad.addColorStop(0, bg.color1 || '#0f172a');
+        if (bg.useThreeColors && bg.color3) {
+          grad.addColorStop(0.5, bg.color3);
+        }
+        grad.addColorStop(1, bg.color2 || '#312e81');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        // Linear gradient with 360-degree centered rotation
+        const angleDeg = bg.gradientAngle !== undefined ? bg.gradientAngle : 135;
+        const angleRad = (angleDeg - 90) * (Math.PI / 180);
+        const halfDiag = Math.hypot(width, height) / 2;
+        const x1 = centerX - Math.cos(angleRad) * halfDiag;
+        const y1 = centerY - Math.sin(angleRad) * halfDiag;
+        const x2 = centerX + Math.cos(angleRad) * halfDiag;
+        const y2 = centerY + Math.sin(angleRad) * halfDiag;
+        const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+        grad.addColorStop(0, bg.color1 || '#0f172a');
+        if (bg.useThreeColors && bg.color3) {
+          grad.addColorStop(0.5, bg.color3);
+        }
+        grad.addColorStop(1, bg.color2 || '#312e81');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      if (hasFilter) {
+        ctx.filter = 'none';
+      }
     } else {
-      ctx.fillStyle = bg.color1;
+      // Solid color background (or fallback)
+      const needBrightness = bg.brightness !== undefined && bg.brightness !== 100;
+      const needContrast = bg.contrast !== undefined && bg.contrast !== 100;
+      const hasFilter = needBrightness || needContrast;
+
+      if (hasFilter) {
+        const filters: string[] = [];
+        if (needBrightness) filters.push(`brightness(${bg.brightness}%)`);
+        if (needContrast) filters.push(`contrast(${bg.contrast}%)`);
+        ctx.filter = filters.join(' ');
+      }
+
+      ctx.fillStyle = bg.color1 || '#090d16';
       ctx.fillRect(0, 0, width, height);
+
+      if (hasFilter) {
+        ctx.filter = 'none';
+      }
     }
 
     // Vignette Effect
@@ -5252,33 +5312,185 @@ export class VisualizerRenderer {
       }
 
       case 'minimal-pulse': {
-        const points = 48;
-        const totalW = Math.min(width * 0.8, 500);
+        const points = barCount;
+        const lineThick = Math.max(1, (v.lineThickness || 2) * v.scale * 0.7);
+        const baseDotRadius = Math.max(1.5, (barWidth * 0.45) * v.scale);
+        const dotGap = Math.max(0, barGap * v.scale);
+
+        // Dynamic horizontal layout based on scale and barGap
+        const naturalW = (points - 1) * (baseDotRadius * 2 + dotGap);
+        const maxAllowedW = Math.min(width * 0.95, width - 40);
+        const totalW = Math.min(maxAllowedW, Math.max(120, naturalW * 1.1)) * (v.scale <= 1 ? v.scale : 1 + (v.scale - 1) * 0.5);
         const startX = centerX - totalW / 2;
-        const step = totalW / (points - 1);
+        const step = points > 1 ? totalW / (points - 1) : 0;
 
-        ctx.strokeStyle = strokeOrFillStyle;
-        ctx.fillStyle = strokeOrFillStyle;
-        ctx.lineWidth = 2;
+        const isCenterPeak = v.minimalPulseLayout !== 'left-to-right';
+        const showStems = v.minimalPulseStems !== false;
+        const showBaseline = v.minimalPulseBaseline !== false;
+        const showPeakDots = v.minimalPulsePeakDots !== false;
+        const isSquare = v.barRoundness === 0;
+        const isMirror = v.mirror === true;
 
-        ctx.beginPath();
-        ctx.moveTo(startX, posY);
-        ctx.lineTo(startX + totalW, posY);
-        ctx.globalAlpha = 0.3;
-        ctx.stroke();
-        ctx.globalAlpha = 1.0;
+        // Dynamic bounce height powered by amplitude, bass boost, and scale
+        const maxBounceH = Math.max(25, 140 * amp * v.scale);
 
-        for (let i = 0; i < points; i++) {
-          const mirror = 1 - Math.abs(i - points / 2) / (points / 2);
-          const dataIdx = Math.min(dataLength - 1, Math.floor(mirror * (dataLength * 0.6)));
-          const rawVal = freqData[dataIdx] || 0;
-          const dotH = (rawVal / 255) * 50 * amp;
-
-          const x = startX + i * step;
-          ctx.beginPath();
-          ctx.arc(x, posY - dotH, 2.5, 0, Math.PI * 2);
-          ctx.fill();
+        // Precompute horizontal gradient if gradient or rainbow mode
+        let horizGrad: CanvasGradient | string = strokeOrFillStyle;
+        if (v.colorMode === 'gradient2') {
+          const g = ctx.createLinearGradient(startX, 0, startX + totalW, 0);
+          g.addColorStop(0, v.primaryColor);
+          g.addColorStop(1, v.secondaryColor);
+          horizGrad = g;
+        } else if (v.colorMode === 'gradient3') {
+          const g = ctx.createLinearGradient(startX, 0, startX + totalW, 0);
+          g.addColorStop(0, v.primaryColor);
+          g.addColorStop(0.5, v.secondaryColor);
+          g.addColorStop(1, v.tertiaryColor);
+          horizGrad = g;
+        } else if (v.colorMode === 'rainbow') {
+          const g = ctx.createLinearGradient(startX, 0, startX + totalW, 0);
+          g.addColorStop(0, '#f43f5e');
+          g.addColorStop(0.2, '#f59e0b');
+          g.addColorStop(0.4, '#10b981');
+          g.addColorStop(0.6, '#06b6d4');
+          g.addColorStop(0.8, '#8b5cf6');
+          g.addColorStop(1, '#ec4899');
+          horizGrad = g;
         }
+
+        // 1. Draw horizontal audiophile baseline
+        if (showBaseline) {
+          ctx.save();
+          ctx.strokeStyle = horizGrad;
+          ctx.lineWidth = lineThick;
+          ctx.globalAlpha = v.fillOpacity !== undefined ? Math.max(0.15, v.fillOpacity * 0.6) : 0.35;
+          ctx.beginPath();
+          ctx.moveTo(startX, posY);
+          ctx.lineTo(startX + totalW, posY);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Initialize / sync peak tracking array
+        if (this.peakBars.length !== points) {
+          this.peakBars = new Array(points).fill(0);
+          this.peakVelocities = new Array(points).fill(0);
+        }
+
+        // Calculate values for all points
+        const pointData: Array<{ x: number; dotH: number; r: number; rawVal: number }> = [];
+        for (let i = 0; i < points; i++) {
+          let dataIdx = 0;
+          if (isCenterPeak) {
+            // Bass in center, treble at sides
+            const mirrorDist = 1 - Math.abs(i - points / 2) / (points / 2);
+            dataIdx = Math.min(dataLength - 1, Math.floor(mirrorDist * (dataLength * 0.7)));
+          } else {
+            // Left to right frequency curve
+            dataIdx = Math.min(dataLength - 1, Math.floor(Math.pow(i / points, 1.25) * (dataLength * 0.75)));
+          }
+
+          const rawVal = freqData[dataIdx] || 0;
+          const dotH = Math.max(1.5, (rawVal / 255) * maxBounceH);
+          const x = startX + i * step;
+
+          // React radius to beat pulse and frequency energy
+          const pulseFactor = v.dynamicBeatPulse ? (1 + dynamicPulse * 0.28) : 1;
+          const energyFactor = 0.8 + (rawVal / 255) * 0.45;
+          const r = Math.max(1, baseDotRadius * pulseFactor * energyFactor);
+
+          // Update peak physics
+          if (dotH >= this.peakBars[i]) {
+            this.peakBars[i] = dotH;
+            this.peakVelocities[i] = 0;
+          } else {
+            this.peakVelocities[i] += 0.32;
+            this.peakBars[i] = Math.max(0, this.peakBars[i] - this.peakVelocities[i]);
+          }
+
+          pointData.push({ x, dotH, r, rawVal });
+        }
+
+        // 2. Draw subtle vertical connecting stems (from baseline to dots)
+        if (showStems) {
+          ctx.save();
+          ctx.strokeStyle = horizGrad;
+          ctx.lineWidth = Math.max(0.75, lineThick * 0.6);
+          ctx.globalAlpha = 0.22;
+          ctx.beginPath();
+          for (const pt of pointData) {
+            ctx.moveTo(pt.x, posY);
+            ctx.lineTo(pt.x, posY - pt.dotH);
+            if (isMirror) {
+              ctx.moveTo(pt.x, posY);
+              ctx.lineTo(pt.x, posY + pt.dotH);
+            }
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 3. Draw active dots with glowing shadow
+        ctx.save();
+        ctx.fillStyle = horizGrad;
+        ctx.shadowBlur = this.highPerformanceMode ? 0 : effectiveGlow;
+        ctx.shadowColor = glowTint;
+        ctx.beginPath();
+        for (const pt of pointData) {
+          const dotY = posY - pt.dotH;
+          if (isSquare) {
+            ctx.rect(pt.x - pt.r, dotY - pt.r, pt.r * 2, pt.r * 2);
+            if (isMirror) {
+              const mirrorY = posY + pt.dotH;
+              ctx.rect(pt.x - pt.r, mirrorY - pt.r, pt.r * 2, pt.r * 2);
+            }
+          } else {
+            ctx.moveTo(pt.x + pt.r, dotY);
+            ctx.arc(pt.x, dotY, pt.r, 0, Math.PI * 2);
+            if (isMirror) {
+              const mirrorY = posY + pt.dotH;
+              ctx.moveTo(pt.x + pt.r, mirrorY);
+              ctx.arc(pt.x, mirrorY, pt.r, 0, Math.PI * 2);
+            }
+          }
+        }
+        ctx.fill();
+        ctx.restore();
+
+        // 4. Draw falling gravity peak dots (Secondary Color aura)
+        if (showPeakDots) {
+          ctx.save();
+          const peakColor = v.secondaryColor || '#ffffff';
+          ctx.fillStyle = peakColor;
+          ctx.shadowBlur = this.highPerformanceMode ? 0 : Math.min(8, effectiveGlow);
+          ctx.shadowColor = peakColor;
+          ctx.globalAlpha = 0.85;
+          ctx.beginPath();
+          for (let i = 0; i < points; i++) {
+            const peakH = this.peakBars[i];
+            if (peakH > pointData[i].dotH + 4) {
+              const pt = pointData[i];
+              const peakY = posY - peakH;
+              const peakR = Math.max(1, pt.r * 0.7);
+              if (isSquare) {
+                ctx.rect(pt.x - peakR, peakY - peakR, peakR * 2, peakR * 2);
+                if (isMirror) {
+                  ctx.rect(pt.x - peakR, posY + peakH - peakR, peakR * 2, peakR * 2);
+                }
+              } else {
+                ctx.moveTo(pt.x + peakR, peakY);
+                ctx.arc(pt.x, peakY, peakR, 0, Math.PI * 2);
+                if (isMirror) {
+                  ctx.moveTo(pt.x + peakR, posY + peakH);
+                  ctx.arc(pt.x, posY + peakH, peakR, 0, Math.PI * 2);
+                }
+              }
+            }
+          }
+          ctx.fill();
+          ctx.restore();
+        }
+
         break;
       }
 
