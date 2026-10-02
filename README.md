@@ -646,6 +646,9 @@ For issues, questions, or feature requests:
 - **Node Version**: 18+
 - **Package Manager**: Bun or npm
 
+## Buy me a coffee
+If you like it!
+
 ---
 
 Made with ❤️ by HAYStudio73
