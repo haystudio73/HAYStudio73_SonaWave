@@ -168,6 +168,8 @@ export type VisualizerColorMode = 'solid' | 'gradient2' | 'gradient3' | 'rainbow
 
 export interface VisualizerConfig {
   visible?: boolean;     // Bật / tắt hiển thị sóng âm Visualizer (default true)
+  showBottomCredit?: boolean; // Bật / tắt nhãn bản quyền "🔥 Visualizer by HAY Studio73" ở cạnh đáy màn hình (default true)
+  bottomCreditText?: string;  // Tùy chỉnh nội dung nhãn bản quyền ở đáy (mặc định: "🔥 Visualizer by HAY Studio73")
   type: VisualizerType;
   colorMode: VisualizerColorMode;
   primaryColor: string;
@@ -315,6 +317,11 @@ export interface BackgroundConfig {
   circleRippleReactive?: boolean;      // Phản ứng nảy nở theo nhịp Bass / Beat
   circleRippleGlow?: boolean;          // Hào quang phát sáng Neon cho viền sóng
   circleRippleOrigin?: 'center' | 'bottom' | 'cover'; // Tâm lan tỏa sóng
+
+  // Video Loop Fade In / Fade Out Transitions (Khi MP4 ngắn hơn thời lượng nhạc)
+  videoLoopFade?: boolean;            // Bật hiệu ứng Fade In / Fade Out khi video mp4 lặp lại
+  videoFadeDuration?: number;         // Thời gian chuyển mờ fade in / out (0.3s đến 3.0s, mặc định 1.0s)
+  videoFadeColor?: string;            // Màu mờ dần (mặc định '#000000')
 }
 
 export type ParticleType = 
@@ -390,6 +397,8 @@ export interface ParticleConfig {
   rainDropType?: RainDropType; // 'mixed' | 'streaks' | 'drizzle' | 'heavy' | 'neon-glow'
   rainLengthScale?: number;   // 0.5 to 3.0 length multiplier of raindrops
   rainSplash?: boolean;       // Hiệu ứng giọt nước bắn tung tóe / ripple khi chạm đáy
+  rainRandomWind?: boolean;   // Bật chế độ hướng gió ngẫu nhiên & biến thiên tự nhiên (Dynamic shifting gusts)
+  rainRandomWindSpeed?: number; // Tốc độ biến thiên hướng gió (0.2 to 3.0, default 1.0)
 
   // WebGL Stereo 3D Rain Effect (threejs.org/examples/#webgl_effects_stereo)
   stereoRainEnabled?: boolean; // Bật hiệu ứng Stereo 3D WebGL cho mưa
@@ -537,11 +546,16 @@ export interface TrackMetadata {
   logoPosition?: LogoPosition; // Position corner / center / custom
   logoPositionX?: number;     // 0 to 100% (horizontal position)
   logoPositionY?: number;     // 0 to 100% (vertical position)
-  logoScale?: number;         // 0.3 to 2.5
-  logoOpacity?: number;       // 0.1 to 1.0
+  logoScale?: number;         // 0.3 to 2.5 (Kích cỡ Logo thương hiệu riêng biệt)
+  logoOpacity?: number;       // 0.1 to 1.0 (Độ trong suốt Logo thương hiệu riêng biệt)
+  logoBorderColor?: string;   // Màu viền Logo thương hiệu riêng biệt (HEX / RGB)
+  logoBorderWidth?: number;   // Độ dày viền Logo (0 to 12px, mặc định 0)
+  logoBorderRadius?: number;  // Bo góc viền Logo (0 to 40px, mặc định 12px)
   logoGlow?: boolean;         // Neon halo around logo
   logoAnimation?: LogoAnimation; // 'none' | 'vertical-spin-3d' (xoay 360 trục đứng) | 'circular-spin' (xoay tròn)
   logoAnimationSpeed?: number;   // 0.2 to 3.0 (default 1.0)
+  badgeScale?: number;        // 0.3 to 2.5 (Kích cỡ Huy hiệu Badge riêng biệt, không trùng Logo)
+  badgeOpacity?: number;      // 0.1 to 1.0 (Độ trong suốt Huy hiệu Badge riêng biệt, không trùng Logo)
   badgeBeatJump?: boolean;    // Nhảy nảy theo nhịp Beat / Bass cho Badge & Thẻ bài hát
   badgeBeatJumpIntensity?: number; // Cường độ nảy (0.05 to 0.5, default 0.18)
   badgeBeatJumpStyle?: BadgeBeatJumpStyle; // 'pulse' | 'bounce-up' | 'scale-rotate' | 'jelly' | 'shake'

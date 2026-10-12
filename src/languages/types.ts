@@ -91,6 +91,11 @@ export interface TranslationDictionary {
   autoSaveDesc: string;
   autoSaveActive: string;
   autoSaveDisabled: string;
+  bottomCreditWatermark: string;
+  bottomCreditWatermarkDesc: string;
+  bottomCreditActive: string;
+  bottomCreditDisabled: string;
+  bottomCreditCustomText: string;
   close: string;
   activePresetLabel: string;
   defaultAspectRatio: string;

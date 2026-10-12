@@ -527,6 +527,9 @@ Giữ trọn từng khoảnh khắc ngọt ngào trong tim
 Tình yêu đơn sơ như nốt nhạc trong lành...`;
 
 export const DEFAULT_VISUALIZER: VisualizerConfig = {
+  visible: true,
+  showBottomCredit: true,
+  bottomCreditText: '🔥 Visualizer by HAY Studio73',
   type: 'bars-mirrored',
   colorMode: 'gradient2',
   primaryColor: '#ec4899',   // Pink rose
@@ -679,6 +682,9 @@ export const DEFAULT_BACKGROUND: BackgroundConfig = {
   circleRippleReactive: true,
   circleRippleGlow: true,
   circleRippleOrigin: 'center',
+  videoLoopFade: true,
+  videoFadeDuration: 1.0,
+  videoFadeColor: '#000000',
 };
 
 export const DEFAULT_PARTICLES: ParticleConfig = {
@@ -707,6 +713,8 @@ export const DEFAULT_PARTICLES: ParticleConfig = {
   rainDropType: 'mixed',
   rainLengthScale: 1.2,
   rainSplash: true,
+  rainRandomWind: false,
+  rainRandomWindSpeed: 1.0,
   // Speed lines defaults
   speedLineMode: 'horizontal',
   speedLineDirection: 'right-to-left',
@@ -1279,6 +1287,8 @@ export const DEFAULT_TRACK: TrackMetadata = {
   logoAnimation: 'none',
   logoAnimationSpeed: 1.0,
   trackDetailsOrder: ['subtitle', 'title', 'artist'],
+  badgeScale: 1.0,
+  badgeOpacity: 1.0,
   badgeBorderColor: '#f97316',
   badgeBorderWidth: 6,
   badgeBorderRadius: 26,
@@ -1292,6 +1302,11 @@ export const DEFAULT_TRACK: TrackMetadata = {
   logoPosition: 'top-left',
   logoPositionX: 8,
   logoPositionY: 8,
+  logoScale: 1.0,
+  logoOpacity: 0.9,
+  logoBorderColor: '#06b6d4',
+  logoBorderWidth: 0,
+  logoBorderRadius: 12,
   boxBackground: false,
   boxBgColor: 'rgba(0, 0, 0, 0.6)',
   boxOpacity: 0.7,

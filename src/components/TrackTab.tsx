@@ -299,152 +299,190 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
         </div>
       </div>
 
-      {/* 4. Dedicated PNG Badge Upload (When PNG Badge style is chosen) */}
-      {track.cardStyle === 'logo-badge' && (
-        <div className="space-y-3 pt-2 border-t border-neutral-800/80 bg-rose-500/5 p-3.5 rounded-2xl border border-rose-500/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-rose-500/20 border border-rose-500/40 flex items-center justify-center">
-                <ShieldCheck className="w-3.5 h-3.5 text-rose-400" />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-neutral-200 block">
-                  Ảnh Huy Hiệu PNG (PNG Badge Image)
-                </label>
-                <span className="text-[10px] text-neutral-400">
-                  Hiển thị hình ảnh PNG trong suốt không có nền tròn, độc lập với Logo thương hiệu
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <input
-            ref={badgePngInputRef}
-            type="file"
-            accept="image/png,image/webp,image/svg+xml,image/*"
-            className="hidden"
-            onChange={handleBadgePngUpload}
-          />
-
-          <div className="flex items-center gap-3 bg-neutral-900/80 border border-neutral-800 p-3 rounded-xl">
-            <div className="w-14 h-14 rounded-xl border border-neutral-700/80 shrink-0 bg-neutral-950/80 flex items-center justify-center overflow-hidden p-1">
-              {track.badgePngUrl ? (
-                <img
-                  src={track.badgePngUrl}
-                  alt="PNG Badge preview"
-                  className="max-w-full max-h-full object-contain"
-                />
-              ) : track?.coverUrl ? (
-                <img
-                  src={track?.coverUrl}
-                  alt="Badge fallback preview"
-                  className="max-w-full max-h-full object-contain opacity-70"
-                />
-              ) : (
-                <ImageIcon className="w-6 h-6 text-neutral-600" />
-              )}
-            </div>
-
-            <div className="flex-1 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => badgePngInputRef.current?.click()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-semibold transition-all cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>{track.badgePngUrl ? 'Đổi Ảnh PNG' : 'Tải Lên Ảnh PNG'}</span>
-                </button>
-                {track.badgePngUrl && (
-                  <button
-                    onClick={() => update({ badgePngUrl: undefined })}
-                    className="p-1.5 rounded-xl bg-neutral-800 hover:bg-red-500/20 border border-neutral-700 text-neutral-400 hover:text-red-400 transition-all cursor-pointer"
-                    title="Xóa ảnh PNG riêng"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-              <p className="text-[10px] text-neutral-400">
-                {track.badgePngUrl ? 'Đang dùng ảnh PNG tùy chỉnh' : 'Chưa tải ảnh riêng (đang dùng tạm ảnh bìa cover)'}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4b. Dedicated Settings for Horizontal Rounded Card Badge (Style Mới) */}
-      {track.cardStyle === 'horizontal-rounded-card' && (
-        <div className="space-y-3.5 pt-2 border-t border-neutral-800/80 bg-gradient-to-br from-orange-500/10 via-neutral-900/60 to-neutral-900/80 p-3.5 rounded-2xl border border-orange-500/30">
+      {/* 4. Dedicated Settings for Badge Styles (Huy Hiệu: logo-badge, circular-badge, rotating-badge, horizontal-rounded-card) */}
+      {(track.cardStyle === 'logo-badge' || track.cardStyle === 'circular-badge' || track.cardStyle === 'rotating-badge' || track.cardStyle === 'horizontal-rounded-card') && (
+        <div className="space-y-3.5 pt-2 border-t border-neutral-800/80 bg-gradient-to-br from-amber-500/10 via-neutral-900/60 to-neutral-900/80 p-3.5 rounded-2xl border border-amber-500/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center">
-                <CreditCard className="w-4 h-4 text-orange-400" />
+              <div className="w-7 h-7 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
-                    {language === 'vi' ? 'Khung Bo Tròn Ảnh Bìa (Badge Style Mới)' : 'Cover Frame Options (New Badge)'}
+                    {language === 'vi' ? 'Cài Đặt Huy Hiệu (Badge Settings)' : 'Badge Customization'}
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30">
-                    Mới
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    {language === 'vi' ? 'Riêng Biệt' : 'Dedicated'}
                   </span>
                 </div>
                 <span className="text-[10px] text-neutral-400">
                   {language === 'vi' 
-                    ? 'Tùy chỉnh góc bo, độ dày viền nổi bật và khoảng cách thông tin theo mẫu thiết kế'
-                    : 'Customize thick rounded cover frame border, color and metadata text gap'}
+                    ? 'Tùy chỉnh kích cỡ, độ trong suốt và màu viền huy hiệu độc lập hoàn toàn với Logo thương hiệu'
+                    : 'Customize badge scale, opacity, and border styling independently from brand logo'}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="space-y-3 pt-1">
-            {/* Quick Color Chips & Picker for Border */}
-            <div>
-              <div className="flex justify-between items-center text-xs mb-1.5">
-                <span className="text-neutral-400">{language === 'vi' ? 'Màu viền khung ảnh' : 'Frame Border Color'}</span>
-                <span className="font-mono text-[11px] text-orange-400">{track.badgeBorderColor || '#f97316'}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={track.badgeBorderColor || '#f97316'}
-                  onChange={(e) => update({ badgeBorderColor: e.target.value })}
-                  className="w-8 h-8 rounded-lg bg-transparent border border-neutral-700 cursor-pointer"
-                />
-                <div className="flex items-center gap-1.5 flex-wrap flex-1">
-                  {[
-                    { name: 'Cam Nổi Bật', hex: '#f97316' },
-                    { name: 'Hồng Neon', hex: '#ec4899' },
-                    { name: 'Xanh Cyan', hex: '#06b6d4' },
-                    { name: 'Trắng Sáng', hex: '#ffffff' },
-                    { name: 'Vàng Kim', hex: '#eab308' },
-                    { name: 'Tím Cyber', hex: '#a855f7' },
-                    { name: 'Xanh Ngọc', hex: '#10b981' },
-                  ].map((col) => (
-                    <button
-                      key={col.hex}
-                      type="button"
-                      onClick={() => update({ badgeBorderColor: col.hex })}
-                      style={{ backgroundColor: col.hex }}
-                      className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${
-                        (track.badgeBorderColor || '#f97316').toLowerCase() === col.hex.toLowerCase()
-                          ? 'border-white scale-110 shadow-md ring-2 ring-orange-500/50'
-                          : 'border-transparent opacity-80 hover:opacity-100'
-                      }`}
-                      title={col.name}
+          {/* Dedicated PNG Upload when cardStyle === 'logo-badge' */}
+          {track.cardStyle === 'logo-badge' && (
+            <div className="space-y-2.5 bg-neutral-950/60 p-3 rounded-xl border border-neutral-800/80">
+              <label className="text-xs font-bold text-neutral-200 block">
+                {language === 'vi' ? 'Ảnh Huy Hiệu PNG (PNG Badge Image)' : 'Dedicated PNG Badge Image'}
+              </label>
+              <input
+                ref={badgePngInputRef}
+                type="file"
+                accept="image/png,image/webp,image/svg+xml,image/*"
+                className="hidden"
+                onChange={handleBadgePngUpload}
+              />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl border border-neutral-700/80 shrink-0 bg-neutral-900/80 flex items-center justify-center overflow-hidden p-1">
+                  {track.badgePngUrl ? (
+                    <img
+                      src={track.badgePngUrl}
+                      alt="PNG Badge preview"
+                      className="max-w-full max-h-full object-contain"
                     />
-                  ))}
+                  ) : track?.coverUrl ? (
+                    <img
+                      src={track?.coverUrl}
+                      alt="Badge fallback preview"
+                      className="max-w-full max-h-full object-contain opacity-70"
+                    />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-neutral-600" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => badgePngInputRef.current?.click()}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-semibold transition-all cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{track.badgePngUrl ? (language === 'vi' ? 'Đổi Ảnh PNG' : 'Change PNG') : (language === 'vi' ? 'Tải Lên Ảnh PNG' : 'Upload PNG')}</span>
+                    </button>
+                    {track.badgePngUrl && (
+                      <button
+                        onClick={() => update({ badgePngUrl: undefined })}
+                        className="p-1.5 rounded-xl bg-neutral-800 hover:bg-red-500/20 border border-neutral-700 text-neutral-400 hover:text-red-400 transition-all cursor-pointer"
+                        title={language === 'vi' ? 'Xóa ảnh PNG riêng' : 'Remove PNG'}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-neutral-400">
+                    {track.badgePngUrl 
+                      ? (language === 'vi' ? 'Đang dùng ảnh PNG tùy chỉnh riêng' : 'Using dedicated transparent PNG') 
+                      : (language === 'vi' ? 'Chưa tải ảnh riêng (dùng tạm ảnh bìa cover)' : 'Using album cover art as fallback')}
+                  </p>
                 </div>
               </div>
             </div>
+          )}
 
-            {/* Sliders: Radius, Width, Text Gap */}
-            <div className="grid grid-cols-2 gap-3">
+          {/* Badge Scale & Opacity (Dedicated for Badge) */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-neutral-400">{language === 'vi' ? 'Kích cỡ Huy hiệu' : 'Badge Scale'}</span>
+                <span className="text-amber-400 font-mono font-bold">{(track.badgeScale ?? 1.0).toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min={0.3}
+                max={2.5}
+                step={0.1}
+                value={track.badgeScale ?? 1.0}
+                onChange={(e) => update({ badgeScale: parseFloat(e.target.value) })}
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-neutral-400">{language === 'vi' ? 'Độ trong suốt Huy hiệu' : 'Badge Opacity'}</span>
+                <span className="text-amber-400 font-mono font-bold">{Math.round((track.badgeOpacity ?? 1.0) * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0.1}
+                max={1.0}
+                step={0.05}
+                value={track.badgeOpacity ?? 1.0}
+                onChange={(e) => update({ badgeOpacity: parseFloat(e.target.value) })}
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              />
+            </div>
+          </div>
+
+          {/* Badge Border Color & Presets */}
+          <div className="pt-2 border-t border-neutral-800/80">
+            <div className="flex justify-between items-center text-xs mb-1.5">
+              <span className="text-neutral-300 font-medium">{language === 'vi' ? 'Màu viền Huy hiệu (Badge Border Color)' : 'Badge Border Color'}</span>
+              <span className="font-mono text-[11px] text-amber-400 font-bold">{track.badgeBorderColor || '#f97316'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={track.badgeBorderColor || '#f97316'}
+                onChange={(e) => update({ badgeBorderColor: e.target.value })}
+                className="w-8 h-8 rounded-lg bg-transparent border border-neutral-700 cursor-pointer"
+              />
+              <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                {[
+                  { name: 'Cam Nổi Bật', hex: '#f97316' },
+                  { name: 'Hồng Neon', hex: '#ec4899' },
+                  { name: 'Xanh Cyan', hex: '#06b6d4' },
+                  { name: 'Trắng Sáng', hex: '#ffffff' },
+                  { name: 'Vàng Kim', hex: '#eab308' },
+                  { name: 'Tím Cyber', hex: '#a855f7' },
+                  { name: 'Xanh Ngọc', hex: '#10b981' },
+                ].map((col) => (
+                  <button
+                    key={col.hex}
+                    type="button"
+                    onClick={() => update({ badgeBorderColor: col.hex })}
+                    style={{ backgroundColor: col.hex }}
+                    className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${
+                      (track.badgeBorderColor || '#f97316').toLowerCase() === col.hex.toLowerCase()
+                        ? 'border-white scale-110 shadow-md ring-2 ring-amber-500/50'
+                        : 'border-transparent opacity-80 hover:opacity-100'
+                    }`}
+                    title={col.name}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Border Width & Specific options */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-neutral-400">{language === 'vi' ? 'Độ dày viền Huy hiệu' : 'Border Width'}</span>
+                <span className="text-amber-400 font-mono font-bold">{track.badgeBorderWidth ?? 6}px</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={16}
+                step={1}
+                value={track.badgeBorderWidth ?? 6}
+                onChange={(e) => update({ badgeBorderWidth: parseInt(e.target.value) })}
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              />
+            </div>
+
+            {track.cardStyle === 'horizontal-rounded-card' ? (
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">{language === 'vi' ? 'Bo góc viền (Radius)' : 'Border Radius'}</span>
-                  <span className="text-orange-400 font-mono">{track.badgeBorderRadius ?? 24}px</span>
+                  <span className="text-neutral-400">{language === 'vi' ? 'Bo góc viền' : 'Border Radius'}</span>
+                  <span className="text-amber-400 font-mono font-bold">{track.badgeBorderRadius ?? 24}px</span>
                 </div>
                 <input
                   type="range"
@@ -453,30 +491,32 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                   step={2}
                   value={track.badgeBorderRadius ?? 24}
                   onChange={(e) => update({ badgeBorderRadius: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                 />
               </div>
-
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">{language === 'vi' ? 'Độ dày viền (Width)' : 'Border Width'}</span>
-                  <span className="text-orange-400 font-mono">{track.badgeBorderWidth ?? 6}px</span>
-                </div>
-                <input
-                  type="range"
-                  min={1}
-                  max={16}
-                  step={1}
-                  value={track.badgeBorderWidth ?? 6}
-                  onChange={(e) => update({ badgeBorderWidth: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                />
+            ) : (
+              <div className="flex items-center justify-end">
+                <label className="flex items-center justify-between w-full cursor-pointer p-2 rounded-xl bg-neutral-900/80 border border-neutral-800">
+                  <span className="text-[11px] font-medium text-neutral-300">
+                    {language === 'vi' ? 'Hào quang bừng sáng theo Bass' : 'Bass Glow Aura'}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={track.badgeBeatGlow !== false}
+                    onChange={(e) => update({ badgeBeatGlow: e.target.checked })}
+                    className="rounded text-amber-500 focus:ring-amber-500 bg-neutral-800 border-neutral-700 ml-2 cursor-pointer"
+                  />
+                </label>
               </div>
+            )}
+          </div>
 
+          {track.cardStyle === 'horizontal-rounded-card' && (
+            <div className="grid grid-cols-2 gap-3 pt-1 border-t border-neutral-800/60">
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-neutral-400">{language === 'vi' ? 'Khoảng cách chữ' : 'Text Gap'}</span>
-                  <span className="text-orange-400 font-mono">{track.badgeTextGap ?? 20}px</span>
+                  <span className="text-amber-400 font-mono">{track.badgeTextGap ?? 20}px</span>
                 </div>
                 <input
                   type="range"
@@ -485,25 +525,25 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                   step={2}
                   value={track.badgeTextGap ?? 20}
                   onChange={(e) => update({ badgeTextGap: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                 />
               </div>
 
-              <div className="flex items-center pt-3">
+              <div className="flex items-center justify-end">
                 <label className="flex items-center justify-between w-full cursor-pointer p-2 rounded-xl bg-neutral-900/80 border border-neutral-800">
                   <span className="text-[11px] font-medium text-neutral-300">
-                    {language === 'vi' ? 'Hào quang viền nảy theo Bass' : 'Beat Glow Pulse'}
+                    {language === 'vi' ? 'Hào quang bừng sáng theo Bass' : 'Bass Glow Aura'}
                   </span>
                   <input
                     type="checkbox"
                     checked={track.badgeBeatGlow !== false}
                     onChange={(e) => update({ badgeBeatGlow: e.target.checked })}
-                    className="rounded text-orange-500 focus:ring-orange-500 bg-neutral-800 border-neutral-700 ml-2"
+                    className="rounded text-amber-500 focus:ring-amber-500 bg-neutral-800 border-neutral-700 ml-2 cursor-pointer"
                   />
                 </label>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -820,12 +860,12 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
               </div>
             </div>
 
-            {/* Logo Scale & Opacity */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Logo Scale & Opacity (Dedicated for Brand Logo Watermark) */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">{language === 'vi' ? 'Kích cỡ Logo' : 'Logo Scale'}</span>
-                  <span className="text-cyan-400 font-mono">{(track.logoScale || 1.0).toFixed(1)}x</span>
+                  <span className="text-neutral-400">{language === 'vi' ? 'Kích cỡ Logo (Scale)' : 'Logo Scale'}</span>
+                  <span className="text-cyan-400 font-mono font-bold">{(track.logoScale || 1.0).toFixed(1)}x</span>
                 </div>
                 <input
                   type="range"
@@ -840,8 +880,8 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
 
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">{language === 'vi' ? 'Độ trong suốt' : 'Opacity'}</span>
-                  <span className="text-cyan-400 font-mono">{Math.round((track.logoOpacity || 0.9) * 100)}%</span>
+                  <span className="text-neutral-400">{language === 'vi' ? 'Độ trong suốt Logo' : 'Logo Opacity'}</span>
+                  <span className="text-cyan-400 font-mono font-bold">{Math.round((track.logoOpacity || 0.9) * 100)}%</span>
                 </div>
                 <input
                   type="range"
@@ -850,6 +890,83 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                   step={0.05}
                   value={track.logoOpacity || 0.9}
                   onChange={(e) => update({ logoOpacity: parseFloat(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                />
+              </div>
+            </div>
+
+            {/* Logo Border Color & Presets */}
+            <div className="pt-2 border-t border-neutral-800/80">
+              <div className="flex justify-between items-center text-xs mb-1.5">
+                <span className="text-neutral-300 font-medium">{language === 'vi' ? 'Màu viền Logo (Logo Border Color)' : 'Logo Border Color'}</span>
+                <span className="font-mono text-[11px] text-cyan-400 font-bold">{track.logoBorderColor || '#06b6d4'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={track.logoBorderColor || '#06b6d4'}
+                  onChange={(e) => update({ logoBorderColor: e.target.value })}
+                  className="w-8 h-8 rounded-lg bg-transparent border border-neutral-700 cursor-pointer"
+                />
+                <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                  {[
+                    { name: 'Xanh Cyan', hex: '#06b6d4' },
+                    { name: 'Cam Nổi Bật', hex: '#f97316' },
+                    { name: 'Hồng Neon', hex: '#ec4899' },
+                    { name: 'Trắng Sáng', hex: '#ffffff' },
+                    { name: 'Vàng Kim', hex: '#eab308' },
+                    { name: 'Tím Cyber', hex: '#a855f7' },
+                    { name: 'Xanh Ngọc', hex: '#10b981' },
+                  ].map((col) => (
+                    <button
+                      key={col.hex}
+                      type="button"
+                      onClick={() => update({ logoBorderColor: col.hex })}
+                      style={{ backgroundColor: col.hex }}
+                      className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${
+                        (track.logoBorderColor || '#06b6d4').toLowerCase() === col.hex.toLowerCase()
+                          ? 'border-white scale-110 shadow-md ring-2 ring-cyan-500/50'
+                          : 'border-transparent opacity-80 hover:opacity-100'
+                      }`}
+                      title={col.name}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Logo Border Width & Radius */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">{language === 'vi' ? 'Độ dày viền Logo' : 'Logo Border Width'}</span>
+                  <span className="text-cyan-400 font-mono font-bold">
+                    {(track.logoBorderWidth ?? 0) === 0 ? (language === 'vi' ? 'Tắt viền' : 'None') : `${track.logoBorderWidth}px`}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={12}
+                  step={1}
+                  value={track.logoBorderWidth ?? 0}
+                  onChange={(e) => update({ logoBorderWidth: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">{language === 'vi' ? 'Bo góc viền Logo' : 'Logo Border Radius'}</span>
+                  <span className="text-cyan-400 font-mono font-bold">{track.logoBorderRadius ?? 12}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={40}
+                  step={2}
+                  value={track.logoBorderRadius ?? 12}
+                  onChange={(e) => update({ logoBorderRadius: parseInt(e.target.value) })}
                   className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                 />
               </div>
@@ -864,7 +981,7 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                 type="checkbox"
                 checked={!!track.logoGlow}
                 onChange={(e) => update({ logoGlow: e.target.checked })}
-                className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700"
+                className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700 cursor-pointer"
               />
             </label>
 

@@ -609,6 +609,12 @@ export function App() {
   }, [isPlaying]);
 
   useEffect(() => {
+    if (rendererRef.current && duration > 0) {
+      rendererRef.current.setAudioDuration(duration);
+    }
+  }, [duration]);
+
+  useEffect(() => {
     if (rendererRef.current) {
       rendererRef.current.setCoverImage(track?.coverUrl || DEFAULT_TRACK.coverUrl);
     }
@@ -1726,6 +1732,9 @@ export function App() {
             const d = audioRef.current.duration;
             if (d && !isNaN(d) && isFinite(d) && d > 0) {
               setDuration(d);
+              if (rendererRef.current) {
+                rendererRef.current.setAudioDuration(d);
+              }
               setPlaylist((prev) => {
                 const curIdx = prev.currentIndex;
                 if (curIdx >= 0 && curIdx < prev.tracks.length) {
@@ -1815,6 +1824,10 @@ export function App() {
           isVisualizerVisible={visualizer.visible !== false}
           onToggleVisualizerVisible={() =>
             setVisualizer((prev) => ({ ...prev, visible: prev.visible === false ? true : false }))
+          }
+          showBottomCredit={visualizer.showBottomCredit !== false}
+          onToggleBottomCredit={() =>
+            setVisualizer((prev) => ({ ...prev, showBottomCredit: prev.showBottomCredit === false ? true : false }))
           }
           lotties={lotties}
           selectedLottie={lotties.find((l) => l.id === selectedLottieId) || null}
@@ -2234,6 +2247,10 @@ export function App() {
         hardwareInfo={hardwareInfo}
         autoSaveEnabled={autoSaveEnabled}
         onToggleAutoSave={setAutoSaveEnabled}
+        showBottomCredit={visualizer.showBottomCredit !== false}
+        onToggleBottomCredit={(enabled) => setVisualizer((prev) => ({ ...prev, showBottomCredit: enabled }))}
+        bottomCreditText={visualizer.bottomCreditText || '🔥 Visualizer by HAY Studio73'}
+        onChangeBottomCreditText={(text) => setVisualizer((prev) => ({ ...prev, bottomCreditText: text }))}
       />
 
       {/* High Definition Video Export Modal */}

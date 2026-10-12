@@ -61,7 +61,8 @@ import {
   Feather,
   ArrowRightLeft,
   RotateCw,
-  Paintbrush
+  Paintbrush,
+  Shuffle
 } from 'lucide-react';
 
 interface BackgroundTabProps {
@@ -730,20 +731,132 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
         {/* --- VIEW 1: IMAGE PRESETS & UPLOADS --- */}
         {!isColorMode && (
           <div className="space-y-3">
-            {/* Video Mode Active Notice */}
+            {/* Video Mode Active Notice & Fade In / Fade Out Loop Settings */}
             {background.isVideo && (
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-200 text-xs">
-                <div className="flex items-center gap-2">
-                  <Film className="w-4 h-4 text-rose-400 animate-pulse" />
-                  <span className="font-semibold">{isVi ? 'Đang phát nền Video MP4 động' : 'Active MP4 Video Background'}</span>
+              <div className="space-y-2.5 p-3 rounded-xl bg-gradient-to-br from-rose-950/40 via-neutral-900/90 to-neutral-950/80 border border-rose-500/30">
+                <div className="flex items-center justify-between pb-2 border-b border-rose-500/20">
+                  <div className="flex items-center gap-2">
+                    <Film className="w-4 h-4 text-rose-400 animate-pulse" />
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-xs text-rose-200">
+                          {isVi ? 'Đang phát nền Video MP4 động' : 'Active MP4 Video Background'}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                          MP4 Loop
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-neutral-400">
+                        {isVi ? 'Tự động hòa trộn mờ dần khi video ngắn hơn thời lượng bài hát' : 'Smooth loop fade transitions for shorter video clips'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => updateBg({ type: 'preset', isVideo: false, url: BACKGROUND_PRESETS[0].url })}
+                    className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-[11px] font-medium text-rose-300 transition-all cursor-pointer border border-rose-500/40"
+                  >
+                    {isVi ? 'Về Preset Ảnh' : 'Return to Image Preset'}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => updateBg({ type: 'preset', isVideo: false, url: BACKGROUND_PRESETS[0].url })}
-                  className="px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-[11px] font-medium text-rose-300 transition-all cursor-pointer"
-                >
-                  {isVi ? 'Trở về Preset Ảnh' : 'Return to Image Preset'}
-                </button>
+
+                {/* Video Loop Fade In / Out Switch & Parameters */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={background.videoLoopFade !== false}
+                        onChange={(e) => updateBg({ videoLoopFade: e.target.checked })}
+                        className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700 cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-rose-200 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                        {isVi ? 'Hiệu ứng Fade In - Fade Out khi Lặp lại' : 'Fade In / Out Loop Effect'}
+                      </span>
+                    </label>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      background.videoLoopFade !== false
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                        : 'bg-neutral-800/60 text-neutral-400 border-neutral-700/60'
+                    }`}>
+                      {background.videoLoopFade !== false ? (isVi ? 'Đang Bật' : 'Enabled') : (isVi ? 'Đã Tắt' : 'Disabled')}
+                    </span>
+                  </div>
+
+                  {background.videoLoopFade !== false && (
+                    <div className="space-y-2.5 pt-2 border-t border-rose-500/20">
+                      {/* Fade Duration */}
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-neutral-300 font-medium">
+                            {isVi ? 'Thời gian chuyển mờ (Fade Duration)' : 'Fade Transition Duration'}
+                          </span>
+                          <span className="text-rose-400 font-mono font-bold">
+                            {(background.videoFadeDuration ?? 1.0).toFixed(1)}s
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0.3}
+                          max={3.0}
+                          step={0.1}
+                          value={background.videoFadeDuration ?? 1.0}
+                          onChange={(e) => updateBg({ videoFadeDuration: parseFloat(e.target.value) })}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                        />
+                      </div>
+
+                      {/* Fade Dip Color & Presets */}
+                      <div>
+                        <div className="flex justify-between items-center text-xs mb-1.5">
+                          <span className="text-neutral-300 font-medium">
+                            {isVi ? 'Màu nền mờ dần (Fade Dip Color)' : 'Fade Dip Color'}
+                          </span>
+                          <span className="font-mono text-[11px] text-rose-400 font-bold">
+                            {background.videoFadeColor || '#000000'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={background.videoFadeColor || '#000000'}
+                            onChange={(e) => updateBg({ videoFadeColor: e.target.value })}
+                            className="w-8 h-8 rounded-lg bg-transparent border border-neutral-700 cursor-pointer"
+                          />
+                          <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                            {[
+                              { name: 'Đen Tuyền', hex: '#000000' },
+                              { name: 'Xanh Đêm', hex: '#0a0f1d' },
+                              { name: 'Tím Than', hex: '#1a102f' },
+                              { name: 'Xám Khói', hex: '#18181b' },
+                              { name: 'Xanh Rêu Tối', hex: '#051c14' },
+                            ].map((col) => (
+                              <button
+                                key={col.hex}
+                                type="button"
+                                onClick={() => updateBg({ videoFadeColor: col.hex })}
+                                style={{ backgroundColor: col.hex }}
+                                className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${
+                                  (background.videoFadeColor || '#000000').toLowerCase() === col.hex.toLowerCase()
+                                    ? 'border-white scale-110 shadow-md ring-2 ring-rose-500/50'
+                                    : 'border-neutral-700 opacity-80 hover:opacity-100'
+                                }`}
+                                title={col.name}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] text-rose-300/80 leading-relaxed">
+                        {isVi
+                          ? '✦ Khi video MP4 ngắn hơn thời lượng nhạc, video sẽ tự động mờ dần ở cuối vòng lặp và từ từ sáng lại ở đầu vòng lặp tiếp theo, tạo hiệu ứng chuyển tiếp mềm mại và loại bỏ giật khung hình.'
+                          : '✦ When the MP4 clip is shorter than the track, it seamlessly fades out and dissolves back in at each loop boundary, eliminating harsh jumps.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -2017,6 +2130,89 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
             </div>
           )}
         </div>
+
+        {/* Video Loop Fade In / Out Transition (Available for video backgrounds) */}
+        <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Film className="w-4 h-4 text-rose-400" />
+              <div>
+                <span className="text-xs font-bold text-neutral-200 block">
+                  {isVi ? 'Lặp Video Fade In / Out (MP4 Transition)' : 'MP4 Loop Fade In / Out'}
+                </span>
+                <span className="text-[10px] text-neutral-400">
+                  {isVi ? 'Tự động hòa trộn mờ khi Video MP4 ngắn hơn thời lượng nhạc' : 'Smooth loop fade transitions when video is shorter than audio'}
+                </span>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={background.videoLoopFade !== false}
+                onChange={(e) => updateBg({ videoLoopFade: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500"></div>
+            </label>
+          </div>
+
+          {background.videoLoopFade !== false && (
+            <div className="space-y-2.5 pt-2 border-t border-neutral-800">
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-400">{isVi ? 'Thời gian chuyển mờ' : 'Fade Duration'}</span>
+                  <span className="text-rose-400 font-mono font-bold">{(background.videoFadeDuration ?? 1.0).toFixed(1)}s</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.3}
+                  max={3.0}
+                  step={0.1}
+                  value={background.videoFadeDuration ?? 1.0}
+                  onChange={(e) => updateBg({ videoFadeDuration: parseFloat(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center text-xs mb-1.5">
+                  <span className="text-neutral-400">{isVi ? 'Màu nền khi mờ' : 'Fade Dip Color'}</span>
+                  <span className="font-mono text-[11px] text-rose-400 font-bold">{background.videoFadeColor || '#000000'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={background.videoFadeColor || '#000000'}
+                    onChange={(e) => updateBg({ videoFadeColor: e.target.value })}
+                    className="w-8 h-8 rounded-lg bg-transparent border border-neutral-700 cursor-pointer"
+                  />
+                  <div className="flex items-center gap-1.5 flex-wrap flex-1">
+                    {[
+                      { name: 'Đen Tuyền', hex: '#000000' },
+                      { name: 'Xanh Đêm', hex: '#0a0f1d' },
+                      { name: 'Tím Than', hex: '#1a102f' },
+                      { name: 'Xám Khói', hex: '#18181b' },
+                      { name: 'Xanh Rêu Tối', hex: '#051c14' },
+                    ].map((col) => (
+                      <button
+                        key={col.hex}
+                        type="button"
+                        onClick={() => updateBg({ videoFadeColor: col.hex })}
+                        style={{ backgroundColor: col.hex }}
+                        className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${
+                          (background.videoFadeColor || '#000000').toLowerCase() === col.hex.toLowerCase()
+                            ? 'border-white scale-110 shadow-md ring-2 ring-rose-500/50'
+                            : 'border-neutral-700 opacity-80 hover:opacity-100'
+                        }`}
+                        title={col.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 3. Particle Overlays */}
@@ -2255,52 +2451,103 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                   </div>
                 </div>
 
-                {/* Wind Direction Angle (-60° to +60°) */}
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-neutral-300 flex items-center gap-1.5 font-medium">
-                      <Compass className="w-3.5 h-3.5 text-blue-400" />
-                      {isVi ? 'Hướng gió thổi & góc nghiêng (Wind Angle)' : 'Wind Tilt Angle'}
-                    </span>
-                    <span className="text-blue-400 font-mono font-bold">
-                      {(particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10) > 0 ? `+${particles.rainWindAngle ?? 10}° ${isVi ? '(Sang Phải)' : '(Rightward)'}` : (particles.rainWindAngle ?? 10) < 0 ? `${particles.rainWindAngle}° ${isVi ? '(Sang Trái)' : '(Leftward)'}` : `0° ${isVi ? '(Thẳng Đứng)' : '(Vertical)'}`}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={-60}
-                    max={60}
-                    step={5}
-                    value={particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10}
-                    onChange={(e) => updatePt({ rainWindAngle: parseInt(e.target.value) })}
-                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
-                  />
-                  
-                  {/* Wind Direction Quick Presets */}
-                  <div className="flex items-center gap-1 pt-1.5">
-                    {[
-                      { labelVi: 'Gió Trái (-35°)', labelEn: 'Left (-35°)', val: -35 },
-                      { labelVi: 'Thẳng đứng (0°)', labelEn: 'Vertical (0°)', val: 0 },
-                      { labelVi: 'Gió Nhẹ (+10°)', labelEn: 'Breeze (+10°)', val: 10 },
-                      { labelVi: 'Gió Bão (+40°)', labelEn: 'Storm (+40°)', val: 40 },
-                    ].map((wp) => {
-                      const cur = particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10;
-                      const active = cur === wp.val;
-                      return (
-                        <button
-                          key={wp.val}
-                          type="button"
-                          onClick={() => updatePt({ rainWindAngle: wp.val })}
-                          className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
-                            active
-                              ? 'bg-blue-500 text-white font-bold shadow-sm'
-                              : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
-                          }`}
-                        >
-                          {isVi ? wp.labelVi : wp.labelEn}
-                        </button>
-                      );
-                    })}
+                {/* Wind Dynamics: Fixed Tilt or Random Shifting Wind */}
+                <div className="space-y-2.5">
+                  {/* Random Wind Option (Hướng gió ngẫu nhiên & biến thiên) */}
+                  <div className="p-3 rounded-xl bg-blue-950/40 border border-blue-500/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={particles.rainRandomWind || false}
+                          onChange={(e) => updatePt({ rainRandomWind: e.target.checked })}
+                          className="rounded text-blue-500 focus:ring-blue-500 bg-neutral-800 border-neutral-700 cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
+                          <Shuffle className="w-3.5 h-3.5 text-blue-400" />
+                          {isVi ? 'Hướng Gió Ngẫu Nhiên (Random Wind Gusts)' : 'Random Wind Shifts (Dynamic Gusts)'}
+                        </span>
+                      </label>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        particles.rainRandomWind
+                          ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                          : 'bg-neutral-800/60 text-neutral-400 border-neutral-700/60'
+                      }`}>
+                        {particles.rainRandomWind ? (isVi ? 'Gió Biến Thiên Tự Nhiên' : 'Dynamic Shifting Active') : (isVi ? 'Góc Gió Cố Định' : 'Fixed Angle')}
+                      </span>
+                    </div>
+
+                    {particles.rainRandomWind ? (
+                      <div className="pt-2 border-t border-blue-500/20 space-y-2">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-neutral-400">{isVi ? 'Tốc độ đổi chiều gió (Gust Shift Speed)' : 'Gust Shift Speed'}</span>
+                          <span className="text-blue-400 font-mono font-bold">{(particles.rainRandomWindSpeed ?? 1.0).toFixed(1)}x</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0.3}
+                          max={3.0}
+                          step={0.1}
+                          value={particles.rainRandomWindSpeed ?? 1.0}
+                          onChange={(e) => updatePt({ rainRandomWindSpeed: parseFloat(e.target.value) })}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                        />
+                        <p className="text-[10px] text-blue-300/80 leading-relaxed">
+                          {isVi 
+                            ? '✦ Gió tự động đổi chiều lượn sóng liên tục giữa trái và phải theo thời gian thực tạo cảm giác mưa rào chân thực ngoài trời.'
+                            : '✦ Wind direction organically sways between left and right over time like natural stormy rainfall.'}
+                        </p>
+                      </div>
+                    ) : (
+                      /* Wind Direction Angle (-60° to +60°) when random wind is off */
+                      <div className="pt-1 border-t border-neutral-800/80 space-y-2">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-neutral-300 flex items-center gap-1.5 font-medium">
+                            <Compass className="w-3.5 h-3.5 text-blue-400" />
+                            {isVi ? 'Hướng gió thổi & góc nghiêng (Wind Angle)' : 'Wind Tilt Angle'}
+                          </span>
+                          <span className="text-blue-400 font-mono font-bold">
+                            {(particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10) > 0 ? `+${particles.rainWindAngle ?? 10}° ${isVi ? '(Sang Phải)' : '(Rightward)'}` : (particles.rainWindAngle ?? 10) < 0 ? `${particles.rainWindAngle}° ${isVi ? '(Sang Trái)' : '(Leftward)'}` : `0° ${isVi ? '(Thẳng Đứng)' : '(Vertical)'}`}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={-60}
+                          max={60}
+                          step={5}
+                          value={particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10}
+                          onChange={(e) => updatePt({ rainWindAngle: parseInt(e.target.value) })}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                        />
+                        
+                        {/* Wind Direction Quick Presets */}
+                        <div className="flex items-center gap-1 pt-0.5">
+                          {[
+                            { labelVi: 'Gió Trái (-35°)', labelEn: 'Left (-35°)', val: -35 },
+                            { labelVi: 'Thẳng đứng (0°)', labelEn: 'Vertical (0°)', val: 0 },
+                            { labelVi: 'Gió Nhẹ (+10°)', labelEn: 'Breeze (+10°)', val: 10 },
+                            { labelVi: 'Gió Bão (+40°)', labelEn: 'Storm (+40°)', val: 40 },
+                          ].map((wp) => {
+                            const cur = particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10;
+                            const active = cur === wp.val;
+                            return (
+                              <button
+                                key={wp.val}
+                                type="button"
+                                onClick={() => updatePt({ rainWindAngle: wp.val })}
+                                className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
+                                  active
+                                    ? 'bg-blue-500 text-white font-bold shadow-sm'
+                                    : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
+                                }`}
+                              >
+                                {isVi ? wp.labelVi : wp.labelEn}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2379,133 +2626,10 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                         type="checkbox"
                         checked={particles.rainSplash !== false}
                         onChange={(e) => updatePt({ rainSplash: e.target.checked })}
-                        className="rounded text-blue-500 focus:ring-blue-500 bg-neutral-800 border-neutral-700"
+                        className="rounded text-blue-500 focus:ring-blue-500 bg-neutral-800 border-neutral-700 cursor-pointer"
                       />
                     </label>
                   </div>
-                </div>
-
-                {/* Three.js Water on Glass (Raindrops on Glass Pane / Window Lens) */}
-                <div className="pt-2.5 border-t border-cyan-500/30 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={particles.waterOnGlass || false}
-                        onChange={(e) => updatePt({ waterOnGlass: e.target.checked })}
-                        className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700"
-                      />
-                      <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
-                        <Droplets className="w-3.5 h-3.5 text-cyan-400" />
-                        {isVi ? 'Mưa Bám Mặt Kính (Three.js Water on Glass)' : 'Water on Glass (Three.js Lens Beads)'}
-                      </span>
-                    </label>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                      WebGL Glass
-                    </span>
-                  </div>
-
-                  {particles.waterOnGlass && (
-                    <div className="space-y-2.5 pl-2 pt-1 border-l-2 border-cyan-500/40">
-                      <div className="grid grid-cols-2 gap-2.5">
-                        {/* Droplets Count Slider */}
-                        <div>
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className="text-neutral-400">{isVi ? 'Số giọt nước' : 'Droplets Count'}</span>
-                            <span className="text-cyan-400 font-mono">{particles.waterGlassCount ?? 75}</span>
-                          </div>
-                          <input
-                            type="range"
-                            min={20}
-                            max={180}
-                            step={5}
-                            value={particles.waterGlassCount ?? 75}
-                            onChange={(e) => updatePt({ waterGlassCount: parseInt(e.target.value) })}
-                            className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-                          />
-                        </div>
-
-                        {/* Trickle Speed Slider */}
-                        <div>
-                          <div className="flex justify-between text-xs mb-1">
-                            <span className="text-neutral-400">{isVi ? 'Tốc độ trượt chảy' : 'Trickle Speed'}</span>
-                            <span className="text-cyan-400 font-mono">{(particles.waterGlassTrickleSpeed ?? 1.0).toFixed(1)}x</span>
-                          </div>
-                          <input
-                            type="range"
-                            min={0.2}
-                            max={3.0}
-                            step={0.1}
-                            value={particles.waterGlassTrickleSpeed ?? 1.0}
-                            onChange={(e) => updatePt({ waterGlassTrickleSpeed: parseFloat(e.target.value) })}
-                            className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Glass Refraction Slider */}
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-neutral-400">{isVi ? 'Độ khúc xạ & lúp cầu giọt nước' : 'Refraction Index'}</span>
-                          <span className="text-cyan-400 font-mono">{(particles.waterGlassRefraction ?? 1.0).toFixed(2)}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0.4}
-                          max={2.5}
-                          step={0.05}
-                          value={particles.waterGlassRefraction ?? 1.0}
-                          onChange={(e) => updatePt({ waterGlassRefraction: parseFloat(e.target.value) })}
-                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-                        />
-                      </div>
-
-                      {/* Glass Reflection Ambiance Lighting */}
-                      <div>
-                        <div className="text-xs text-neutral-400 mb-1">
-                          {isVi ? 'Ánh sáng môi trường phản chiếu (Bokeh / Ambiance)' : 'Lighting Environment'}
-                        </div>
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {[
-                            { id: 'cinematic-blue', label: isVi ? 'Xanh Đêm Điện Ảnh' : 'Cinematic Blue', color: '#38bdf8' },
-                            { id: 'golden-bokeh', label: isVi ? 'Bokeh Vàng Ấm' : 'Warm Golden Bokeh', color: '#f59e0b' },
-                            { id: 'neon-glow', label: isVi ? 'Neon Tím Hồng' : 'Cyber Neon', color: '#ec4899' },
-                            { id: 'pure-clear', label: isVi ? 'Trong Suốt Tự Nhiên' : 'Natural Clear', color: '#e2e8f0' },
-                          ].map((light) => {
-                            const active = (particles.waterGlassLighting || 'cinematic-blue') === light.id;
-                            return (
-                              <button
-                                key={light.id}
-                                type="button"
-                                onClick={() => updatePt({ waterGlassLighting: light.id as any })}
-                                className={`px-2 py-1.5 rounded text-[11px] font-medium flex items-center gap-1.5 border transition-all ${
-                                  active
-                                    ? 'bg-cyan-950/60 border-cyan-500/60 text-cyan-200'
-                                    : 'bg-neutral-800/60 border-neutral-700/50 text-neutral-400 hover:text-neutral-200'
-                                }`}
-                              >
-                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: light.color }} />
-                                <span className="truncate">{light.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Wipe Mist & Micro-Condensation Toggle */}
-                      <label className="flex items-center gap-2 p-1.5 rounded-lg bg-neutral-800/60 border border-neutral-700/60 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={particles.waterGlassWipeMist !== false}
-                          onChange={(e) => updatePt({ waterGlassWipeMist: e.target.checked })}
-                          className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700"
-                        />
-                        <span className="text-xs font-semibold text-neutral-300">
-                          {isVi ? 'Lớp Hơi Nước Sương Mù & Bụi Nước Li Ti' : 'Window Mist & Micro-Condensation'}
-                        </span>
-                      </label>
-                    </div>
-                  )}
                 </div>
               </div>
             )}

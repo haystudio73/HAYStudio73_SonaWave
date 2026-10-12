@@ -22,7 +22,8 @@ import {
   Layers,
   Film,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  Flame
 } from 'lucide-react';
 
 interface GlobalSettingsModalProps {
@@ -41,6 +42,10 @@ interface GlobalSettingsModalProps {
   hardwareInfo?: HardwareInfo;
   autoSaveEnabled?: boolean;
   onToggleAutoSave?: (enabled: boolean) => void;
+  showBottomCredit?: boolean;
+  onToggleBottomCredit?: (enabled: boolean) => void;
+  bottomCreditText?: string;
+  onChangeBottomCreditText?: (text: string) => void;
 }
 
 export const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({
@@ -59,6 +64,10 @@ export const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({
   hardwareInfo,
   autoSaveEnabled = true,
   onToggleAutoSave,
+  showBottomCredit = true,
+  onToggleBottomCredit,
+  bottomCreditText = '🔥 Visualizer by HAY Studio73',
+  onChangeBottomCreditText,
 }) => {
   const t = getTranslation(language);
   const safeEq = masterEqConfig || DEFAULT_MASTER_EQ;
@@ -537,6 +546,66 @@ export const GlobalSettingsModal: React.FC<GlobalSettingsModalProps> = ({
                   }`} />
                 </div>
               </div>
+            </div>
+
+            {/* Studio Watermark & Bottom Credit Badge ("🔥 Visualizer by HAY Studio73") */}
+            <div className="p-3.5 rounded-xl bg-neutral-950/70 border border-neutral-800/80 hover:border-neutral-700 transition-colors space-y-2.5">
+              <div 
+                onClick={() => {
+                  if (onToggleBottomCredit) {
+                    onToggleBottomCredit(!showBottomCredit);
+                  }
+                }}
+                className="flex items-center justify-between gap-3 cursor-pointer"
+              >
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Flame className={`w-3.5 h-3.5 transition-colors ${showBottomCredit ? 'text-amber-400' : 'text-neutral-500'}`} />
+                    <span className="text-xs font-semibold text-neutral-200">
+                      {t.bottomCreditWatermark}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-neutral-400 leading-tight">
+                    {t.bottomCreditWatermarkDesc}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border transition-colors ${
+                    showBottomCredit 
+                      ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' 
+                      : 'text-neutral-500 bg-neutral-800/50 border-neutral-700/50'
+                  }`}>
+                    {showBottomCredit ? t.bottomCreditActive : t.bottomCreditDisabled}
+                  </span>
+                  <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors ${
+                    showBottomCredit ? 'bg-amber-600' : 'bg-neutral-800'
+                  }`}>
+                    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      showBottomCredit ? 'translate-x-4' : 'translate-x-0'
+                    }`} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Optional custom text field when bottom credit is active */}
+              {showBottomCredit && onChangeBottomCreditText && (
+                <div className="pt-2 border-t border-neutral-900 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={bottomCreditText}
+                    onChange={(e) => onChangeBottomCreditText(e.target.value)}
+                    placeholder="🔥 Visualizer by HAY Studio73"
+                    className="flex-1 bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1 text-xs text-neutral-200 focus:outline-none focus:border-amber-500 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onChangeBottomCreditText('🔥 Visualizer by HAY Studio73')}
+                    className="px-2 py-1 text-[10px] rounded-md bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white transition-colors"
+                  >
+                    Mặc Định
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

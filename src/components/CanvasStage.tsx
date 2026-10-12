@@ -24,7 +24,8 @@ import {
   Clock,
   Eye,
   EyeOff,
-  Move
+  Move,
+  Flame
 } from 'lucide-react';
 import { formatTime } from '../utils/lyricsParser';
 import { LottieItem } from '../types';
@@ -64,6 +65,8 @@ interface CanvasStageProps {
   onSeekPlaylist?: (globalTime: number) => void;
   isVisualizerVisible?: boolean;
   onToggleVisualizerVisible?: () => void;
+  showBottomCredit?: boolean;
+  onToggleBottomCredit?: () => void;
   lotties?: LottieItem[];
   selectedLottie?: LottieItem | null;
   onSelectLottieId?: (id: string | null) => void;
@@ -105,6 +108,8 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
   onSeekPlaylist,
   isVisualizerVisible = true,
   onToggleVisualizerVisible,
+  showBottomCredit = true,
+  onToggleBottomCredit,
   lotties = [],
   selectedLottie,
   onSelectLottieId,
@@ -416,6 +421,25 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
               }`}
             >
               {isVisualizerVisible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4 text-neutral-500" />}
+            </button>
+          )}
+
+          {/* Quick Toggle Bottom Watermark Credit ("🔥 Visualizer by HAY Studio73") */}
+          {onToggleBottomCredit && (
+            <button
+              onClick={onToggleBottomCredit}
+              title={
+                showBottomCredit
+                  ? (language === 'vi' ? 'Ẩn nhãn đáy "Visualizer by HAY Studio73"' : 'Hide bottom "Visualizer by HAY Studio73" credit')
+                  : (language === 'vi' ? 'Hiện nhãn đáy "Visualizer by HAY Studio73"' : 'Show bottom "Visualizer by HAY Studio73" credit')
+              }
+              className={`absolute top-3 left-[100px] p-2 rounded-xl backdrop-blur-md border transition-all cursor-pointer z-10 ${
+                showBottomCredit
+                  ? 'bg-black/50 hover:bg-black/80 border-white/10 text-amber-400 hover:text-amber-300'
+                  : 'bg-neutral-900/90 border-neutral-700 text-neutral-500 hover:text-neutral-300'
+              }`}
+            >
+              <Flame className="w-4 h-4" />
             </button>
           )}
 

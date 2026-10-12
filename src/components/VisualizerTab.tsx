@@ -415,6 +415,8 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
         </div>
       </div>
 
+      
+
       {config.visible !== false ? (
         <div className="space-y-6 animate-fade-in">
           {/* 0. BPM Detection & Rhythm Pulse Rate Synchronization */}

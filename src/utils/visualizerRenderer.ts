@@ -65,6 +65,7 @@ export class VisualizerRenderer {
   private bgVideo: HTMLVideoElement | null = null;
   private bgVideoSrc = '';
   private isAudioPlaying = false;
+  private audioDuration = 0;
   private hiddenVideoContainer: HTMLDivElement | null = null;
 
   private coverImage: HTMLImageElement | null = null;
@@ -243,6 +244,16 @@ export class VisualizerRenderer {
       if (!this.bgVideo.paused) {
         this.bgVideo.pause();
       }
+    }
+  }
+
+  /**
+   * Set music / audio track total duration (in seconds)
+   * Used to detect if MP4 background is shorter than the music and apply loop fade transitions.
+   */
+  public setAudioDuration(duration: number) {
+    if (Number.isFinite(duration) && duration > 0) {
+      this.audioDuration = duration;
     }
   }
 
@@ -987,8 +998,10 @@ export class VisualizerRenderer {
       this.applyColorGrading(ctx, width, height, colorGrading);
     }
 
-    // 7. Permanent Copyright Watermark: 🔥 Visualizer by HAY Studio73 (Rendered directly on top)
-    this.renderCopyrightWatermark(ctx, width, height);
+    // 7. Copyright Watermark: 🔥 Visualizer by HAY Studio73 (Rendered directly on top, toggleable via settings)
+    if (visualizer && visualizer.showBottomCredit !== false) {
+      this.renderCopyrightWatermark(ctx, width, height, visualizer.bottomCreditText);
+    }
 
     ctx.restore();
   }
@@ -1219,11 +1232,16 @@ export class VisualizerRenderer {
   }
 
   /**
-   * Permanent Copyright Watermark (Non-removable bottom branding)
+   * Copyright Watermark (Bottom branding badge)
    */
-  private renderCopyrightWatermark(ctx: CanvasContext2D, width: number, height: number) {
+  private renderCopyrightWatermark(
+    ctx: CanvasContext2D,
+    width: number,
+    height: number,
+    customText?: string
+  ) {
     ctx.save();
-    const text = '🔥 Visualizer by HAY Studio73 ';
+    const text = (customText && customText.trim().length > 0) ? customText.trim() : '🔥 Visualizer by HAY Studio73';
     const fontSize = Math.max(12, Math.min(18, Math.round(width * 0.016)));
     const posY = height - Math.max(22, Math.round(height * 0.024));
     const centerX = width / 2;
@@ -1370,8 +1388,53 @@ export class VisualizerRenderer {
           vid.play().catch(() => {});
         }
 
+        // Check if MP4 video length is shorter than the music track
+        const vidDuration = vid.duration;
+        const hasValidDuration = Number.isFinite(vidDuration) && vidDuration > 0;
+        const musicDuration = this.audioDuration > 0 ? this.audioDuration : 0;
+        const isShorterThanMusic = hasValidDuration && (
+          (musicDuration > 0 && vidDuration < musicDuration) ||
+          (currentTime > vidDuration) ||
+          (musicDuration === 0 && bg.videoLoopFade !== false)
+        );
+        const shouldFadeLoop = bg.videoLoopFade !== false && isShorterThanMusic && vidDuration >= 1.0;
+
+        let fadeAlpha = 1.0;
+        const fadeColor = bg.videoFadeColor || '#000000';
+
+        if (shouldFadeLoop) {
+          const userFadeDur = bg.videoFadeDuration !== undefined ? bg.videoFadeDuration : 1.0;
+          const fadeDur = Math.max(0.2, Math.min(vidDuration * 0.45, userFadeDur));
+
+          // Calculate current position within the video loop cycle
+          const cyclePos = (vid.currentTime !== undefined && Number.isFinite(vid.currentTime) && vid.currentTime >= 0)
+            ? (vid.currentTime % vidDuration)
+            : (currentTime % vidDuration);
+
+          if (cyclePos < fadeDur) {
+            // Smooth Fade In at start of each loop
+            const p = Math.max(0, Math.min(1, cyclePos / fadeDur));
+            fadeAlpha = p * p * (3 - 2 * p); // smoothstep
+          } else if (cyclePos > vidDuration - fadeDur) {
+            // Smooth Fade Out towards the end of each loop
+            const p = Math.max(0, Math.min(1, (vidDuration - cyclePos) / fadeDur));
+            fadeAlpha = p * p * (3 - 2 * p); // smoothstep
+          }
+          fadeAlpha = Math.max(0, Math.min(1, fadeAlpha));
+        }
+
         // Only compute & apply ctx.filter if values differ from defaults (massive performance optimization)
         const needBlur = bg.blur > 0;
+        const bleed = needBlur ? bg.blur * 2 : 0;
+
+        // Draw solid dark base under video so it dissolves cleanly into fadeColor
+        if (shouldFadeLoop) {
+          ctx.save();
+          ctx.fillStyle = fadeColor;
+          ctx.fillRect(-bleed, -bleed, width + bleed * 2, height + bleed * 2);
+          ctx.restore();
+        }
+
         const needBrightness = bg.brightness !== undefined && bg.brightness !== 100;
         const needContrast = bg.contrast !== undefined && bg.contrast !== 100;
         const hasFilter = needBlur || needBrightness || needContrast;
@@ -1402,8 +1465,16 @@ export class VisualizerRenderer {
           sy = (vidH - sh) / 2;
         }
 
-        const bleed = needBlur ? bg.blur * 2 : 0;
+        const prevAlpha = ctx.globalAlpha;
+        if (shouldFadeLoop && fadeAlpha < 1.0) {
+          ctx.globalAlpha = prevAlpha * fadeAlpha;
+        }
+
         ctx.drawImage(vid, sx, sy, sw, sh, -bleed, -bleed, width + bleed * 2, height + bleed * 2);
+
+        if (shouldFadeLoop && fadeAlpha < 1.0) {
+          ctx.globalAlpha = prevAlpha;
+        }
 
         if (hasFilter) {
           ctx.filter = 'none';
@@ -1839,7 +1910,13 @@ export class VisualizerRenderer {
     }
 
     // Precalculated wind angles for Rain & Snow to avoid repetitive trigonometric calls inside the loop
-    const rainAngleDeg = config.rainWindAngle !== undefined ? config.rainWindAngle : 10;
+    let rainAngleDeg = config.rainWindAngle !== undefined ? config.rainWindAngle : 10;
+    if (config.rainRandomWind) {
+      const t = (performance.now() / 1000) * (config.rainRandomWindSpeed || 1.0);
+      // Dynamic organic wind gusts naturally shifting between left and right (-36° to +36°)
+      const dynamicGust = Math.sin(t * 0.42) * 24 + Math.cos(t * 0.88 + 1.1) * 12 + Math.sin(t * 1.95) * 5;
+      rainAngleDeg = dynamicGust;
+    }
     const rainWindRad = (rainAngleDeg * Math.PI) / 180;
     const rainWindSpeedMult = config.rainWindSpeed !== undefined ? config.rainWindSpeed : 1.2;
     const rainCos = Math.cos(rainWindRad) * rainWindSpeedMult;
@@ -2138,8 +2215,8 @@ export class VisualizerRenderer {
         // --- REALISTIC & HIGH-TECH RAINFALL SUITE ---
         const sizeScale = config.sizeScale !== undefined ? config.sizeScale : 1.0;
         const lengthScale = config.rainLengthScale !== undefined ? config.rainLengthScale : 1.2;
-        const windAngleDeg = config.rainWindAngle !== undefined ? config.rainWindAngle : 10;
-        const windRad = (windAngleDeg * Math.PI) / 180;
+        const windAngleDeg = rainAngleDeg;
+        const windRad = rainWindRad;
         const colorMode = config.colorMode || 'custom';
 
         let rainColor = config.color || '#bae6fd';
@@ -3369,27 +3446,44 @@ export class VisualizerRenderer {
       ctx.restore();
 
     } else if (track.cardStyle === 'circular-badge') {
-      const badgeR = Math.min(width, height) * 0.14 * cardScale;
+      const bScale = track.badgeScale !== undefined ? track.badgeScale : 1.0;
+      const bOpacity = track.badgeOpacity !== undefined ? track.badgeOpacity : 1.0;
+      const badgeR = Math.min(width, height) * 0.14 * cardScale * bScale;
       ctx.save();
       ctx.translate(centerX, centerY + offsetY);
       if (tiltAngle !== 0) ctx.rotate(tiltAngle);
       ctx.scale(scaleBoostX, scaleBoostY);
+      ctx.globalAlpha = bOpacity;
+
+      const borderColor = track.badgeBorderColor || track.accentColor || '#f97316';
+      const borderWidth = Math.max(2, (track.badgeBorderWidth !== undefined ? track.badgeBorderWidth : 4) * userScale);
 
       ctx.beginPath();
       ctx.arc(0, 0, badgeR, 0, Math.PI * 2);
-      ctx.shadowColor = track.accentColor;
+      ctx.shadowColor = borderColor;
       ctx.shadowBlur = track.badgeBeatGlow ? 28 + beatIntensity * 28 : 20 + beatIntensity * 15;
       ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
       ctx.fill();
 
+      // Outer rim stroke with badgeBorderColor
       ctx.beginPath();
-      ctx.arc(0, 0, badgeR - 3 * userScale, 0, Math.PI * 2);
+      ctx.arc(0, 0, badgeR, 0, Math.PI * 2);
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = borderWidth;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(4, badgeR - borderWidth / 2), 0, Math.PI * 2);
       ctx.clip();
 
-      if (this.coverImage && this.coverImage.complete) {
-        ctx.drawImage(this.coverImage, -badgeR, -badgeR, badgeR * 2, badgeR * 2);
+      const activeImg = (this.badgePngImage && this.badgePngImage.complete && this.badgePngImage.naturalWidth > 0)
+        ? this.badgePngImage
+        : (this.coverImage && this.coverImage.complete ? this.coverImage : null);
+
+      if (activeImg) {
+        ctx.drawImage(activeImg, -badgeR, -badgeR, badgeR * 2, badgeR * 2);
       } else {
-        ctx.fillStyle = track.accentColor;
+        ctx.fillStyle = borderColor;
         ctx.fillRect(-badgeR, -badgeR, badgeR * 2, badgeR * 2);
       }
 
@@ -3397,11 +3491,17 @@ export class VisualizerRenderer {
 
     } else if (track.cardStyle === 'rotating-badge') {
       // --- HUY HIỆU TRÒN XOAY 360° (Rotating Circular Vinyl Badge with Curved Title/Artist Ribbon & Center Art) ---
-      const badgeR = Math.min(width, height) * 0.16 * cardScale;
+      const bScale = track.badgeScale !== undefined ? track.badgeScale : 1.0;
+      const bOpacity = track.badgeOpacity !== undefined ? track.badgeOpacity : 1.0;
+      const badgeR = Math.min(width, height) * 0.16 * cardScale * bScale;
       ctx.save();
       ctx.translate(centerX, centerY + offsetY);
       if (tiltAngle !== 0) ctx.rotate(tiltAngle);
       ctx.scale(scaleBoostX, scaleBoostY);
+      ctx.globalAlpha = bOpacity;
+
+      const badgeBorderCol = track.badgeBorderColor || track.accentColor || '#ec4899';
+      const badgeBorderW = Math.max(2, (track.badgeBorderWidth !== undefined ? track.badgeBorderWidth : 3.5) * userScale);
 
       // Smooth continuous spin angle driven by vinyl rotation
       const spinAngle = this.vinylRotation;
@@ -3411,7 +3511,7 @@ export class VisualizerRenderer {
       ctx.beginPath();
       ctx.arc(0, 0, badgeR + 10, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-      ctx.shadowColor = track.accentColor || '#ec4899';
+      ctx.shadowColor = badgeBorderCol;
       ctx.shadowBlur = track.badgeBeatGlow ? 32 + beatIntensity * 36 : 22 + beatIntensity * 16;
       ctx.fill();
       ctx.restore();
@@ -3427,11 +3527,11 @@ export class VisualizerRenderer {
       ctx.fillStyle = outerDiscGrad;
       ctx.fill();
 
-      // 3. Outer Golden / Neon rim border
+      // 3. Outer rim border with badgeBorderColor
       ctx.beginPath();
       ctx.arc(0, 0, badgeR, 0, Math.PI * 2);
-      ctx.lineWidth = Math.max(2, 3.5 * userScale);
-      ctx.strokeStyle = track.accentColor || '#ec4899';
+      ctx.lineWidth = badgeBorderW;
+      ctx.strokeStyle = badgeBorderCol;
       ctx.stroke();
 
       // 4. Perimeter graduation tick dashes along the border
@@ -3445,7 +3545,7 @@ export class VisualizerRenderer {
         ctx.beginPath();
         ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
         ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
-        ctx.strokeStyle = t % 4 === 0 ? (track.accentColor || '#ec4899') : 'rgba(255, 255, 255, 0.22)';
+        ctx.strokeStyle = t % 4 === 0 ? badgeBorderCol : 'rgba(255, 255, 255, 0.22)';
         ctx.lineWidth = t % 4 === 0 ? 1.6 : 1;
         ctx.stroke();
       }
@@ -3503,7 +3603,7 @@ export class VisualizerRenderer {
       if (activeImg) {
         ctx.drawImage(activeImg, -centerR, -centerR, centerR * 2, centerR * 2);
       } else {
-        ctx.fillStyle = track.accentColor || '#ec4899';
+        ctx.fillStyle = badgeBorderCol;
         ctx.fillRect(-centerR, -centerR, centerR * 2, centerR * 2);
       }
 
@@ -3531,11 +3631,14 @@ export class VisualizerRenderer {
 
     } else if (track.cardStyle === 'logo-badge') {
       // --- PNG BADGE (Clean transparent rendering without any circular background disc) ---
-      const logoSize = Math.min(width, height) * 0.24 * cardScale;
+      const bScale = track.badgeScale !== undefined ? track.badgeScale : 1.0;
+      const bOpacity = track.badgeOpacity !== undefined ? track.badgeOpacity : 1.0;
+      const logoSize = Math.min(width, height) * 0.24 * cardScale * bScale;
       ctx.save();
       ctx.translate(centerX, centerY + offsetY);
       if (tiltAngle !== 0) ctx.rotate(tiltAngle);
       ctx.scale(scaleBoostX, scaleBoostY);
+      ctx.globalAlpha = bOpacity;
 
       const activeImg = (this.badgePngImage && this.badgePngImage.complete && this.badgePngImage.naturalWidth > 0)
         ? this.badgePngImage
@@ -3543,16 +3646,18 @@ export class VisualizerRenderer {
             ? this.coverImage
             : (this.logoImage && this.logoImage.complete ? this.logoImage : null));
 
+      const badgeBorderCol = track.badgeBorderColor || track.accentColor || '#f97316';
+      const badgeBorderW = track.badgeBorderWidth !== undefined ? track.badgeBorderWidth : 0;
+
       if (activeImg) {
         ctx.save();
-        ctx.globalAlpha = track.logoOpacity !== undefined ? track.logoOpacity : 1.0;
         const aspect = activeImg.naturalHeight / activeImg.naturalWidth || 1;
-        const drawW = logoSize * (track.logoScale || 1.0);
+        const drawW = logoSize;
         const drawH = drawW * aspect;
 
         // Glowing neon halo directly on transparent PNG Badge
-        if (track.logoGlow !== false || track.badgeBeatGlow) {
-          ctx.shadowColor = track.accentColor || '#ec4899';
+        if (track.badgeBeatGlow || track.logoGlow !== false) {
+          ctx.shadowColor = badgeBorderCol;
           ctx.shadowBlur = (20 + (isBeatActive ? beatIntensity * 32 : 12)) * userScale;
         }
 
@@ -3567,12 +3672,24 @@ export class VisualizerRenderer {
         }
 
         ctx.drawImage(activeImg, -drawW / 2, -drawH / 2, drawW, drawH);
+
+        // Optional custom border around PNG Badge if badgeBorderWidth > 0
+        if (badgeBorderW > 0) {
+          const pad = 6 * userScale;
+          const rad = (track.badgeBorderRadius !== undefined ? track.badgeBorderRadius : 16) * userScale;
+          ctx.beginPath();
+          ctx.roundRect(-drawW / 2 - pad, -drawH / 2 - pad, drawW + pad * 2, drawH + pad * 2, rad);
+          ctx.strokeStyle = badgeBorderCol;
+          ctx.lineWidth = badgeBorderW * userScale;
+          ctx.stroke();
+        }
+
         ctx.restore();
       } else {
         ctx.beginPath();
         ctx.roundRect(-logoSize / 2, -logoSize / 2, logoSize, logoSize, 16 * cardScale);
-        ctx.strokeStyle = track.accentColor || '#ec4899';
-        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = badgeBorderCol;
+        ctx.lineWidth = Math.max(1.8, (badgeBorderW || 2) * userScale);
         ctx.setLineDash([6, 6]);
         ctx.stroke();
         ctx.setLineDash([]);
@@ -3586,8 +3703,10 @@ export class VisualizerRenderer {
       ctx.restore();
     } else if (track.cardStyle === 'horizontal-rounded-card') {
       // --- NEW BADGE STYLE: Horizontal Card with Thick Rounded Cover Frame & 3-Tier Track Details ---
+      const bScale = track.badgeScale !== undefined ? track.badgeScale : 1.0;
+      const bOpacity = track.badgeOpacity !== undefined ? track.badgeOpacity : 1.0;
       const items = this.getTrackDetailItems(track, userScale);
-      const boxSize = Math.min(width, height) * 0.20 * cardScale;
+      const boxSize = Math.min(width, height) * 0.20 * cardScale * bScale;
       const radius = Math.min(boxSize * 0.38, (track.badgeBorderRadius !== undefined ? track.badgeBorderRadius : 26) * userScale);
       const borderW = Math.max(2, (track.badgeBorderWidth !== undefined ? track.badgeBorderWidth : 6) * userScale);
       const borderColor = track.badgeBorderColor || track.accentColor || '#f97316';
@@ -3597,6 +3716,7 @@ export class VisualizerRenderer {
       ctx.translate(centerX, centerY + offsetY);
       if (tiltAngle !== 0) ctx.rotate(tiltAngle);
       ctx.scale(scaleBoostX, scaleBoostY);
+      ctx.globalAlpha = bOpacity;
 
       // Measure max text width and calculate heights
       let maxTextW = 0;
@@ -3729,15 +3849,16 @@ export class VisualizerRenderer {
       const items = this.getTrackDetailItems(track, userScale);
 
       if (items.length > 0) {
+        const bScale = track.badgeScale !== undefined ? track.badgeScale : 1.0;
         const offsetBelow = track.cardStyle === 'minimal-tag' 
           ? 0 
           : (track.cardStyle === 'vinyl' 
               ? Math.min(width, height) * 0.18 * cardScale + 30 * userScale 
               : (track.cardStyle === 'rotating-badge'
-                  ? Math.min(width, height) * 0.16 * cardScale + 28 * userScale
+                  ? Math.min(width, height) * 0.16 * cardScale * bScale + 28 * userScale
                   : (track.cardStyle === 'logo-badge'
-                      ? Math.min(width, height) * 0.14 * cardScale + 30 * userScale
-                      : Math.min(width, height) * 0.14 * cardScale + 26 * userScale)));
+                      ? Math.min(width, height) * 0.14 * cardScale * bScale + 30 * userScale
+                      : Math.min(width, height) * 0.14 * cardScale * bScale + 26 * userScale)));
 
         const textY = centerY + offsetBelow + (jumpStyle === 'bounce-up' ? offsetY * 0.45 : 0);
         const alignment = track.alignment || 'center';
@@ -4163,9 +4284,14 @@ export class VisualizerRenderer {
       y = height * 0.28 - logoH / 2;
     }
 
+    const userScale = Math.min(width, height) / 1000;
+    const logoBorderColor = track.logoBorderColor || '#06b6d4';
+    const logoBorderW = track.logoBorderWidth !== undefined ? track.logoBorderWidth : 0;
+    const logoBorderR = track.logoBorderRadius !== undefined ? track.logoBorderRadius : 12;
+
     ctx.globalAlpha = opacity;
     if (track.logoGlow || track.badgeBeatGlow) {
-      ctx.shadowColor = track.accentColor || '#ec4899';
+      ctx.shadowColor = (logoBorderW > 0 ? logoBorderColor : null) || track.accentColor || '#ec4899';
       ctx.shadowBlur = (18 + beatIntensity * 20) * scale;
     }
 
@@ -4188,6 +4314,18 @@ export class VisualizerRenderer {
     }
 
     ctx.drawImage(this.logoImage, -logoW / 2, -logoH / 2, logoW, logoH);
+
+    // Render custom logo border if logoBorderWidth > 0
+    if (logoBorderW > 0) {
+      const pad = 6 * userScale;
+      const rad = logoBorderR * userScale;
+      ctx.beginPath();
+      ctx.roundRect(-logoW / 2 - pad, -logoH / 2 - pad, logoW + pad * 2, logoH + pad * 2, rad);
+      ctx.strokeStyle = logoBorderColor;
+      ctx.lineWidth = logoBorderW * userScale;
+      ctx.stroke();
+    }
+
     ctx.restore();
   }
 
