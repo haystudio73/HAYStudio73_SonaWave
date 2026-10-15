@@ -283,10 +283,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-neutral-200">
-                Đang kết xuất video sóng âm & đồng bộ lời bài hát...
-              </p>
-              <p className="text-xs text-neutral-400 mt-1 font-mono">
+              <div className="text-sm font-semibold text-neutral-200">
+                {exportAudioTarget === 'full-playlist' && playlist && playlist.tracks.length > 1 ? (
+                  <div className="space-y-1">
+                    <span className="text-purple-400 font-bold block">
+                      Đang kết xuất toàn bộ Playlist ({playlist.tracks.length} bài hát liên hoàn)
+                    </span>
+                    <span className="text-xs text-neutral-300 font-medium inline-block px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30">
+                      Đang ghi: <strong className="text-white">{playlist.tracks[playlist.currentIndex]?.title || 'Bài hát'}</strong> (Bài {(playlist.currentIndex ?? 0) + 1}/{playlist.tracks.length})
+                    </span>
+                  </div>
+                ) : (
+                  <span>Đang kết xuất video sóng âm & đồng bộ lời bài hát...</span>
+                )}
+              </div>
+              <p className="text-xs text-neutral-400 mt-2 font-mono">
                 {formatTime(exportCurrentSeconds)} / {formatTime(exportTotalSeconds)} ({Math.round(exportProgress)}%)
               </p>
             </div>
@@ -319,9 +330,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
 
             <div>
-              <h4 className="text-base font-bold text-white">Kết Xuất Video MP4 Hoàn Tất!</h4>
+              <h4 className="text-base font-bold text-white">
+                {exportAudioTarget === 'full-playlist' && playlist && playlist.tracks.length > 1
+                  ? `Kết Xuất Toàn Bộ Playlist (${playlist.tracks.length} Bài) Hoàn Tất!`
+                  : 'Kết Xuất Video MP4 Hoàn Tất!'}
+              </h4>
               <p className="text-xs text-neutral-400 mt-1">
-                Kích thước: {(exportedBlob.size / (1024 * 1024)).toFixed(1)} MB • Định dạng MP4 • 60 FPS • Sẵn sàng tải về hoặc đăng ngay lên TikTok / Shorts / Facebook.
+                Kích thước: {(exportedBlob.size / (1024 * 1024)).toFixed(1)} MB • Định dạng MP4 • 60 FPS • Sẵn sàng tải về hoặc đăng ngay lên TikTok / Shorts / Facebook / YouTube.
               </p>
             </div>
 

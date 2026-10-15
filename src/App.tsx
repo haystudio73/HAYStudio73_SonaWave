@@ -1499,7 +1499,7 @@ export function App() {
     return () => cancelAnimationFrame(animationId);
   }, []);
 
-  // Video Export Handler (Fixed: OffscreenCanvas rendering, zero UI thread blocking, perfect sync)
+  // Video Export Handler (Fixed: OffscreenCanvas rendering, zero UI thread blocking, perfect sync, Full Playlist export support)
   const handleStartExport = async (settings: ExportSettings) => {
     if (!canvasRef.current || !audioEngineRef.current || !exporterRef.current || !audioRef.current) {
       return;
@@ -1517,6 +1517,32 @@ export function App() {
     const originalLoopState = isLooping;
     audio.loop = false;
 
+    // Check if user requested to export full playlist
+    const isPlaylistExport = settings.exportAudioTarget === 'full-playlist' && playlistRef.current.tracks.length > 1;
+    const playlistTracks = playlistRef.current.tracks;
+
+    // If exporting full playlist, pre-generate/verify audio for all tracks so transitions are instant
+    if (isPlaylistExport) {
+      for (let i = 0; i < playlistTracks.length; i++) {
+        const t = playlistTracks[i];
+        if (!t.url && audioEngineRef.current) {
+          try {
+            const demoType = (t.id?.includes('lofi') || t.title?.toLowerCase().includes('lofi'))
+              ? 'lofi'
+              : (t.id?.includes('acoustic') || t.title?.toLowerCase().includes('acoustic'))
+              ? 'acoustic'
+              : (t.id?.includes('edm') || t.title?.toLowerCase().includes('edm'))
+              ? 'edm'
+              : 'synthwave';
+            const blob = await audioEngineRef.current.generateDemoAudio(demoType, t.duration || 30);
+            t.url = URL.createObjectURL(blob);
+          } catch (e) {
+            console.warn('Failed to pre-generate audio for playlist track:', e);
+          }
+        }
+      }
+    }
+
     // Ensure AudioContext is fully running
     await audioEngine.ensureContextRunning();
     audioEngine.attachAudioElement(audio);
@@ -1532,9 +1558,40 @@ export function App() {
     setExportProgress(0);
     setExportedBlob(null);
 
-    const startSec = settings.startTime;
-    const endSec = Math.min(settings.endTime, audio.duration || settings.endTime || 30);
-    const totalSec = Math.max(1, endSec - startSec);
+    // Calculate duration & start offset
+    const trackDurations = playlistTracks.map((t) => (t.duration && t.duration > 0 ? t.duration : 30));
+    const totalPlaylistSec = trackDurations.reduce((sum, d) => sum + d, 0);
+
+    let startSec = settings.startTime;
+    let endSec = settings.endTime;
+    let totalSec = 30;
+    let initialTrackIdx = 0;
+    let accumulatedBeforeStart = 0;
+
+    if (isPlaylistExport) {
+      if (settings.fullSong) {
+        startSec = 0;
+        endSec = totalPlaylistSec;
+        totalSec = Math.max(1, totalPlaylistSec);
+        initialTrackIdx = 0;
+        accumulatedBeforeStart = 0;
+      } else {
+        totalSec = Math.max(1, Math.min(settings.endTime, totalPlaylistSec) - startSec);
+        let curSum = 0;
+        for (let i = 0; i < trackDurations.length; i++) {
+          if (curSum + trackDurations[i] > startSec) {
+            initialTrackIdx = i;
+            break;
+          }
+          curSum += trackDurations[i];
+        }
+        accumulatedBeforeStart = curSum;
+      }
+    } else {
+      endSec = Math.min(settings.endTime, audio.duration || settings.endTime || 30);
+      totalSec = Math.max(1, endSec - startSec);
+    }
+
     setExportTotalSec(totalSec);
     setExportCurrentSec(0);
 
@@ -1560,20 +1617,25 @@ export function App() {
     exportCanvasRef.current = exportCanvas;
     exportCtxRef.current = exportCanvas.getContext('2d', { alpha: false }) || exportCanvas.getContext('2d');
 
-    // Seek to start position and ensure audio is ready
-    if (Math.abs(audio.currentTime - startSec) > 0.05) {
-      await new Promise<void>((resolve) => {
-        const onSeeked = () => {
-          audio.removeEventListener('seeked', onSeeked);
-          resolve();
-        };
-        audio.addEventListener('seeked', onSeeked);
-        audio.currentTime = startSec;
-        setTimeout(() => {
-          audio.removeEventListener('seeked', onSeeked);
-          resolve();
-        }, 400);
-      });
+    // Load initial track
+    if (isPlaylistExport) {
+      const seekOffset = Math.max(0, startSec - accumulatedBeforeStart);
+      await playTrackAtIndex(initialTrackIdx, false, seekOffset);
+    } else {
+      if (Math.abs(audio.currentTime - startSec) > 0.05) {
+        await new Promise<void>((resolve) => {
+          const onSeeked = () => {
+            audio.removeEventListener('seeked', onSeeked);
+            resolve();
+          };
+          audio.addEventListener('seeked', onSeeked);
+          audio.currentTime = startSec;
+          setTimeout(() => {
+            audio.removeEventListener('seeked', onSeeked);
+            resolve();
+          }, 400);
+        });
+      }
     }
 
     // Auto-replay Background MP4 from beginning when video render starts
@@ -1619,9 +1681,47 @@ export function App() {
       }
     };
 
+    // Track playlist export progression
+    let currentExportTrackIdx = isPlaylistExport ? initialTrackIdx : playlistRef.current.currentIndex;
+    let accumulatedPrevTracksSec = isPlaylistExport ? accumulatedBeforeStart : 0;
+    let isAdvancingTrackInExport = false;
+
+    const advanceNextPlaylistTrack = async () => {
+      if (isAdvancingTrackInExport || hasStopped) return;
+      isAdvancingTrackInExport = true;
+
+      const completedDuration = trackDurations[currentExportTrackIdx] || 30;
+      accumulatedPrevTracksSec += completedDuration;
+      currentExportTrackIdx++;
+
+      if (currentExportTrackIdx >= playlistTracks.length) {
+        // All tracks in playlist completed!
+        stopRecordingSession();
+        return;
+      }
+
+      try {
+        await playTrackAtIndex(currentExportTrackIdx, true, 0);
+      } catch (err) {
+        console.warn('Failed to switch track in playlist export:', err);
+      } finally {
+        setTimeout(() => {
+          isAdvancingTrackInExport = false;
+        }, 350);
+      }
+    };
+
     // Listen to audio ended event
     const handleAudioEnded = () => {
-      stopRecordingSession();
+      if (isPlaylistExport) {
+        if (currentExportTrackIdx < playlistTracks.length - 1) {
+          advanceNextPlaylistTrack();
+        } else {
+          stopRecordingSession();
+        }
+      } else {
+        stopRecordingSession();
+      }
     };
     audio.addEventListener('ended', handleAudioEnded);
 
@@ -1632,17 +1732,46 @@ export function App() {
         return;
       }
 
-      const elapsed = Math.max(0, audio.currentTime - startSec);
-      const wallElapsed = (Date.now() - startTimeStamp) / 1000;
-      const progress = Math.min(99.5, (Math.max(elapsed, wallElapsed) / totalSec) * 100);
+      if (isPlaylistExport) {
+        const curTrackDuration = trackDurations[currentExportTrackIdx] || 30;
+        const curTrackTime = Math.max(0, audio.currentTime);
 
-      setExportProgress(progress);
-      setExportCurrentSec(Math.min(totalSec, elapsed));
+        // Check if current track reached its end
+        if (!isAdvancingTrackInExport && (curTrackTime >= curTrackDuration - 0.08 || audio.ended)) {
+          if (currentExportTrackIdx < playlistTracks.length - 1) {
+            advanceNextPlaylistTrack();
+            return;
+          } else {
+            clearInterval(progressInterval);
+            stopRecordingSession();
+            return;
+          }
+        }
 
-      // Stop condition: reach endSec, audio ended, or wall clock exceeded
-      if (audio.currentTime >= endSec - 0.05 || audio.ended || wallElapsed >= totalSec + 0.3) {
-        clearInterval(progressInterval);
-        stopRecordingSession();
+        const totalElapsed = accumulatedPrevTracksSec + curTrackTime;
+        const wallElapsed = (Date.now() - startTimeStamp) / 1000;
+        const progress = Math.min(99.5, (Math.max(totalElapsed, wallElapsed) / totalSec) * 100);
+
+        setExportProgress(progress);
+        setExportCurrentSec(Math.min(totalSec, totalElapsed));
+
+        if (totalElapsed >= totalSec - 0.05 || wallElapsed >= totalSec + 1.2) {
+          clearInterval(progressInterval);
+          stopRecordingSession();
+        }
+      } else {
+        const elapsed = Math.max(0, audio.currentTime - startSec);
+        const wallElapsed = (Date.now() - startTimeStamp) / 1000;
+        const progress = Math.min(99.5, (Math.max(elapsed, wallElapsed) / totalSec) * 100);
+
+        setExportProgress(progress);
+        setExportCurrentSec(Math.min(totalSec, elapsed));
+
+        // Stop condition: reach endSec, audio ended, or wall clock exceeded
+        if (audio.currentTime >= endSec - 0.05 || audio.ended || wallElapsed >= totalSec + 0.3) {
+          clearInterval(progressInterval);
+          stopRecordingSession();
+        }
       }
     }, 100);
 
@@ -1692,8 +1821,13 @@ export function App() {
 
   const handleDownloadExportedVideo = () => {
     if (exportedBlob) {
-      const safeTitle = track?.title || 'Track';
-      const filename = `SonaWave_${safeTitle.replace(/\s+/g, '_')}_${aspectRatio}_${Date.now()}.mp4`;
+      let filename: string;
+      if (playlistRef.current.tracks.length > 1 && exportTotalSec > (duration || 30) * 1.2) {
+        filename = `SonaWave_Playlist_${playlistRef.current.tracks.length}Tracks_${aspectRatio}_${Date.now()}.mp4`;
+      } else {
+        const safeTitle = track?.title || 'Track';
+        filename = `SonaWave_${safeTitle.replace(/\s+/g, '_')}_${aspectRatio}_${Date.now()}.mp4`;
+      }
       const mp4Blob = exportedBlob.type === 'video/mp4' ? exportedBlob : new Blob([exportedBlob], { type: 'video/mp4' });
       VideoExporter.downloadBlob(mp4Blob, filename);
     }
@@ -1716,8 +1850,10 @@ export function App() {
             setCurrentTime(cur);
 
             // Seamless playlist continuation across timeline: auto advance when nearing end of current track
+            // (Only active when NOT exporting, to prevent duplicate advancing during export)
             const curDur = audioRef.current.duration;
             if (
+              !isExportingRef.current &&
               playlistRef.current.tracks.length > 1 &&
               playlistRef.current.repeatMode !== 'repeat-one' &&
               curDur > 0 &&
@@ -1751,7 +1887,9 @@ export function App() {
           }
         }}
         onEnded={() => {
-          handleNextTrack(true);
+          if (!isExportingRef.current) {
+            handleNextTrack(true);
+          }
         }}
       />
 
