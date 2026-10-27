@@ -646,9 +646,10 @@ For issues, questions, or feature requests:
 - **Node Version**: 18+
 - **Package Manager**: Bun or npm
 
-## Buy me a coffee
-If you like it!
+## Buy me a coffee!!
 
----
+❤️❤️❤️ Nếu bạn yêu thích mã nguồn này ❤️❤️❤️ HÃY MỜI TÔI 1 LY CAFE (Momo QR)!
 
-Made with ❤️ by HAYStudio73
+<img width="390" height="422" alt="image" src="https://github.com/user-attachments/assets/ba0993b0-264f-4c49-9f05-d8fd3050902a" />
+
+## Thanks, and good luck!
