@@ -1,4 +1,4 @@
-# 🎵 Sona Wave Pro - Trình Tạo Video Sóng Âm & Lyrics
+# 🎵 Sona Wave Pro (version 2.0) - Trình Tạo Video Sóng Âm & Lyrics
 
 A professional audio wave video generator with synchronized lyrics, diverse visualizer effects, and high-quality video export capabilities optimized for TikTok, YouTube Shorts, and Instagram Reels.
 
