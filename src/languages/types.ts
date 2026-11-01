@@ -40,6 +40,7 @@ export interface TranslationDictionary {
   tabVisualizer: string;
   tabLyrics: string;
   tabBackground: string;
+  tabBgEffects: string;
   tabTransitions: string;
   tabFilmLight: string;
   tabColorGrading: string;
@@ -407,6 +408,7 @@ export interface TranslationDictionary {
   cardStyle: string;
   vinylRotate: string;
   vinylSpeed: string;
+  rotatingBadgeSpeed: string;
   logoWatermark: string;
   uploadLogo: string;
   logoPosition: string;
@@ -452,6 +454,9 @@ export interface TranslationDictionary {
   styleHiddenDesc: string;
   styleRotatingBadge: string;
   styleRotatingBadgeDesc: string;
+  logoAnimationDirection: string;
+  logoClockwise: string;
+  logoCounterClockwise: string;
 
   // Karaoke Cursor Sweep Modes
   karaokeSweepMode: string;
@@ -525,4 +530,24 @@ export interface TranslationDictionary {
   badgeHot: string;
   badgePro: string;
   badgeRecommended: string;
+
+  // Extended Particle Settings & Color Groups
+  particleColorGroups: string;
+  fireEmbersParticle: string;
+  rainStreakLength: string;
+  rainDynamicWind: string;
+  rainLuminousGlow: string;
+  rainWaterOnGlass: string;
+  snowRandomShape: string;
+  speedLineOrientation: string;
+  ribbonWavyMotion: string;
+  dustRandomShape: string;
+  dustMinSize: string;
+  hyperspaceLength: string;
+  hyperspaceGlow: string;
+  starStaticTwinkle: string;
+  starShapeSelect: string;
+  fireEmbersSpread: string;
+  fireEmbersCooling: string;
 }
+

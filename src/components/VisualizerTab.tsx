@@ -2925,6 +2925,130 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
             </div>
           </div>
 
+          {/* Góc Xoay Visualizer 2D & Tự Động Xoay (2D Rotation & Auto-Rotate) */}
+          <div className="bg-neutral-900/60 p-3 rounded-xl border border-neutral-800/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <RotateCw className="w-4 h-4 text-rose-400" />
+                <span className="text-xs font-semibold text-neutral-200">
+                  {isVi ? 'Góc Xoay Visualizer 2D (Rotation)' : '2D Visualizer Rotation'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-rose-400 font-mono font-bold text-[11px]">
+                  {config.rotationAngle || 0}°
+                </span>
+                {(config.rotationAngle || 0) !== 0 && (
+                  <button
+                    type="button"
+                    onClick={() => update({ rotationAngle: 0 })}
+                    className="text-[9px] text-neutral-400 hover:text-rose-300 px-1 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded transition-colors"
+                  >
+                    {isVi ? 'Đặt lại' : 'Reset'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Quick angle buttons: 0°, 90°, 180°, 270° */}
+            <div className="grid grid-cols-4 gap-1.5">
+              {[0, 90, 180, 270].map((deg) => (
+                <button
+                  key={deg}
+                  type="button"
+                  onClick={() => update({ rotationAngle: deg })}
+                  className={`py-1.5 px-2 rounded-lg text-xs font-mono font-bold border transition-all cursor-pointer ${
+                    (config.rotationAngle || 0) === deg
+                      ? 'bg-rose-500/20 border-rose-500 text-rose-300'
+                      : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
+                  }`}
+                >
+                  {deg}°
+                </button>
+              ))}
+            </div>
+
+            {/* Angle Slider 0 to 360 */}
+            <div>
+              <input
+                type="range"
+                min={0}
+                max={360}
+                step={1}
+                value={config.rotationAngle || 0}
+                onChange={(e) => update({ rotationAngle: parseInt(e.target.value) })}
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+              />
+              <div className="flex justify-between text-[9px] text-neutral-500 mt-1">
+                <span>0° ({isVi ? 'Ngang chuẩn' : 'Normal'})</span>
+                <span>90° ({isVi ? 'Dọc đứng' : 'Vertical'})</span>
+                <span>180° ({isVi ? 'Lộn ngược' : 'Inverted'})</span>
+                <span>270° ({isVi ? 'Dọc ngược' : 'Vert Inv'})</span>
+                <span>360°</span>
+              </div>
+            </div>
+
+            {/* Auto Rotate Toggle & Speed */}
+            <div className="pt-2 border-t border-neutral-800/80 space-y-2">
+              <label className="flex items-center justify-between cursor-pointer">
+                <div>
+                  <span className="text-xs font-semibold text-neutral-200 block">
+                    {isVi ? 'Tự động xoay quanh tâm (Auto Rotate)' : 'Auto Rotate Around Center'}
+                  </span>
+                  <span className="text-[10px] text-neutral-400">
+                    {isVi ? 'Sóng âm liên tục xoay 360° theo thời gian phát nhạc' : 'Waveform continuously rotates 360° during music playback'}
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={config.autoRotate || false}
+                  onChange={(e) => update({ autoRotate: e.target.checked })}
+                  className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700 w-4 h-4 cursor-pointer"
+                />
+              </label>
+
+              {config.autoRotate && (
+                <div className="pt-1 space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-neutral-400">{isVi ? 'Tốc độ xoay (Auto Rotate Speed)' : 'Rotation Speed'}</span>
+                    <span className="text-rose-400 font-mono font-bold text-[11px]">
+                      {(config.autoRotateSpeed ?? 1.0).toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-3.0}
+                    max={3.0}
+                    step={0.1}
+                    value={config.autoRotateSpeed ?? 1.0}
+                    onChange={(e) => update({ autoRotateSpeed: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                  />
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-neutral-500">{isVi ? '↺ Ngược chiều (-)' : '↺ Counter-Clockwise'}</span>
+                    <div className="flex items-center gap-1">
+                      {[-1, 0.5, 1, 2].map((spd) => (
+                        <button
+                          key={spd}
+                          type="button"
+                          onClick={() => update({ autoRotateSpeed: spd })}
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-mono transition-colors ${
+                            (config.autoRotateSpeed ?? 1.0) === spd
+                              ? 'bg-rose-500 text-neutral-950 font-bold'
+                              : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          {spd > 0 ? `+${spd}x` : `${spd}x`}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-neutral-500">{isVi ? '↻ Thuận chiều (+)' : '↻ Clockwise'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Line Thickness for Waveforms (2D) */}
           <div className="bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800/80">
             <div className="flex justify-between text-xs mb-1">

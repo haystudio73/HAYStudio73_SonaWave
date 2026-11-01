@@ -21,6 +21,10 @@ Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">
 - **Professional Video Export**: High-quality MP4 output (9:16, 1:1, 16:9, 4:5) up to 60FPS optimized for TikTok, YouTube Shorts, and Instagram Reels.
 
 ### New & Enhanced Features
+- **Ken Burns Organic Motion per Slide** — Cài đặt chuyển động Pan & Zoom hữu cơ độc lập cho từng Slide (9 hướng chuyển động, Zoom Scale 1.05x–1.35x, Pan Speed 0.3x–2.5x, cosine smoothstep chống giật hở viền).
+- **2D Visualizer Rotation & Auto-Rotate** — Xoay góc tự do cho sóng âm 2D (0°, 90°, 180°, 270°, thanh trượt 0°–360°) và tính năng Tự động xoay quanh tâm (Auto-Rotate 360°) với tốc độ xoay đa chiều.
+- **2D Floating Particle Upgrades** — Bụi Lofi trôi 2D sắc nét từ 1px với bộ chọn hình dáng (Tròn, Vuông, Sao, Ngẫu Nhiên); Sao lấp lánh lóe sáng tia 4 góc (4-Corner Flare Bursts); Những hạt lửa bay nguội dần sang tàn tro (Tròn, Vuông, Thoi, Ngẫu Nhiên); Giọt nước mưa chảy trên bề mặt kính tự tan biến; Vệt tốc độ Speed Lines hỗ trợ chiều xuôi/ngược.
+- **Multi-Format Slide Studio & Video MP4** — Mỗi slide hỗ trợ đầy đủ 4 định dạng (Ảnh mẫu, Upload ảnh, Video MP4, Màu sắc/Gradient 2-3 màu/Radial); Nút điều khiển Play/Pause preview MP4 độc lập, không autoplay gây lag; Tự động cắt/loop video khớp thời lượng slide.
 - **3D WebGL Particle & Mesh Visualizers** — 8 ultra-realistic 3D soundscapes powered by Three.js with hardware-accelerated Post-Processing Bloom.
 - **Independent 2D & 3D Positioning** — 2D position controls strictly affect 2D waveforms, leaving 3D spatial camera coordinates completely clean and centered.
 - **Multi-Slide Background Transitions** — Smooth crossfade, directional slides, and zoom pushes for lyric video slideshows.
@@ -100,6 +104,10 @@ Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">
 - **Phân Tách Tuyệt Đối 2D & 3D**: Thanh trượt căn chỉnh vị trí 2D (X, Y) chỉ điều khiển sóng 2D, hoàn toàn không làm lệch tâm khung cảnh 3D.
 
 #### D. Tùy Chỉnh Chuyên Sâu Cho Sóng Âm 2D
+- **Góc Xoay Visualizer 2D & Tự Động Xoay (Rotation & Auto-Rotate)**:
+  - Phím xoay nhanh: **0°** (Ngang chuẩn), **90°** (Dọc đứng), **180°** (Lộn ngược), **270°** (Dọc ngược).
+  - Thanh trượt xoay góc thủ công tự do từ **0° đến 360°** quanh tâm sóng âm `(centerX, posY)`.
+  - Tính năng **Tự động xoay quanh tâm (Auto Rotate 360°)** liên tục theo thời gian phát nhạc với thanh trượt tốc độ đa chiều từ **-3.0x** (ngược chiều kim đồng hồ) đến **+3.0x** (thuận chiều kim đồng hồ) kèm phím chọn tốc độ nhanh.
 - **Chế độ màu**: Màu đơn (Solid), Gradient 2 màu, Gradient 3 màu, Cầu vồng (Rainbow), Neon Glow.
 - **Hào quang đa tầng (Bloom & Glow)**: Công nghệ Multi-pass Neon Bloom làm rực sáng viền sóng âm.
 - **Tách sắc sai RGB Glitch (Chromatic Aberration)**: Tách kênh màu quang học phản hồi trực tiếp theo biên độ âm thanh.
@@ -136,19 +144,19 @@ Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">
 - Tùy chỉnh màu sắc viền sóng, độ mờ (Opacity), số lượng vòng (1 - 8 vòng), tốc độ lan tỏa, độ dày nét viền, hào quang Neon và chọn tâm phát sóng (Chính giữa, Cạnh đáy, hoặc Trọng tâm thẻ bài hát).
 
 #### E. Hệ Thống Hạt Rơi Tương Tác Âm Nhạc (Audio-Reactive Particle System)
-- **10 Dạng hạt độc đáo**:
-  1. **Mưa Rơi Tự Nhiên (`rain`)**: Mô phỏng vật lý mưa rơi chân thực với 5 kiểu hạt (Hỗn hợp, Vệt dài Cinematic, Mưa phùn li ti, Mưa rào xối xả, Mưa phát sáng Neon), góc nghiêng gió, độ chao đảo và hiệu ứng giọt nước bắn tung tóe (Splash) khi chạm đáy.
-  2. **Tuyết Rơi Mùa Đông (`snow`)**: 4 kiểu bông tuyết (Hỗn hợp tự nhiên, Tinh thể lục giác 6 cánh, Đốm mờ Bokeh lãng mạn, Kim cương băng lấp lánh) kèm tùy chỉnh hướng gió và tốc độ gió.
-  3. **Đoạn Thẳng Rơi & Xoay 360° (`spinning-dashes`)**: Hot trend lofi chill bắt mắt.
-  4. **Mưa Spaghetti Rơi (`spaghetti`)**: Sợi mì neon vàng óng rơi mềm mại độc lạ.
-  5. **Tia Lửa Bốc Cháy (`sound-sparks`)**: Bốc cháy rực rỡ và nảy sáng theo nhịp beat.
-  6. **Bong Bóng Cầu Vồng (`rainbow-bubbles`)**: Bong bóng ngũ sắc phản chiếu ánh sáng lấp lánh.
-  7. **Tăng Tốc Hyperspace 3D (`hyperspace`)**: Hiệu ứng phi thuyền lao qua không gian với vận tốc ánh sáng.
-  8. **Bụi Lofi Trôi (`dust`)**: Hạt bụi lơ lửng êm đềm phong cách vintage.
-  9. **Sao Lấp Lánh (`stars`)**: Bầu trời ngàn sao lung linh.
-  10. **Bong Bóng Nổi (`bubbles`)**: Bong bóng khí nổi bồng bềnh từ dưới lên.
-- **Hình dạng hạt**: Hình tròn, Khối vuông, Ngôi sao, Trái tim, Kim cương, Vòng tròn khuyên.
-- **Chế độ màu hạt**: Tùy chỉnh, Cầu vồng Gradient, Lửa rực Fire Glow, Neon Cyber, Phản hồi theo tần số âm thanh (Audio-Reactive).
+- **Hệ thống hạt vẽ 2D Canvas sắc nét, tối ưu hiệu năng cao**:
+  1. **Mưa Rơi Tự Nhiên (`rain`)**: Mô phỏng vật lý mưa rơi chân thực với 5 kiểu hạt (Hỗn hợp, Vệt dài Cinematic, Mưa phùn li ti, Mưa rào xối xả, Mưa phát sáng Neon), góc nghiêng gió, độ chao đảo, hướng gió biến thiên tự nhiên (`rainRandomWind`) và **Hạt nước chảy trên bề mặt kính (`waterOnGlass`)** tự động trôi nhẹ và bốc hơi / tan biến sau thời gian ngẫu nhiên (1.2s – 4.5s).
+  2. **Tuyết Rơi Mùa Đông (`snow`)**: Bông tuyết tinh khiết với bộ chọn hình dạng (Lục giác 6 cánh, Kim cương băng, Ngôi sao, Chấm tròn, Flurry hoặc Ngẫu nhiên), tùy chỉnh góc gió và tốc độ gió.
+  3. **Đường Vạch Tốc Độ Anime (`speed-lines`)**: Vệt tốc độ không gian với tùy chọn **Chiều xuôi / Chiều ngược (Reverse direction)**, đa dạng góc xoay (ngang, dọc, chéo 45°, chéo 135°, đồng quy tâm hoặc nửa trên/dưới), độ dài ngẫu nhiên và độ nhòe Motion Blur.
+  4. **Mưa Băng Lụa Ruy Băng (`silk-ribbon` / `spaghetti`)**: Dải lụa mềm mại uốn lượn sóng 3D rực rỡ dạ quang khi rơi.
+  5. **Bụi Lofi Trôi 2D (`dust`)**: Hạt bụi lơ lửng êm đềm phong cách vintage, vẽ 2D sắc nét tinh khiết (loại bỏ viền mờ), kích thước hạt siêu mịn từ **1px**, tích hợp bộ chọn hình dáng hạt bụi: **⚪ Tròn (Mặc định)**, **⬛ Vuông**, **⭐ Ngôi Sao**, và **🎲 Ngẫu Nhiên các loại**.
+  6. **Sao Lấp Lánh (`stars`)**: Bầu trời ngàn sao lung linh cố định, tích hợp tính năng **Ngẫu nhiên lóe sáng tia 4 góc (4-Corner Flare Bursts)** tự động phóng ra các tia hào quang chữ thập và lõi tia lấp lánh khi đạt đỉnh nhấp nháy, kèm thanh trượt điều chỉnh cường độ tia lóe sáng (0.2x – 2.5x) và chọn shape sao (Sao 4 tia, Sao 5 cánh, Chấm tròn sáng, Ngẫu nhiên).
+  7. **Những Hạt Lửa & Tàn Tro Bay (`fire-embers`)**: Hiệu ứng các pixel lửa rực cháy bay từ đáy màn hình lên trên, tỏa ra nhiều hướng ngẫu nhiên rồi nguội dần theo chuỗi màu quang phổ (Trắng/Vàng → Cam lửa → Đỏ thẫm → Tro xám → Đen tàn) trước khi tan biến; tích hợp bộ chọn hình dáng hạt lửa: **⚪ Tròn**, **⬛ Vuông**, **🔷 Hình Thoi**, hoặc **🎲 Ngẫu Nhiên**.
+  8. **Tăng Tốc Hyperspace 3D (`hyperspace`)**: Hiệu ứng phi thuyền warp-speed lao qua không gian với vận tốc ánh sáng và hào quang lóa sáng.
+  9. **Đoạn Thẳng Rơi & Xoay 360° (`spinning-dashes`)**: Các đoạn thẳng ngắn vừa rơi vừa xoay 360° nảy theo nhịp Bass.
+  10. **Bong Bóng Cầu Vồng (`rainbow-bubbles`)**: Bong bóng ngũ sắc phản chiếu ánh sáng lấp lánh.
+- **Tùy chỉnh thông số**: Kích thước hạt theo đơn vị pixel (từ 1px đến 30px), Kích thước ngẫu nhiên (Random Size), Độ trong suốt (Opacity 10%–100%), Tốc độ bay (Speed 0.01x–3.0x), Số lượng hạt (10–250 hạt).
+- **Chế độ màu hạt**: Tùy chỉnh (Custom Color), Cầu vồng Gradient, Lửa rực Fire Glow, Neon Cyber, Phản hồi theo tần số âm thanh (Audio-Reactive).
 - **Phản ứng Bass Flash Boost**: Hạt tự động bùng sáng rực rỡ và phóng to kích thước mỗi khi có tiếng trống trầm hoặc bass drop.
 
 ---
@@ -306,15 +314,46 @@ Hỗ trợ tạo video âm nhạc với nhiều hình ảnh và phân cảnh bi�
 
 #### A. Chế Độ Trình Chiếu Ảnh Nhiều Slide (Slide Presentation Mode)
 - **Tự động chuyển đổi hình nền**: Luân phiên hiển thị danh sách nhiều ảnh nền theo chu kỳ giây hoặc tự động chia đều theo tổng thời lượng bài hát.
-- **6 Hiệu ứng chuyển cảnh mượt mà**:
+- **Tùy chỉnh riêng cho Ken Burns Organic Motion trong từng Slide**:
+  - Bật/tắt hiệu ứng Ken Burns độc lập cho từng slide card.
+  - **9 Hướng chuyển động (Motion Direction)**:
+    1. Tự động ngẫu nhiên (`auto`)
+    2. Thu phóng vào giữa (`zoom-in`)
+    3. Thu phóng ra xa (`zoom-out`)
+    4. Lướt sang trái (`pan-left`)
+    5. Lướt sang phải (`pan-right`)
+    6. Lướt lên trên (`pan-up`)
+    7. Lướt xuống dưới (`pan-down`)
+    8. Chéo: Trái Trên → Phải Dưới (`diagonal-tl-br`)
+    9. Chéo: Phải Trên → Trái Dưới (`diagonal-tr-bl`)
+  - **Tỷ lệ Zoom (Zoom Scale)**: Thanh trượt từ **1.05x đến 1.35x**.
+  - **Tốc độ lướt (Pan Speed)**: Thanh trượt từ **0.3x đến 2.5x**.
+  - **Chuyển động mượt mà (Smoothing)**: Thuật toán Cosine Smoothstep kết hợp overscale bleed chống giật cục và chống hở viền đen, chỉ kích hoạt chuyển động sau khi quá trình transition hoàn tất.
+- **Hỗ trợ đầy đủ 4 định dạng nguồn trong mỗi Slide**:
+  1. **Ảnh Mẫu (Curated Presets)**: Chọn ảnh độ phân giải cao từ thư viện tuyển chọn sẵn có.
+  2. **Tải Ảnh (Upload Image)**: Tải ảnh cá nhân (JPG, PNG, WebP) từ máy tính.
+  3. **Video MP4 / WebM (Slide Video)**:
+     - Nút Play/Pause preview nhỏ gọn độc lập ngay trên thumbnail từng Slide MP4 để nghe/xem thử.
+     - **Không autoplay MP4 khi upload** trong slide, ngăn ngừa tình trạng quá tải và giật lag app.
+     - **Khung Preview chính chỉ bắt đầu phát video nền khi nhấn Play nhạc**, dừng lại khi tạm dừng.
+     - Tự động phát lặp loop mượt mà nếu thời lượng video MP4 ngắn hơn thời lượng Slide, tự động cắt video nếu thời lượng video dài hơn Slide.
+  4. **Studio Màu Sắc (Solid & Gradients)**:
+     - Màu Đơn (Solid): Chọn mã màu tùy ý.
+     - Linear Gradient: Dải màu chuyển tiếp 2 hoặc 3 màu tùy biến góc xoay (0°–360°).
+     - Radial Gradient: Dải màu tỏa tròn với tâm tỏa linh hoạt (Chính giữa, Đỉnh, Đáy, Trái, Phải).
+- **Tính toán thời lượng thông minh (Auto-Sync Duration)**:
+  - Tự động nhận diện và hiển thị thời lượng của file MP4 tải lên.
+  - Nút bấm 1 chạm tự động tính toán và điền thời lượng cho Slide cuối cùng khớp 100% với bài MP3 đang phát hoặc tổng thời lượng toàn bộ Playlist.
+- **Các hiệu ứng chuyển cảnh mượt mà**:
   1. **Mờ dần chồng ảnh (Crossfade)**: Hòa quyện êm ái giữa 2 bức ảnh không bị giật.
-  2. **Trượt sang trái (Slide Left)**: Ảnh mới lướt từ phải sang trái.
-  3. **Trượt sang phải (Slide Right)**: Ảnh mới lướt từ trái sang phải.
-  4. **Trượt lên trên (Slide Up)**: Ảnh mới đẩy từ dưới lên trên.
-  5. **Trượt xuống dưới (Slide Down)**: Ảnh mới đẩy từ trên xuống dưới.
-  6. **Đẩy thu phóng (Zoom In Push)**: Hiệu ứng phóng to đẩy ảnh trước ra sau điện ảnh.
-- **Tùy chỉnh thời gian chuyển tiếp (Transition Duration)**: Tinh chỉnh tốc độ hòa trộn từ 0.2 giây đến 2.5 giây.
-- **Kho ảnh slide mẫu sẵn có**: Tích hợp các bộ sưu tập ảnh độ phân giải cao theo chủ đề (Cyberpunk Neon, Galaxy Vũ trụ, Hoàng hôn Sunset, Anime Lofi, Thiên nhiên hùng vĩ) hoặc tự do tải lên ảnh từ máy tính.
+  2. **Mờ qua nền tối (Fade In / Out)**: Chuyển êm ái qua sắc đen điện ảnh.
+  3. **Trượt sang trái (Slide Left)**: Ảnh mới lướt từ phải sang trái.
+  4. **Trượt sang phải (Slide Right)**: Ảnh mới lướt từ trái sang phải.
+  5. **Trượt lên trên (Slide Up)**: Ảnh mới đẩy từ dưới lên trên.
+  6. **Trượt xuống dưới (Slide Down)**: Ảnh mới đẩy từ trên xuống dưới.
+  7. **Thu phóng vào trong (Zoom In)**: Đẩy thu phóng ảnh mới ra trước.
+  8. **Thu nhỏ ra ngoài (Zoom Out)**: Thu nhỏ ảnh cũ để lộ ảnh mới.
+- **Tùy chỉnh thời gian chuyển tiếp (Transition Duration)**: Tinh chỉnh tốc độ hòa trộn từ 0.2 giây đến 3.0 giây.
 
 #### B. Chế Độ Dòng Thời Gian Phân Cảnh (Timeline Scenes Mode)
 - Đặt các mốc thời gian cụ thể (theo giây) để tự động thay đổi:

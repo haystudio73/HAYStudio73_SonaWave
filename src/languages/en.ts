@@ -24,6 +24,7 @@ export const en: TranslationDictionary = {
   tabVisualizer: 'Visualizer',
   tabLyrics: 'Lyrics',
   tabBackground: 'Background',
+  tabBgEffects: 'Effects FX',
   tabTransitions: 'Transitions',
   tabFilmLight: 'Film Light',
   tabColorGrading: 'Color Grading',
@@ -390,7 +391,8 @@ export const en: TranslationDictionary = {
   uploadCover: 'Upload Cover Image',
   cardStyle: 'Artwork Display Style',
   vinylRotate: 'Rotate 360° Vinyl Record',
-  vinylSpeed: 'Rotation Speed',
+  vinylSpeed: 'Vinyl Rotation Speed',
+  rotatingBadgeSpeed: 'Badge Rotation Speed',
   logoWatermark: 'Logo & Brand Watermark',
   uploadLogo: 'Upload PNG Logo',
   logoPosition: 'Logo Position',
@@ -436,6 +438,9 @@ export const en: TranslationDictionary = {
   styleHiddenDesc: 'Hide track card info from the video render',
   styleRotatingBadge: 'Rotating Vinyl Badge 360°',
   styleRotatingBadgeDesc: 'Rotating circular badge with continuous circular curved text ribbon and center album artwork',
+  logoAnimationDirection: 'Logo Rotation Direction',
+  logoClockwise: 'Clockwise Rotation',
+  logoCounterClockwise: 'Counter-Clockwise Rotation',
 
   // Karaoke Cursor Sweep Modes
   karaokeSweepMode: 'Karaoke Cursor Mode',
@@ -509,4 +514,24 @@ export const en: TranslationDictionary = {
   badgeHot: 'Hot',
   badgePro: 'Pro',
   badgeRecommended: 'Recommended',
+
+  // Extended Particle Settings & Color Groups
+  particleColorGroups: 'Primary Particle Color Groups',
+  fireEmbersParticle: 'Fire Embers & Sparks',
+  rainStreakLength: 'Raindrop Streak Length',
+  rainDynamicWind: 'Dynamic Shifting Wind Direction',
+  rainLuminousGlow: 'Luminous Rain Streaks',
+  rainWaterOnGlass: 'Water Droplets on Surface',
+  snowRandomShape: 'Randomize Snowflake Shapes',
+  speedLineOrientation: 'Speed Line Orientation & Origin',
+  ribbonWavyMotion: 'Undulating Wavy Silk Ribbon Motion',
+  dustRandomShape: 'Randomize Dust Shapes',
+  dustMinSize: 'Minimum Micro Size (From 1px)',
+  hyperspaceLength: 'Hyperspace Warp Trail Length',
+  hyperspaceGlow: 'Hyperspace Luminous Glow',
+  starStaticTwinkle: 'Static Position (Random Twinkle Only)',
+  starShapeSelect: 'Star Shape (4-Point, 5-Point, Glowing Dot)',
+  fireEmbersSpread: 'Horizontal Scatter Spread',
+  fireEmbersCooling: 'Ash Cooling Rate (To Gray & Black)',
 };
+

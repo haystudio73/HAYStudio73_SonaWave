@@ -65,7 +65,7 @@ import { CanvasStage } from './components/CanvasStage';
 import { VisualizerTab } from './components/VisualizerTab';
 import { LyricsTab } from './components/LyricsTab';
 import { BackgroundTab } from './components/BackgroundTab';
-import { SceneTransitionsTab } from './components/SceneTransitionsTab';
+import { BackgroundEffectsTab } from './components/BackgroundEffectsTab';
 import { FilmLightTab } from './components/FilmLightTab';
 import { ColorGradingTab } from './components/ColorGradingTab';
 import { TrackTab } from './components/TrackTab';
@@ -183,7 +183,7 @@ export function App() {
 
   // 3. UI Navigation & Modals
   const [activeTab, setActiveTab] = useState<
-    'visualizer' | 'lyrics' | 'background' | 'transitions' | 'filmlight' | 'colorgrading' | 'track' | 'textboxes' | 'playlist' | 'lottie'
+    'visualizer' | 'lyrics' | 'background' | 'bgeffects' | 'filmlight' | 'colorgrading' | 'track' | 'textboxes' | 'playlist' | 'lottie'
   >('visualizer');
 
   // Desktop Horizontal Tab Scrolling State & Navigation
@@ -2111,19 +2111,19 @@ export function App() {
                 <span className="inline">{TRANSLATIONS[language].tabBackground}</span>
               </button>
 
-              {/* 8. Scene Transitions - Hiệu Ứng Chuyển Cảnh */}
+              {/* 8. Background Effects - Hiệu Ứng Nền (Bộ Lọc, Zoom, Glitch, Ripple, Hạt) */}
               <button
-                data-tab="transitions"
-                onClick={() => setActiveTab('transitions')}
-                title={TRANSLATIONS[language].tabTransitions}
+                data-tab="bgeffects"
+                onClick={() => setActiveTab('bgeffects')}
+                title={TRANSLATIONS[language].tabBgEffects}
                 className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeTab === 'transitions'
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  activeTab === 'bgeffects'
+                    ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md shadow-cyan-600/20'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
                 }`}
               >
-                <Layers className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                <span className="inline">{TRANSLATIONS[language].tabTransitions}</span>
+                <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-cyan-300" />
+                <span className="inline">{TRANSLATIONS[language].tabBgEffects}</span>
               </button>
 
               {/* 9. Film Light - Ánh Sáng Phim & Bụi Điện Ảnh */}
@@ -2271,27 +2271,26 @@ export function App() {
                   setBackground(newBg);
                   setDefaultBackground(newBg);
                 }}
-                particles={particles}
-                onParticlesChange={setParticles}
                 language={language}
                 playlist={playlist}
                 defaultBackground={defaultBackground}
                 onUpdateTrackBackground={handleUpdateTrackBackground}
                 onApplyBackgroundToAllTracks={handleApplyBackgroundToAllTracks}
                 onSelectTrackForPlayback={(idx) => playTrackAtIndex(idx, false)}
+                currentDuration={duration}
               />
             )}
 
-            {/* 8. Scene Transitions Content */}
-            {activeTab === 'transitions' && (
-              <SceneTransitionsTab
-                transitions={sceneTransitions}
-                onTransitionsChange={setSceneTransitions}
-                currentTime={currentTime}
-                duration={duration}
-                onSeek={handleSeek}
-                currentVisualizer={visualizer}
-                currentBackground={background}
+            {/* 8. Background Effects Content */}
+            {activeTab === 'bgeffects' && (
+              <BackgroundEffectsTab
+                background={background}
+                onBackgroundChange={(newBg) => {
+                  setBackground(newBg);
+                  setDefaultBackground(newBg);
+                }}
+                particles={particles}
+                onParticlesChange={setParticles}
                 language={language}
               />
             )}

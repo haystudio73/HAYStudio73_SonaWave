@@ -206,6 +206,10 @@ export interface VisualizerConfig {
   minimalPulseStems?: boolean;       // Hiển thị tia nối từ đường kẻ đến chấm (mặc định true)
   minimalPulseBaseline?: boolean;    // Hiển thị đường kẻ ngang nền audiophile (mặc định true)
   minimalPulsePeakDots?: boolean;    // Hiển thị chấm đỉnh rơi chậm theo trọng lực (mặc định true)
+  // Visualizer 2D Rotation & Auto-Rotate (Góc Xoay Visualizer 2D)
+  rotationAngle?: number;            // Góc xoay thủ công (0 đến 360 độ, 90, 180, 270...)
+  autoRotate?: boolean;              // Tự động xoay quanh tâm (Auto Rotate)
+  autoRotateSpeed?: number;          // Tốc độ xoay (-5.0x đến +5.0x, mặc định 1.0)
   // 3D.js Visualizer Custom Settings
   threeDSettings?: ThreeDVisualizerSettings;
 }
@@ -279,7 +283,57 @@ export type BackgroundZoomStyle = 'pulse' | 'smooth' | 'shake' | 'breathe';
 export type BackgroundGlitchTrigger = 'beat' | 'bass' | 'continuous' | 'random';
 export type BackgroundGlitchStyle = 'rgb-shift' | 'slice-displacement' | 'vhs-tape' | 'cyber-digital';
 
+export type BackgroundMode = 'single' | 'slides';
+
+export type SlideTransitionType = 
+  | 'crossfade'
+  | 'fade'
+  | 'slide-up'
+  | 'slide-down'
+  | 'slide-left'
+  | 'slide-right'
+  | 'zoom-in'
+  | 'zoom-out'
+  | 'fade-in-out';
+
+export type KenBurnsDirection = 
+  | 'auto' 
+  | 'zoom-in' 
+  | 'zoom-out' 
+  | 'pan-left' 
+  | 'pan-right' 
+  | 'pan-up' 
+  | 'pan-down' 
+  | 'diagonal-tl-br' 
+  | 'diagonal-tr-bl';
+
+export interface BackgroundSlideItem {
+  id: string;
+  name?: string;
+  type: BackgroundType; // 'preset' | 'upload' | 'video' | 'gradient' | 'solid'
+  url: string;
+  isVideo?: boolean;
+  videoUrl?: string;
+  videoDuration?: number; // Duration of uploaded MP4 video in seconds
+  color1?: string;
+  color2?: string;
+  color3?: string;
+  gradientAngle?: number;
+  gradientType?: 'linear' | 'radial';
+  radialOrigin?: 'center' | 'top' | 'bottom' | 'left' | 'right';
+  useThreeColors?: boolean;
+  duration: number; // Slide Interval / Duration in seconds
+  transitionType: SlideTransitionType;
+  transitionDuration: number; // Transition time in/out in seconds
+  kenBurns: boolean; // Ken Burns Pan / Zoom with canvas overscale bleed
+  kenBurnsDirection?: KenBurnsDirection; // Chiều chuyển động Ken Burns
+  kenBurnsScale?: number;                // Hệ số Zoom phóng to (1.05 đến 1.35, mặc định 1.18)
+  kenBurnsSpeed?: number;                // Tốc độ lướt Pan/Zoom (0.3x đến 2.5x, mặc định 1.0)
+}
+
 export interface BackgroundConfig {
+  mode?: BackgroundMode; // 'single' (Hình nền đơn) | 'slides' (Nhiều ảnh Slideshow)
+  slides?: BackgroundSlideItem[]; // Danh sách các slide trong chế độ Nhiều Ảnh
   type: BackgroundType;
   url: string;
   isVideo?: boolean;
@@ -288,7 +342,7 @@ export interface BackgroundConfig {
   color2: string;
   gradientAngle: number;
   gradientType?: 'linear' | 'radial';
-  radialOrigin?: 'center' | 'top' | 'bottom';
+  radialOrigin?: 'center' | 'top' | 'bottom' | 'left' | 'right';
   color3?: string;
   useThreeColors?: boolean;
   blur: number;         // px 0 to 30
@@ -327,17 +381,16 @@ export interface BackgroundConfig {
 export type ParticleType = 
   | 'none' 
   | 'rain'             // Mưa Rơi Tự Nhiên
-  | 'snow'             // Mưa tuyết rơi mùa đông (Snowfall with Wind Direction)
-  | 'speed-lines'      // Đường vạch tốc độ (Speed Lines) lặp lại: song song ngang hoặc hướng tâm
-  | 'spaghetti'        // Mưa mảnh ruy băng lụa mềm mại (Silk Ribbon Rain - formerly Spaghetti)
+  | 'snow'             // Tuyết Rơi Mùa Đông
+  | 'speed-lines'      // Đường vạch tốc độ (Speed Lines)
+  | 'spaghetti'        // Mưa mảnh ruy băng lụa mềm mại (Silk Ribbon Rain)
   | 'silk-ribbon'      // Alias for Mưa mảnh ruy băng lụa
   | 'spinning-dashes'  // Đoạn thẳng ngắn vừa rơi vừa xoay 360° theo nhịp Bass
-  | 'rainbow-bubbles'  // Bong bóng xà phòng cầu vồng ngũ sắc lấp lánh
+  | 'rainbow-bubbles'  // Bong bóng cầu vồng ngũ sắc lấp lánh
   | 'hyperspace'       // Tăng tốc vũ trụ Hyperspace warp-speed
-  | 'dust' 
-  | 'stars' 
-  | 'bubbles' 
-  | 'audio-rings';
+  | 'dust'             // Bụi Lofi trôi
+  | 'stars'            // Sao lấp lánh
+  | 'fire-embers';     // Những hạt lửa bay (Fire Embers & Sparks)
 
 export type ParticleShape = 'circle' | 'square' | 'star' | 'heart' | 'diamond' | 'ring' | 'silk-fluff';
 export type ParticleColorMode = 'custom' | 'rainbow' | 'fire' | 'neon-pulse' | 'audio-reactive';
@@ -355,70 +408,98 @@ export interface ParticleConfig {
   shape?: ParticleShape;
   colorMode?: ParticleColorMode;
   glowIntensity?: number; // 0 to 50
-  sizeScale?: number;     // 0.5 to 3.0
+  sizeScale?: number;     // Legacy multiplier 0.5 to 3.0
+  sizePx?: number;        // Kích thước hạt tính bằng pixel (từ 1px đến 36px)
+  randomSize?: boolean;   // Kích thước hạt ngẫu nhiên: từ 1px đến kích thước hạt hiện hành
+  opacity?: number;       // Độ mờ / trong suốt của hạt particles (0.1 đến 1.0, mặc định 0.85)
   reactiveToBeat: boolean;
   bassReactiveColor?: boolean; // Dynamically link particle color to bass intensity & flash brighter on beat drops
   bassFlashBoost?: number;    // 0.5 to 2.5 multiplier
 
-  // 1. Speed Lines Dynamics (Đường vạch tốc độ lặp lại)
-  speedLineMode?: 'horizontal' | 'converge-center'; // 1. Chạy song song chiều ngang ảnh, 2. Theo chiều đứng về tâm (như ảnh vẽ tay)
+  // Specific Settings:
+  // 1. Mưa (Rain)
+  rainGlow?: boolean;            // Vệt sáng lấp lánh cho giọt mưa
+  rainWindAngle?: number;        // -60 to +60 degrees
+  rainWindSpeed?: number;        // 0.2 to 3.0 wind speed multiplier
+  rainTurbulence?: number;       // 0 to 100% wind turbulence / sway
+  rainDropType?: RainDropType;    // 'mixed' | 'streaks' | 'drizzle' | 'heavy' | 'neon-glow'
+  rainLengthScale?: number;      // 0.5 to 4.0 length multiplier of raindrops
+  rainSplash?: boolean;          // Hiệu ứng giọt nước bắn tung tóe khi chạm đáy
+  rainRandomWind?: boolean;      // Bật chế độ hướng gió ngẫu nhiên & biến thiên tự nhiên
+  rainRandomWindSpeed?: number;  // Tốc độ biến thiên hướng gió (0.2 to 3.0, default 1.0)
+  waterOnGlass?: boolean;        // Hạt nước chảy trên bề mặt kính (on/off)
+
+  // 2. Tuyết (Snow)
+  snowShape?: 'snowflake' | 'circle' | 'crystal' | 'star' | 'flurry';
+  snowRandomShape?: boolean;     // Hình shape ngẫu nhiên giữa các bông tuyết
+  snowWindAngle?: number;        // -60 to +60 degrees
+  snowWindSpeed?: number;        // 0.2 to 3.0 wind speed multiplier
+  snowTurbulence?: number;       // 0 to 100% wind turbulence / sway
+  snowFlakeType?: SnowFlakeType;
+
+  // 3. Vệt Tốc Độ (Speed Lines)
+  speedLineOrientation?: 'horizontal' | 'vertical' | 'diagonal-45' | 'diagonal-135' | 'radial-center' | 'radial-top' | 'radial-bottom'; // Góc xoay hướng: ngang, dọc, chéo, từ giữa ảnh (nửa trên hay nửa dưới)
+  speedLineReverse?: boolean;     // Chiều xuôi (false) hoặc Chiều ngược (true)
+  speedLineMode?: 'horizontal' | 'converge-center'; // Legacy alias
   speedLineLength?: number;       // Chiều dài cơ sở (30 đến 450, mặc định 140)
   speedLineRandomLength?: number; // Độ dài ngẫu nhiên / phân tán (0 đến 100%, mặc định 55%)
   speedLineWidth?: number;        // Độ dày nét (1px đến 14px, mặc định 2.5px)
   speedLineBlur?: number;         // Độ nhòe mờ vệt tốc độ / motion blur (0px đến 22px, mặc định 5px)
-  speedLineDirection?: 'left-to-right' | 'right-to-left'; // Hướng chạy song song ngang
-  speedLineTilt?: number;          // Độ nghiêng vệt line từ -45 đến 45 độ (mặc định 0°)
-  speedLineVerticalCenter?: 'top' | 'center' | 'bottom';  // Vị trí tâm tụ theo chiều đứng: top center, center center, bottom center
-  speedLineCenterY?: number;       // Tinh chỉnh tọa độ tâm tụ theo % chiều cao (10% đến 90%, mặc định 50%)
-  speedLineHorizontalCenter?: 'left' | 'center' | 'right'; // Vị trí tâm tụ theo chiều ngang: left center, center center, right center
-  speedLineCenterX?: number;       // Tinh chỉnh tọa độ tâm tụ theo % chiều rộng (10% đến 90%, mặc định 50%)
-  speedLineSpeed?: number;         // Tốc độ chuyển động vệt line (0.2x đến 3.5x, mặc định 1.0x)
+  speedLineDirection?: 'left-to-right' | 'right-to-left';
+  speedLineTilt?: number;
+  speedLineVerticalCenter?: 'top' | 'center' | 'bottom';
+  speedLineCenterY?: number;
+  speedLineHorizontalCenter?: 'left' | 'center' | 'right';
+  speedLineCenterX?: number;
+  speedLineSpeed?: number;
 
-  // 2. Silk Ribbon Rain Dynamics (Mưa Mảnh Ruy Băng Lụa - nâng cấp từ Spaghetti)
-  ribbonLength?: number;          // Độ dài / ngắn của dải ruy băng lụa (50px đến 500px, mặc định 160px)
-  ribbonThickness?: number;       // Độ dày / bản dẹt ruy băng lụa (2px đến 32px, mặc định 8px)
-  ribbonTwist?: number;           // Độ xoắn lượn sóng 3D (0.5 đến 4.5, mặc định 1.8)
-  ribbonGlow?: number;            // Vầng sáng phát quang dạ quang lụa (0px đến 35px, mặc định 15px)
+  // 4. Mưa Ruy Băng Lụa (Silk Ribbon Rain)
+  ribbonWavy?: boolean;          // Uốn lượn như mảnh ruy băng khi rơi
+  ribbonLength?: number;         // Độ dài / ngắn của dải ruy băng lụa (50px đến 500px, mặc định 160px)
+  ribbonThickness?: number;      // Độ dày / bản dẹt ruy băng lụa (2px đến 32px, mặc định 8px)
+  ribbonTwist?: number;          // Độ xoắn lượn sóng 3D (0.5 đến 4.5, mặc định 1.8)
+  ribbonGlow?: number;           // Vầng sáng phát quang dạ quang lụa (0px đến 35px, mặc định 15px)
 
-  // 3. Fluffy Silk Ball & Bokeh Particle Settings (Bóng Tơ Mềm / Lofi / Stars)
-  silkFluffGlow?: boolean;        // Bật chế độ bóng tơ mềm viền phát sáng mờ êm
-  particleGlowRadius?: number;    // Bán kính phát sáng mở rộng (0 đến 50px)
+  // 5. Bụi Lofi Trôi (Lofi Dust)
+  dustShape?: 'circle' | 'square' | 'star' | 'random'; // Shape hạt bụi: Tròn (default), Vuông, Ngôi Sao, Ngẫu nhiên
+  dustRandomShape?: boolean;     // Shape ngẫu nhiên
+  dustMinSize?: number;          // Kích thước nhỏ từ 1px (1 to 20px)
+  silkFluffGlow?: boolean;       // Bật chế độ bóng tơ mềm viền phát sáng mờ êm
+  particleGlowRadius?: number;   // Bán kính phát sáng mở rộng (0 đến 50px)
 
-  // Snow & Wind Dynamics
-  snowWindAngle?: number;     // -60 to +60 degrees (- left, + right, 0 straight down)
-  snowWindSpeed?: number;     // 0.2 to 3.0 wind speed multiplier
-  snowTurbulence?: number;    // 0 to 100% wind turbulence / sway
-  snowFlakeType?: SnowFlakeType; // 'mixed' | 'crystal' | 'flurry' | 'glitter'
+  // 6. Tăng Tốc Hyperspace (3D Warp)
+  hyperspaceLength?: number;     // Settings độ dài vệt warp (5 đến 50)
+  hyperspaceGlow?: number;       // Vệt sáng lóa hào quang (0 đến 40)
 
-  // Rain & Wind Dynamics
-  rainWindAngle?: number;     // -60 to +60 degrees (- left, + right, 0 straight down)
-  rainWindSpeed?: number;     // 0.2 to 3.0 wind speed multiplier
-  rainTurbulence?: number;    // 0 to 100% wind turbulence / sway
-  rainDropType?: RainDropType; // 'mixed' | 'streaks' | 'drizzle' | 'heavy' | 'neon-glow'
-  rainLengthScale?: number;   // 0.5 to 3.0 length multiplier of raindrops
-  rainSplash?: boolean;       // Hiệu ứng giọt nước bắn tung tóe / ripple khi chạm đáy
-  rainRandomWind?: boolean;   // Bật chế độ hướng gió ngẫu nhiên & biến thiên tự nhiên (Dynamic shifting gusts)
-  rainRandomWindSpeed?: number; // Tốc độ biến thiên hướng gió (0.2 to 3.0, default 1.0)
+  // 7. Sao Lấp Lánh (Twinkling Stars)
+  starStatic?: boolean;          // Không chuyển động chỉ lóe sáng ngẫu nhiên (mặc định true)
+  starShape?: '4-point' | '5-point' | 'circle' | 'random'; // Shape sao 4 tia, 5 cánh hoặc chấm tròn
+  starRandomFlare?: boolean;     // Ngẫu nhiên lóe sáng tia 4 góc (mặc định true)
+  starFlareIntensity?: number;   // Cường độ tia lóe sáng (0.2 đến 2.5, mặc định 1.0)
 
-  // WebGL Stereo 3D Rain Effect (threejs.org/examples/#webgl_effects_stereo)
-  stereoRainEnabled?: boolean; // Bật hiệu ứng Stereo 3D WebGL cho mưa
-  stereoRain?: boolean;        // Alias for stereoRainEnabled
-  stereoMode?: 'split-screen' | 'anaglyph' | 'depth-parallax'; // Chế độ Stereo VR (Chia đôi màn hình Trái/Phải), Kính 3D Đỏ-Xanh (Anaglyph), hoặc Depth Parallax
-  stereoRainMode?: 'split-screen' | 'anaglyph' | 'depth-parallax'; // Alias for stereoMode
-  stereoEyeSeparation?: number; // 0.01 to 0.2 (khoảng cách 2 mắt, mặc định 0.064)
-  stereoRainEyeSeparation?: number; // Alias for stereoEyeSeparation
-  stereoFocalLength?: number;   // 10 to 60 (tiêu cự hội tụ 3D, mặc định 25)
-  stereoRainGlow?: boolean;     // Hiệu ứng phát sáng 3D cho giọt mưa
+  // 8. Những Hạt Lửa (Fire Embers & Sparks)
+  fireEmbersShape?: 'circle' | 'square' | 'diamond' | 'random'; // Shape: tròn hay vuông hay hình thoi hay ngẫu nhiên
+  fireEmbersSpread?: number;     // Độ tỏa rộng nhiều hướng (0.5 to 3.0)
+  fireEmbersCooling?: number;    // Tốc độ nguội chuyển xám đen rồi tan biến (0.5 to 2.5)
+
+  // WebGL Stereo 3D Rain Effect (Optional)
+  stereoRainEnabled?: boolean;
+  stereoRain?: boolean;
+  stereoMode?: 'split-screen' | 'anaglyph' | 'depth-parallax';
+  stereoRainMode?: 'split-screen' | 'anaglyph' | 'depth-parallax';
+  stereoEyeSeparation?: number;
+  stereoRainEyeSeparation?: number;
+  stereoFocalLength?: number;
+  stereoRainGlow?: boolean;
 
   // Three.js Water on Glass (Raindrops on Window / Camera Lens)
-  waterOnGlass?: boolean;       // Bật hiệu ứng giọt nước mưa bám mặt kính chân thực (Three.js WebGL Glass Beads)
-  waterGlassCount?: number;     // 30 to 200 (số lượng giọt nước đọng trên kính)
-  waterGlassRefraction?: number; // 0.2 to 2.5 (độ khúc xạ & lúp cầu ánh sáng của giọt nước)
-  waterGlassTrickleSpeed?: number; // 0.2 to 3.0 (tốc độ giọt nước trượt chảy xuống mặt kính)
-  waterGlassWipeMist?: boolean; // Hiệu ứng mờ hơi nước sương mù nhẹ trên kính
-  waterGlassLighting?: 'cinematic-blue' | 'golden-bokeh' | 'neon-glow' | 'pure-clear'; // Ánh sáng môi trường phản chiếu trên giọt nước kính
-  waterGlassBlur?: number;      // 0 to 10 (độ mờ nhòe quang học của nền phía sau kính)
-  waterGlassTrailTrails?: boolean; // Vệt nước trượt kéo dài đằng sau giọt nước chảy
+  waterGlassCount?: number;
+  waterGlassRefraction?: number;
+  waterGlassTrickleSpeed?: number;
+  waterGlassWipeMist?: boolean;
+  waterGlassLighting?: 'cinematic-blue' | 'golden-bokeh' | 'neon-glow' | 'pure-clear';
+  waterGlassBlur?: number;
+  waterGlassTrailTrails?: boolean;
 }
 
 export type FilmLightStyle = 
@@ -524,6 +605,7 @@ export type TrackFontWeight = 'normal' | '500' | '600' | 'bold' | '900';
 export type TrackFontStyle = 'normal' | 'italic' | 'bold' | 'bold-italic' | 'uppercase';
 
 export type LogoAnimation = 'none' | 'vertical-spin-3d' | 'circular-spin';
+export type LogoAnimationDirection = 'clockwise' | 'counter-clockwise';
 
 export type TrackFontEffect = 
   | 'none' 
@@ -554,6 +636,7 @@ export interface TrackMetadata {
   logoGlow?: boolean;         // Neon halo around logo
   logoAnimation?: LogoAnimation; // 'none' | 'vertical-spin-3d' (xoay 360 trục đứng) | 'circular-spin' (xoay tròn)
   logoAnimationSpeed?: number;   // 0.2 to 3.0 (default 1.0)
+  logoAnimationDirection?: LogoAnimationDirection; // 'clockwise' (theo chiều kim đồng hồ) | 'counter-clockwise' (ngược chiều kim đồng hồ)
   badgeScale?: number;        // 0.3 to 2.5 (Kích cỡ Huy hiệu Badge riêng biệt, không trùng Logo)
   badgeOpacity?: number;      // 0.1 to 1.0 (Độ trong suốt Huy hiệu Badge riêng biệt, không trùng Logo)
   badgeBeatJump?: boolean;    // Nhảy nảy theo nhịp Beat / Bass cho Badge & Thẻ bài hát
@@ -623,6 +706,8 @@ export interface TrackMetadata {
   badgeTextGap?: number;       // Khoảng cách giữa ảnh bìa và khối chữ (mặc định 24px)
 
   rotateVinyl: boolean;
+  vinylSpeed?: number;        // Tốc độ xoay đĩa than Vinyl (0.1 to 3.0, default 1.0)
+  rotatingBadgeSpeed?: number; // Tốc độ xoay Huy hiệu tròn xoay (0.1 to 3.0, default 1.0)
   alignment: 'center' | 'left' | 'right';
   boxBackground: boolean;
   boxBgColor: string;
@@ -774,7 +859,9 @@ export interface PresetTheme {
 }
 
 export type SceneTransitionType = 
+  | 'crossfade'
   | 'fade'
+  | 'fade-in-out'
   | 'slide-left'
   | 'slide-right'
   | 'slide-up'

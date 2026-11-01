@@ -648,8 +648,41 @@ export const DEFAULT_LYRICS: LyricsConfig = {
 };
 
 export const DEFAULT_BACKGROUND: BackgroundConfig = {
+  mode: 'single',
   type: 'preset',
   url: BACKGROUND_PRESETS[0].url,
+  slides: [
+    {
+      id: 'slide-1',
+      name: 'Slide 1: Neo Tokyo Rain',
+      type: 'preset',
+      url: BACKGROUND_PRESETS[0].url,
+      duration: 10,
+      transitionType: 'crossfade',
+      transitionDuration: 1.2,
+      kenBurns: true,
+    },
+    {
+      id: 'slide-2',
+      name: 'Slide 2: Lofi Sunset Room',
+      type: 'preset',
+      url: BACKGROUND_PRESETS[2].url,
+      duration: 10,
+      transitionType: 'slide-left',
+      transitionDuration: 1.2,
+      kenBurns: true,
+    },
+    {
+      id: 'slide-3',
+      name: 'Slide 3: Misty Pine Forest',
+      type: 'preset',
+      url: BACKGROUND_PRESETS[4].url,
+      duration: 10,
+      transitionType: 'zoom-in',
+      transitionDuration: 1.2,
+      kenBurns: true,
+    },
+  ],
   color1: '#0f172a',
   color2: '#312e81',
   gradientAngle: 135,
@@ -696,8 +729,13 @@ export const DEFAULT_PARTICLES: ParticleConfig = {
   secondaryColor: '#ec4899',
   shape: 'circle',
   colorMode: 'custom',
-  glowIntensity: 12,
+  glowIntensity: 0,
   sizeScale: 1.0,
+  sizePx: 2,
+  dustMinSize: 1,
+  dustRandomShape: true,
+  randomSize: false,
+  opacity: 0.85,
   reactiveToBeat: true,
   bassReactiveColor: true,
   bassFlashBoost: 1.5,
@@ -733,9 +771,9 @@ export const DEFAULT_PARTICLES: ParticleConfig = {
   ribbonThickness: 8,
   ribbonTwist: 1.8,
   ribbonGlow: 15,
-  // Fluffy silk ball defaults
-  particleGlowRadius: 18,
-  silkFluffGlow: true,
+  // Crisp 3D particles without blurry halo
+  particleGlowRadius: 0,
+  silkFluffGlow: false,
 };
 
 export const DEFAULT_LOW_HARDWARE_PARTICLES: ParticleConfig = {
@@ -1286,6 +1324,7 @@ export const DEFAULT_TRACK: TrackMetadata = {
   titleArtistGap: 8,
   logoAnimation: 'none',
   logoAnimationSpeed: 1.0,
+  logoAnimationDirection: 'clockwise',
   trackDetailsOrder: ['subtitle', 'title', 'artist'],
   badgeScale: 1.0,
   badgeOpacity: 1.0,
@@ -1294,6 +1333,8 @@ export const DEFAULT_TRACK: TrackMetadata = {
   badgeBorderRadius: 26,
   badgeTextGap: 24,
   rotateVinyl: true,
+  vinylSpeed: 1.0,
+  rotatingBadgeSpeed: 1.0,
   badgeBeatJump: true,
   badgeBeatJumpIntensity: 0.18,
   badgeBeatJumpStyle: 'pulse',
@@ -1476,7 +1517,7 @@ export const PRESET_THEMES: PresetTheme[] = [
       title: 'Lost in the Andromeda',
       artist: 'Deep Space EDM',
       coverUrl: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=400&q=80',
-      cardStyle: 'circular-badge',
+      cardStyle: 'rotating-badge',
       positionY: 38,
     },
     sampleAudio: {

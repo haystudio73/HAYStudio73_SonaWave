@@ -24,6 +24,7 @@ export const vi: TranslationDictionary = {
   tabVisualizer: 'Sóng Âm',
   tabLyrics: 'Lời Nhạc',
   tabBackground: 'Hình Nền',
+  tabBgEffects: 'Hiệu Ứng Nền',
   tabTransitions: 'Chuyển Cảnh',
   tabFilmLight: 'Film Light',
   tabColorGrading: 'Chỉnh Màu',
@@ -390,7 +391,8 @@ export const vi: TranslationDictionary = {
   uploadCover: 'Tải Lên Ảnh Bìa',
   cardStyle: 'Kiểu Hiển Thị Bìa Nhạc',
   vinylRotate: 'Xoay Đĩa Than 360°',
-  vinylSpeed: 'Tốc Độ Xoay Đĩa',
+  vinylSpeed: 'Tốc Độ Xoay Đĩa Than',
+  rotatingBadgeSpeed: 'Tốc Độ Xoay Huy Hiệu',
   logoWatermark: 'Logo & Nhãn Hiệu Thương Hiệu',
   uploadLogo: 'Tải Lên Logo PNG',
   logoPosition: 'Vị Trí Đặt Logo',
@@ -436,6 +438,9 @@ export const vi: TranslationDictionary = {
   styleHiddenDesc: 'Không hiển thị thẻ thông tin bài hát trên video',
   styleRotatingBadge: 'Huy Hiệu Tròn Xoay 360°',
   styleRotatingBadgeDesc: 'Huy hiệu tròn xoay 360° với viền chữ uốn cong xoay tròn và tâm ảnh đĩa',
+  logoAnimationDirection: 'Hướng Xoay Logo',
+  logoClockwise: 'Xoay Theo Chiều Kim Đồng Hồ',
+  logoCounterClockwise: 'Xoay Ngược Chiều Kim Đồng Hồ',
 
   // Karaoke Cursor Sweep Modes
   karaokeSweepMode: 'Hiệu Ứng Con Trỏ Karaoke',
@@ -509,4 +514,24 @@ export const vi: TranslationDictionary = {
   badgeHot: 'Hot',
   badgePro: 'Pro',
   badgeRecommended: 'Khuyên Dùng',
+
+  // Extended Particle Settings & Color Groups
+  particleColorGroups: 'Nhóm Màu Sắc Chính Của Hạt',
+  fireEmbersParticle: 'Những Hạt Lửa & Tàn Tro',
+  rainStreakLength: 'Độ Dài Vệt Mưa',
+  rainDynamicWind: 'Chiều Gió Ngẫu Nhiên Thay Đổi',
+  rainLuminousGlow: 'Vệt Sáng Mưa (Rain Glow)',
+  rainWaterOnGlass: 'Hạt Nước Chảy Trên Bề Mặt',
+  snowRandomShape: 'Hình Shape Tuyết Ngẫu Nhiên',
+  speedLineOrientation: 'Góc Xoay Hướng Bay Vệt Tốc Độ',
+  ribbonWavyMotion: 'Uốn Lượn Như Mảnh Ruy Băng Khi Rơi',
+  dustRandomShape: 'Shape Hạt Bụi Ngẫu Nhiên',
+  dustMinSize: 'Kích Thước Nhỏ Tối Thiểu (Từ 1px)',
+  hyperspaceLength: 'Độ Dài Vệt Sáng Hyperspace',
+  hyperspaceGlow: 'Vệt Sáng Hào Quang Hyperspace',
+  starStaticTwinkle: 'Đứng Yên Chỉ Lóe Sáng Ngẫu Nhiên',
+  starShapeSelect: 'Chọn Hình Dáng Ngôi Sao (4 Tia, 5 Cánh, Chấm Tròn)',
+  fireEmbersSpread: 'Độ Tỏa Rộng Nhiều Hướng',
+  fireEmbersCooling: 'Tốc Độ Nguội Sang Xám & Đen',
 };
+

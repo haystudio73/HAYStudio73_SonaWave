@@ -1,81 +1,53 @@
 import React, { useRef, useState } from 'react';
 import { 
   BackgroundConfig, 
-  ParticleConfig, 
-  ParticleType, 
-  ParticleShape, 
-  ParticleColorMode, 
-  SnowFlakeType,
-  RainDropType,
-  BackgroundZoomTrigger, 
-  BackgroundZoomStyle,
-  BackgroundGlitchTrigger,
-  BackgroundGlitchStyle,
-  PlaylistConfig,
+  BackgroundMode, 
+  BackgroundType, 
+  BackgroundSlideItem, 
+  SlideTransitionType,
+  KenBurnsDirection,
+  PlaylistConfig 
 } from '../types';
 import { BACKGROUND_PRESETS } from '../utils/presets';
 import { Language } from '../utils/i18n';
 import { 
   Image as ImageIcon, 
   Upload, 
-  Sparkles, 
-  Sliders, 
-  CloudRain, 
-  Eye, 
-  Sun, 
-  Maximize, 
-  CircleDot, 
-  Zap, 
   Video, 
-  Film, 
-  Circle, 
-  Square, 
-  Star, 
-  Heart, 
-  Gem, 
   Palette, 
-  Activity, 
-  Gauge, 
-  Waves, 
-  Radio, 
-  Music2, 
-  Move3d, 
-  Disc, 
-  Tv, 
   Layers, 
-  Split, 
-  ScanLine, 
-  Slash, 
-  CloudSnow,
-  Wind,
-  Snowflake,
-  Compass,
-  Droplet,
-  Droplets,
-  ListMusic,
-  Music,
-  Globe,
-  Check,
-  Trash2,
-  Copy,
-  Feather,
-  ArrowRightLeft,
-  RotateCw,
-  Paintbrush,
-  Shuffle
+  Plus, 
+  Trash2, 
+  Copy, 
+  ArrowUp, 
+  ArrowDown, 
+  Sparkles, 
+  Maximize, 
+  Sliders, 
+  Check, 
+  Clock, 
+  MoveHorizontal, 
+  Compass, 
+  Zap, 
+  Eye, 
+  ListMusic, 
+  RefreshCw,
+  Play,
+  Pause,
+  Scissors,
+  Music
 } from 'lucide-react';
 
 interface BackgroundTabProps {
   background: BackgroundConfig;
   onBackgroundChange: (bg: BackgroundConfig) => void;
-  particles: ParticleConfig;
-  onParticlesChange: (pt: ParticleConfig) => void;
   language?: Language;
   playlist?: PlaylistConfig;
   defaultBackground?: BackgroundConfig;
   onUpdateTrackBackground?: (trackId: string, bg: BackgroundConfig | undefined) => void;
   onApplyBackgroundToAllTracks?: (bg: BackgroundConfig) => void;
   onSelectTrackForPlayback?: (index: number) => void;
+  currentDuration?: number;
 }
 
 const CATEGORIES = [
@@ -87,3341 +59,1672 @@ const CATEGORIES = [
   { id: 'abstract', nameVi: 'Nghệ Thuật', nameEn: 'Abstract Art' },
 ];
 
-const PARTICLE_TYPES: { id: ParticleType; nameVi: string; nameEn: string; icon: React.ComponentType<{ className?: string }>; badgeVi?: string; badgeEn?: string }[] = [
-  { id: 'none', nameVi: 'Tắt hạt', nameEn: 'Off', icon: Eye },
-  { id: 'rain', nameVi: 'Mưa Rơi Tự Nhiên', nameEn: 'Natural Rain', icon: CloudRain, badgeVi: 'Vật Lý Mưa 🌧️', badgeEn: 'Rain Physics 🌧️' },
-  { id: 'snow', nameVi: 'Tuyết Rơi Mùa Đông', nameEn: 'Winter Snowfall', icon: CloudSnow, badgeVi: 'Mùa Đông ❄️', badgeEn: 'Winter ❄️' },
-  { id: 'speed-lines', nameVi: 'Vệt Tốc Độ (Speed Lines)', nameEn: 'Speed Lines', icon: Zap, badgeVi: 'Anime ⚡', badgeEn: 'Speed FX ⚡' },
-  { id: 'spaghetti', nameVi: 'Mưa mảnh ruy băng lụa', nameEn: 'Silk Ribbon Rain', icon: Waves, badgeVi: 'Mềm Mại 🎀', badgeEn: 'Silky 🎀' },
-  { id: 'spinning-dashes', nameVi: 'Đường ngắn rơi & xoay', nameEn: 'Spinning Dashes', icon: Slash, badgeVi: 'Hot Trend', badgeEn: 'Trending' },
-  { id: 'rainbow-bubbles', nameVi: 'Bong bóng cầu vồng', nameEn: 'Rainbow Bubbles', icon: CircleDot, badgeVi: 'Mới & Đẹp', badgeEn: 'Prismatic' },
-  { id: 'hyperspace', nameVi: 'Tăng tốc Hyperspace', nameEn: 'Hyperspace 3D', icon: Zap, badgeVi: 'Mới 3D', badgeEn: '3D Warp' },
-  { id: 'dust', nameVi: 'Bụi lofi trôi', nameEn: 'Lofi Ambient Dust', icon: Sparkles, badgeVi: 'Bóng Tơ ✨', badgeEn: 'Soft Fluff ✨' },
-  { id: 'stars', nameVi: 'Sao lấp lánh', nameEn: 'Twinkling Stars', icon: Sparkles },
+const TRANSITION_TYPES: { id: SlideTransitionType; nameVi: string; nameEn: string; iconDesc: string }[] = [
+  { id: 'crossfade', nameVi: 'Crossfade (Hòa tan mượt mà)', nameEn: 'Crossfade (Smooth Dissolve)', iconDesc: 'Fade' },
+  { id: 'fade-in-out', nameVi: 'Fade In / Out (Mờ qua nền tối)', nameEn: 'Fade In/Out (Dip to Black)', iconDesc: 'Dip' },
+  { id: 'slide-left', nameVi: 'Trượt sang trái (Slide Left)', nameEn: 'Slide Left', iconDesc: '←' },
+  { id: 'slide-right', nameVi: 'Trượt sang phải (Slide Right)', nameEn: 'Slide Right', iconDesc: '→' },
+  { id: 'slide-up', nameVi: 'Trượt lên trên (Slide Up)', nameEn: 'Slide Up', iconDesc: '↑' },
+  { id: 'slide-down', nameVi: 'Trượt xuống dưới (Slide Down)', nameEn: 'Slide Down', iconDesc: '↓' },
+  { id: 'zoom-in', nameVi: 'Thu phóng vào trong (Zoom In)', nameEn: 'Zoom In', iconDesc: '🔍+' },
+  { id: 'zoom-out', nameVi: 'Thu nhỏ ra ngoài (Zoom Out)', nameEn: 'Zoom Out', iconDesc: '🔍-' },
 ];
 
-const SNOWFLAKE_TYPES: { id: SnowFlakeType; nameVi: string; nameEn: string; descVi: string; descEn: string }[] = [
-  { id: 'mixed', nameVi: 'Hỗn Hợp Tự Nhiên', nameEn: 'Natural Mixed', descVi: 'Pha trộn cả tinh thể, đốm tròn & ánh sáng', descEn: 'Mix of crystals, soft bokeh dots & glitter' },
-  { id: 'crystal', nameVi: 'Tinh Thể 6 Cánh', nameEn: 'Hexagonal Crystal', descVi: 'Hoa tuyết lục giác đan nhánh tinh xảo', descEn: 'Intricate 6-pointed hexagonal snowflakes' },
-  { id: 'flurry', nameVi: 'Đốm Mờ Bokeh', nameEn: 'Bokeh Flurry', descVi: 'Hạt bông tuyết tròn mờ ảo lãng mạn', descEn: 'Romantic soft-focused floating flakes' },
-  { id: 'glitter', nameVi: 'Kim Cương Băng', nameEn: 'Glitter Ice Cross', descVi: 'Chữ thập 4 cánh lấp lánh ánh kim', descEn: '4-pointed cross star ice reflections' },
-];
-
-const RAINDROP_TYPES: { id: RainDropType; nameVi: string; nameEn: string; descVi: string; descEn: string }[] = [
-  { id: 'mixed', nameVi: 'Hỗn Hợp Tự Nhiên', nameEn: 'Natural Mixed', descVi: 'Pha trộn giọt nước, vệt dài cinematic & mưa nhẹ', descEn: 'Balanced mix of raindrops, cinematic streaks & mist' },
-  { id: 'streaks', nameVi: 'Vệt Dài Cinematic', nameEn: 'Cinematic Streaks', descVi: 'Dải nước dài trong suốt lấp lánh phong cách điện ảnh', descEn: 'High-speed glass streaks with water bead heads' },
-  { id: 'drizzle', nameVi: 'Mưa Phùn Li Ti', nameEn: 'Fine Drizzle', descVi: 'Hạt mưa bụi li ti bay lơ lửng bồng bềnh', descEn: 'Micro droplets drifting gently through the air' },
-  { id: 'heavy', nameVi: 'Mưa Rào Bão Tố', nameEn: 'Heavy Downpour', descVi: 'Mưa to xối xả tốc độ cao, vệt nước đậm nét', descEn: 'Dense torrential rainfall with bright water ribbons' },
-  { id: 'neon-glow', nameVi: 'Mưa Phát Sáng Neon', nameEn: 'Neon Glow Laser Rain', descVi: 'Tia mưa phát quang rực rỡ theo dải âm thanh', descEn: 'Luminous laser rain lines reacting to music' },
-];
-
-const PARTICLE_SHAPES: { id: ParticleShape; nameVi: string; nameEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'circle', nameVi: 'Hình tròn', nameEn: 'Circle', icon: Circle },
-  { id: 'silk-fluff', nameVi: 'Bóng tơ mềm', nameEn: 'Fluffy Silk Ball', icon: Feather },
-  { id: 'square', nameVi: 'Khối vuông', nameEn: 'Square', icon: Square },
-  { id: 'star', nameVi: 'Ngôi sao', nameEn: 'Star', icon: Star },
-  { id: 'heart', nameVi: 'Trái tim', nameEn: 'Heart', icon: Heart },
-  { id: 'diamond', nameVi: 'Kim cương', nameEn: 'Diamond', icon: Gem },
-  { id: 'ring', nameVi: 'Vòng tròn', nameEn: 'Ring', icon: CircleDot },
-];
-
-const COLOR_MODES: { id: ParticleColorMode; nameVi: string; nameEn: string; descVi: string; descEn: string }[] = [
-  { id: 'custom', nameVi: 'Tùy chọn màu', nameEn: 'Custom Color', descVi: 'Màu tùy chỉnh theo bảng màu', descEn: 'Palette-selected solid / dual tones' },
-  { id: 'rainbow', nameVi: 'Cầu vồng (Rainbow)', nameEn: 'Rainbow Gradient', descVi: 'Chuyển sắc ngũ sắc huyền ảo', descEn: 'Shifting multi-hue spectrum' },
-  { id: 'fire', nameVi: 'Lửa rực (Fire Glow)', nameEn: 'Fire Glow', descVi: 'Tông cam vàng rực rỡ', descEn: 'Warm amber & solar flare tones' },
-  { id: 'neon-pulse', nameVi: 'Neon Cyber', nameEn: 'Neon Cyber', descVi: 'Hồng & Xanh Cyan đối lập', descEn: 'Cyberpunk magenta and cyan pulse' },
-  { id: 'audio-reactive', nameVi: 'Phổ âm thanh', nameEn: 'Audio Reactive', descVi: 'Đổi dải màu theo tần số nhạc', descEn: 'Color adapts directly to audio frequencies' },
-];
-
-const QUICK_COLORS = [
-  { nameVi: 'Trắng tuyết', nameEn: 'Pure White', color: '#ffffff' },
-  { nameVi: 'Hồng Neon', nameEn: 'Neon Pink', color: '#ec4899' },
-  { nameVi: 'Xanh Cyan', nameEn: 'Cyan Blue', color: '#06b6d4' },
-  { nameVi: 'Vàng Kim', nameEn: 'Golden Yellow', color: '#eab308' },
-  { nameVi: 'Tím Cyber', nameEn: 'Cyber Purple', color: '#a855f7' },
-  { nameVi: 'Cam Lửa', nameEn: 'Flame Orange', color: '#f97316' },
-  { nameVi: 'Xanh Ngọc', nameEn: 'Emerald Green', color: '#10b981' },
-];
-
-const ZOOM_TRIGGERS: { id: BackgroundZoomTrigger; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'bass', nameVi: 'Nhịp Bass / Trống Kick', nameEn: 'Bass Kick Drum', descVi: 'Bắt nhịp tiếng trống trầm, nhịp drop mạnh', descEn: 'Trigger on deep low-end thuds & drops', icon: Disc },
-  { id: 'beat', nameVi: 'Nhịp Điệu Tổng Thể (Beat)', nameEn: 'Overall Beat / Snare', descVi: 'Bắt nhịp điệu bài hát, snare & tempo', descEn: 'Follows musical rhythm and percussion', icon: Music2 },
-  { id: 'hybrid', nameVi: 'Kết Hợp Bass & Beat', nameEn: 'Hybrid Bass + Beat', descVi: 'Phản hồi toàn dải nhịp sống động nhất', descEn: 'Full-spectrum dynamic response', icon: Waves },
-];
-
-const ZOOM_STYLES: { id: BackgroundZoomStyle; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'pulse', nameVi: 'Nảy Nhịp (Pulse)', nameEn: 'Pulse Kick', descVi: 'Giật nảy tức thì theo từng tiếng trống', descEn: 'Instant energetic punch on each hit', icon: Zap },
-  { id: 'smooth', nameVi: 'Mượt Mà (Cinematic)', nameEn: 'Cinematic Smooth', descVi: 'Co giãn điện ảnh êm dịu, uyển chuyển', descEn: 'Fluid gradual breathing expansion', icon: Waves },
-  { id: 'shake', nameVi: 'Rung Lắc (EDM Shake)', nameEn: 'EDM Bass Shake', descVi: 'Rung giật điện tử bùng nổ theo giọt bass', descEn: 'High-energy shudder on heavy drops', icon: Activity },
-  { id: 'breathe', nameVi: 'Thở Nhịp (Breathe)', nameEn: 'Rhythmic Breathe', descVi: 'Co giãn tuần hoàn theo tần số thấp', descEn: 'Slow cyclical respiratory movement', icon: Move3d },
-];
-
-const SPEED_PRESETS = [
-  { labelVi: 'Chậm êm', labelEn: 'Gentle', value: 0.5 },
-  { labelVi: 'Chuẩn', labelEn: 'Standard', value: 1.0 },
-  { labelVi: 'Nhanh', labelEn: 'Fast', value: 1.8 },
-  { labelVi: 'Cực nhanh', labelEn: 'Ultra', value: 2.6 },
-];
-
-const GLITCH_TRIGGERS: { id: BackgroundGlitchTrigger; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'bass', nameVi: 'Bass Kick', nameEn: 'Bass Kick', descVi: 'Nhiễu giật mạnh mỗi khi đập trống trầm', descEn: 'Fires intense glitch on deep sub bass', icon: Disc },
-  { id: 'beat', nameVi: 'Nhịp Beat', nameEn: 'Track Beat', descVi: 'Nhiễu theo nhịp điệu bài hát & tempo', descEn: 'Syncs with musical tempo & snare hits', icon: Music2 },
-  { id: 'random', nameVi: 'Bất Chợt', nameEn: 'Random', descVi: 'Nhiễu giật ngẫu nhiên tạo cảm giác bí ẩn', descEn: 'Unpredictable occasional glitch cuts', icon: Zap },
-  { id: 'continuous', nameVi: 'Liên Tục', nameEn: 'Continuous', descVi: 'Hiệu ứng nhiễu sóng chạy liên hồi không ngừng', descEn: 'Constantly rolling scanlines & distortion', icon: Activity },
-];
-
-const GLITCH_STYLES: { id: BackgroundGlitchStyle; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'rgb-shift', nameVi: 'Tách Màu RGB (Chromatic)', nameEn: 'RGB Chromatic Shift', descVi: 'Tách sắc quang Red/Cyan & Blue ma mị', descEn: 'Anaglyph red-cyan displacement fringing', icon: Split },
-  { id: 'slice-displacement', nameVi: 'Cắt Lát Tearing (Glitch)', nameEn: 'Slice Displacement', descVi: 'Xé rách dịch chuyển lát ngang màn hình', descEn: 'Horizontal screen tearing and slicing blocks', icon: Layers },
-  { id: 'vhs-tape', nameVi: 'Băng VHS Retro (Scanline)', nameEn: 'VHS Retro Scanlines', descVi: 'Vạch nhiễu quét băng video & gợn sóng', descEn: 'Magnetic tape tracking lines & roll wave', icon: ScanLine },
-  { id: 'cyber-digital', nameVi: 'Cyber Data Matrix', nameEn: 'Cyber Data Matrix', descVi: 'Số hóa dữ liệu khối giật chớp Cyberpunk', descEn: 'Digital pixelation block artifacts', icon: Tv },
-];
-
-const SOLID_COLOR_PALETTES = [
-  {
-    categoryVi: 'AMOLED & Tối Sâu (Dark Studio)',
-    categoryEn: 'AMOLED & Deep Studio',
-    colors: [
-      { nameVi: 'Đen Tuyệt Đối', nameEn: 'Pure Black', hex: '#000000' },
-      { nameVi: 'Đá Obsidian', nameEn: 'Obsidian Night', hex: '#0a0a0f' },
-      { nameVi: 'Xanh Đêm Slate', nameEn: 'Midnight Slate', hex: '#0f172a' },
-      { nameVi: 'Tím Đen Velvet', nameEn: 'Velvet Violet', hex: '#13091f' },
-      { nameVi: 'Xanh Đại Dương', nameEn: 'Deep Navy', hex: '#071a2c' },
-      { nameVi: 'Xám Than Ấm', nameEn: 'Warm Charcoal', hex: '#1c1917' },
-      { nameVi: 'Rượu Vang Đen', nameEn: 'Wine Noir', hex: '#1c070f' },
-    ],
-  },
-  {
-    categoryVi: 'Sắc Màu Neon & Sôi Động (Neon & Mood)',
-    categoryEn: 'Neon & Mood Vibrance',
-    colors: [
-      { nameVi: 'Chàm Điện Tử', nameEn: 'Electric Indigo', hex: '#1e1b4b' },
-      { nameVi: 'Tím Laser', nameEn: 'Laser Violet', hex: '#2e1065' },
-      { nameVi: 'Ngọc Lục Bảo', nameEn: 'Deep Emerald', hex: '#022c22' },
-      { nameVi: 'Đỏ Nhung', nameEn: 'Crimson Velvet', hex: '#3f0713' },
-      { nameVi: 'Lam Hoàng Gia', nameEn: 'Royal Sapphire', hex: '#172554' },
-      { nameVi: 'Mận Cyberpunk', nameEn: 'Cyberpunk Plum', hex: '#3b0764' },
-    ],
-  },
-  {
-    categoryVi: 'Tối Giản & Sáng (Light & Clean)',
-    categoryEn: 'Light & Clean Minimal',
-    colors: [
-      { nameVi: 'Trắng Tinh Khiết', nameEn: 'Pure White', hex: '#ffffff' },
-      { nameVi: 'Xám Khói Sáng', nameEn: 'Clean Slate', hex: '#f8fafc' },
-      { nameVi: 'Cát Ấm', nameEn: 'Warm Sand', hex: '#f5f5f4' },
-      { nameVi: 'Cánh Hoa Pastel', nameEn: 'Pastel Iris', hex: '#fdf4ff' },
-      { nameVi: 'Băng Xanh Nhạt', nameEn: 'Soft Aqua', hex: '#ecfeff' },
-    ],
-  },
-];
-
-const GRADIENT_PRESETS = [
-  {
-    id: 'sunset-horizon',
-    nameVi: 'Hoàng Hôn Cam Tím',
-    nameEn: 'Sunset Horizon',
-    color1: '#ea580c',
-    color2: '#3b0764',
-    color3: '#ec4899',
-    useThreeColors: true,
-    angle: 135,
-    type: 'linear' as const,
-  },
-  {
-    id: 'deep-ocean',
-    nameVi: 'Biển Đêm Huyền Bí',
-    nameEn: 'Deep Ocean Blue',
-    color1: '#0f172a',
-    color2: '#06b6d4',
-    color3: '#1e3a8a',
-    useThreeColors: true,
-    angle: 160,
-    type: 'linear' as const,
-  },
-  {
-    id: 'cyberpunk-neon',
-    nameVi: 'Neon Cyberpunk',
-    nameEn: 'Cyberpunk Neon',
-    color1: '#3b0764',
-    color2: '#06b6d4',
-    color3: '#ec4899',
-    useThreeColors: true,
-    angle: 135,
-    type: 'linear' as const,
-  },
-  {
-    id: 'aurora-borealis',
-    nameVi: 'Cực Quang Xanh',
-    nameEn: 'Aurora Borealis',
-    color1: '#022c22',
-    color2: '#06b6d4',
-    color3: '#059669',
-    useThreeColors: true,
-    angle: 120,
-    type: 'linear' as const,
-  },
-  {
-    id: 'velvet-luxury',
-    nameVi: 'Tím Nhung Sang Trọng',
-    nameEn: 'Velvet Luxury',
-    color1: '#000000',
-    color2: '#831843',
-    color3: '#2e1065',
-    useThreeColors: true,
-    angle: 135,
-    type: 'linear' as const,
-  },
-  {
-    id: 'midnight-blue',
-    nameVi: 'Đêm Xanh Vô Tận',
-    nameEn: 'Midnight Twilight',
-    color1: '#090d16',
-    color2: '#31103f',
-    color3: '#1e1b4b',
-    useThreeColors: true,
-    angle: 180,
-    type: 'linear' as const,
-  },
-  {
-    id: 'fire-amber',
-    nameVi: 'Lửa Đỏ Rực Cháy',
-    nameEn: 'Fire & Amber',
-    color1: '#450a0a',
-    color2: '#facc15',
-    color3: '#ea580c',
-    useThreeColors: true,
-    angle: 45,
-    type: 'linear' as const,
-  },
-  {
-    id: 'emerald-forest',
-    nameVi: 'Rừng Ngọc Bích',
-    nameEn: 'Emerald Forest',
-    color1: '#022c22',
-    color2: '#10b981',
-    color3: '#064e3b',
-    useThreeColors: true,
-    angle: 135,
-    type: 'linear' as const,
-  },
-  {
-    id: 'cosmic-galaxy',
-    nameVi: 'Ngân Hà Vũ Trụ',
-    nameEn: 'Cosmic Galaxy',
-    color1: '#05050a',
-    color2: '#0e2a47',
-    color3: '#1e112a',
-    useThreeColors: true,
-    angle: 225,
-    type: 'linear' as const,
-  },
-  {
-    id: 'monochrome-noir',
-    nameVi: 'Đen Trắng Điện Ảnh',
-    nameEn: 'Monochrome Noir',
-    color1: '#000000',
-    color2: '#374151',
-    color3: '#1f2937',
-    useThreeColors: true,
-    angle: 90,
-    type: 'linear' as const,
-  },
-  {
-    id: 'pastel-dawn',
-    nameVi: 'Bình Minh Pastel',
-    nameEn: 'Pastel Dawn',
-    color1: '#fdf4ff',
-    color2: '#cffafe',
-    color3: '#e0e7ff',
-    useThreeColors: true,
-    angle: 135,
-    type: 'linear' as const,
-  },
-  {
-    id: 'minimal-dark',
-    nameVi: 'Tối Giản Hiện Đại',
-    nameEn: 'Minimalist Stealth',
-    color1: '#0a0a0c',
-    color2: '#27272a',
-    color3: '#18181b',
-    useThreeColors: true,
-    angle: 180,
-    type: 'linear' as const,
-  },
-];
-
-const GRADIENT_ANGLES = [
-  { angle: 0, label: '0°', arrow: '↑', nameVi: 'Dưới lên' },
-  { angle: 45, label: '45°', arrow: '↗', nameVi: 'Chéo phải lên' },
-  { angle: 90, label: '90°', arrow: '→', nameVi: 'Trái sang phải' },
-  { angle: 135, label: '135°', arrow: '↘', nameVi: 'Chéo phải xuống' },
-  { angle: 180, label: '180°', arrow: '↓', nameVi: 'Trên xuống' },
-  { angle: 225, label: '225°', arrow: '↙', nameVi: 'Chéo trái xuống' },
-  { angle: 270, label: '270°', arrow: '←', nameVi: 'Phải sang trái' },
-  { angle: 315, label: '315°', arrow: '↖', nameVi: 'Chéo trái lên' },
+const KEN_BURNS_DIRECTIONS: { id: KenBurnsDirection; nameVi: string; nameEn: string }[] = [
+  { id: 'auto', nameVi: 'Tự động ngẫu nhiên (Auto)', nameEn: 'Auto Organic' },
+  { id: 'zoom-in', nameVi: 'Thu phóng vào giữa (Zoom In)', nameEn: 'Zoom In Center' },
+  { id: 'zoom-out', nameVi: 'Thu phóng ra xa (Zoom Out)', nameEn: 'Zoom Out Center' },
+  { id: 'pan-left', nameVi: 'Lướt sang trái (Pan Left)', nameEn: 'Pan Left' },
+  { id: 'pan-right', nameVi: 'Lướt sang phải (Pan Right)', nameEn: 'Pan Right' },
+  { id: 'pan-up', nameVi: 'Lướt lên trên (Pan Up)', nameEn: 'Pan Up' },
+  { id: 'pan-down', nameVi: 'Lướt xuống dưới (Pan Down)', nameEn: 'Pan Down' },
+  { id: 'diagonal-tl-br', nameVi: 'Chéo: Trái Trên → Phải Dưới', nameEn: 'Diagonal TL → BR' },
+  { id: 'diagonal-tr-bl', nameVi: 'Chéo: Phải Trên → Trái Dưới', nameEn: 'Diagonal TR → BL' },
 ];
 
 export const BackgroundTab: React.FC<BackgroundTabProps> = ({
   background,
   onBackgroundChange,
-  particles,
-  onParticlesChange,
   language = 'vi',
   playlist,
-  defaultBackground,
-  onUpdateTrackBackground,
   onApplyBackgroundToAllTracks,
-  onSelectTrackForPlayback,
+  currentDuration = 30,
 }) => {
   const isVi = language === 'vi';
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [selectedTargetId, setSelectedTargetId] = useState<'global' | string>('global');
-  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const slideFileInputRef = useRef<HTMLInputElement>(null);
+  const slideVideoInputRef = useRef<HTMLInputElement>(null);
 
-  // Active targeted track (if targeting a specific track)
-  const activeTargetTrack = playlist?.tracks.find((t) => t.id === selectedTargetId);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [directUrlInput, setDirectUrlInput] = useState<string>('');
+  const [activeSlidePickerId, setActiveSlidePickerId] = useState<string | null>(null);
+  const [activeSlideVideoPickerId, setActiveSlideVideoPickerId] = useState<string | null>(null);
+  const [playingSlideVideoId, setPlayingSlideVideoId] = useState<string | null>(null);
 
-  const updateBg = (partial: Partial<BackgroundConfig>) => {
-    const newBg = { ...background, ...partial };
-    onBackgroundChange(newBg);
+  // Batch Auto Settings Controls State
+  const [batchTransition, setBatchTransition] = useState<SlideTransitionType>('crossfade');
+  const [batchTransDuration, setBatchTransDuration] = useState<number>(1.2);
 
-    if (selectedTargetId !== 'global' && onUpdateTrackBackground) {
-      onUpdateTrackBackground(selectedTargetId, newBg);
+  // Calculate active song duration and total playlist duration
+  const activeTrack = playlist?.tracks?.[playlist?.currentIndex ?? 0];
+  const activeSongDuration = Math.round(currentDuration || activeTrack?.duration || 30);
+  const totalPlaylistDuration = Math.round(
+    playlist?.tracks && playlist.tracks.length > 0
+      ? playlist.tracks.reduce((sum, t) => sum + (t.duration || 0), 0)
+      : activeSongDuration
+  );
+
+  const update = (partial: Partial<BackgroundConfig>) => {
+    onBackgroundChange({ ...background, ...partial });
+  };
+
+  const mode: BackgroundMode = background.mode || 'single';
+  const slides: BackgroundSlideItem[] = background.slides && background.slides.length > 0
+    ? background.slides
+    : [
+        {
+          id: 'slide-1',
+          name: 'Slide 1',
+          type: 'preset',
+          url: BACKGROUND_PRESETS[0].url,
+          duration: 8,
+          transitionType: 'crossfade',
+          transitionDuration: 1.2,
+          kenBurns: true,
+        },
+        {
+          id: 'slide-2',
+          name: 'Slide 2',
+          type: 'preset',
+          url: BACKGROUND_PRESETS[1]?.url || BACKGROUND_PRESETS[0].url,
+          duration: 8,
+          transitionType: 'crossfade',
+          transitionDuration: 1.2,
+          kenBurns: true,
+        },
+      ];
+
+  const updateSlides = (newSlides: BackgroundSlideItem[]) => {
+    const first = newSlides[0];
+    update({
+      slides: newSlides,
+      ...(first && first.url ? { url: first.url } : {}),
+    });
+  };
+
+  // Add new Slide
+  const handleAddSlide = () => {
+    const nextIdx = slides.length + 1;
+    const presetItem = BACKGROUND_PRESETS[(nextIdx - 1) % BACKGROUND_PRESETS.length];
+    const newSlide: BackgroundSlideItem = {
+      id: `slide-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: `Slide ${nextIdx}`,
+      type: 'preset',
+      url: presetItem.url,
+      duration: 10,
+      transitionType: 'crossfade',
+      transitionDuration: 1.2,
+      kenBurns: true,
+    };
+    updateSlides([...slides, newSlide]);
+  };
+
+  // Delete Slide
+  const handleDeleteSlide = (id: string) => {
+    if (slides.length <= 1) return;
+    updateSlides(slides.filter((s) => s.id !== id));
+  };
+
+  // Duplicate Slide
+  const handleDuplicateSlide = (index: number) => {
+    const target = slides[index];
+    const clone: BackgroundSlideItem = {
+      ...target,
+      id: `slide-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: `${target.name || `Slide ${index + 1}`} (Copy)`,
+    };
+    const next = [...slides];
+    next.splice(index + 1, 0, clone);
+    updateSlides(next);
+  };
+
+  // Reorder Slide
+  const handleMoveSlide = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === slides.length - 1) return;
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    const next = [...slides];
+    const temp = next[index];
+    next[index] = next[targetIdx];
+    next[targetIdx] = temp;
+    updateSlides(next);
+  };
+
+  // Update specific slide property
+  const handleUpdateSlide = (id: string, partial: Partial<BackgroundSlideItem>) => {
+    updateSlides(
+      slides.map((s) => (s.id === id ? { ...s, ...partial } : s))
+    );
+  };
+
+  // Sum previous slides duration up to lastIndex
+  const sumPreviousSlidesDuration = (lastIndex: number) => {
+    return slides.slice(0, lastIndex).reduce((sum, s) => sum + (s.duration || 0), 0);
+  };
+
+  // Auto-calculate last slide duration based on target total (Active Song or Playlist)
+  const handleAutoCalcLastSlide = (targetTotal: number = activeSongDuration) => {
+    if (slides.length === 0) return;
+    const lastIdx = slides.length - 1;
+    const prevSum = sumPreviousSlidesDuration(lastIdx);
+    const calculated = Math.max(2, targetTotal - prevSum);
+    handleUpdateSlide(slides[lastIdx].id, { duration: calculated });
+  };
+
+  // Batch Setting: Auto distribute duration evenly across all slides (Active Song or Playlist)
+  const handleAutoDistributeAll = (targetTotal: number = activeSongDuration) => {
+    if (slides.length === 0) return;
+    const perSlide = Math.max(2, Math.round(targetTotal / slides.length));
+    updateSlides(
+      slides.map((s, idx) => ({
+        ...s,
+        duration: idx === slides.length - 1 
+          ? Math.max(2, targetTotal - perSlide * (slides.length - 1))
+          : perSlide,
+      }))
+    );
+  };
+
+  // Batch Setting: Apply transition to all slides
+  const handleApplyBatchTransition = () => {
+    updateSlides(
+      slides.map((s) => ({
+        ...s,
+        transitionType: batchTransition,
+        transitionDuration: batchTransDuration,
+      }))
+    );
+  };
+
+  // Batch Setting: Toggle Ken Burns on all
+  const handleToggleKenBurnsAll = (enable: boolean) => {
+    updateSlides(
+      slides.map((s) => ({
+        ...s,
+        kenBurns: enable,
+      }))
+    );
+  };
+
+  // Single Background Image Upload Handler
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      update({ type: 'upload', url, isVideo: false });
     }
   };
 
-  const handleSelectTarget = (targetId: 'global' | string) => {
-    setSelectedTargetId(targetId);
-    if (targetId === 'global') {
-      if (defaultBackground) {
-        onBackgroundChange(defaultBackground);
-      }
-    } else {
-      const track = playlist?.tracks.find((t) => t.id === targetId);
-      if (track) {
-        if (track.background) {
-          onBackgroundChange(track.background);
-        } else if (defaultBackground) {
-          onBackgroundChange(defaultBackground);
+  // Single Background Video Upload Handler
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      update({ type: 'video', isVideo: true, videoUrl: url, url });
+    }
+  };
+
+  // Slide Image Upload Handler
+  const handleSlideImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && activeSlidePickerId) {
+      const url = URL.createObjectURL(file);
+      handleUpdateSlide(activeSlidePickerId, { type: 'upload', url, isVideo: false });
+      setActiveSlidePickerId(null);
+    }
+    e.target.value = '';
+  };
+
+  // Slide Video MP4 Upload Handler (Extracts metadata duration & auto-fixes slide duration)
+  const handleSlideVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && activeSlideVideoPickerId) {
+      const targetId = activeSlideVideoPickerId;
+      const url = URL.createObjectURL(file);
+
+      // Create video element to inspect duration
+      const tempVid = document.createElement('video');
+      tempVid.preload = 'metadata';
+      tempVid.src = url;
+
+      let applied = false;
+      const applyWithDuration = (rawDuration?: number) => {
+        if (applied) return;
+        applied = true;
+        const vidDur = (rawDuration && Number.isFinite(rawDuration) && rawDuration > 0)
+          ? Math.max(2, Math.round(rawDuration))
+          : 8;
+
+        handleUpdateSlide(targetId, {
+          type: 'video',
+          isVideo: true,
+          videoUrl: url,
+          url,
+          videoDuration: vidDur,
+          // User request: "Có thể tự động fix thời lượng Slide theo thời lượng MP4 upload."
+          duration: vidDur,
+        });
+      };
+
+      tempVid.onloadedmetadata = () => {
+        applyWithDuration(tempVid.duration);
+      };
+
+      tempVid.onerror = () => {
+        applyWithDuration(8);
+      };
+
+      // Fallback in case onloadedmetadata doesn't fire promptly in some browser environments
+      setTimeout(() => {
+        if (!applied) {
+          applyWithDuration(tempVid.duration);
         }
-      }
+      }, 400);
+
+      setActiveSlideVideoPickerId(null);
     }
+    e.target.value = '';
   };
 
-  const handleResetTrackBackground = () => {
-    if (selectedTargetId !== 'global' && onUpdateTrackBackground) {
-      onUpdateTrackBackground(selectedTargetId, undefined);
-      if (defaultBackground) {
-        onBackgroundChange(defaultBackground);
-      }
-    }
-  };
-
-  const handleCreateTrackCustomBackground = () => {
-    if (selectedTargetId !== 'global' && onUpdateTrackBackground) {
-      const customBg = { ...background };
-      onUpdateTrackBackground(selectedTargetId, customBg);
-      onBackgroundChange(customBg);
-    }
-  };
-
-  const updatePt = (partial: Partial<ParticleConfig>) => {
-    onParticlesChange({ ...particles, ...partial });
-  };
-
-  const handleCustomImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const url = URL.createObjectURL(file);
-    updateBg({
-      type: 'upload',
-      isVideo: false,
-      url,
-    });
-  };
-
-  const handleCustomVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const url = URL.createObjectURL(file);
-    updateBg({
-      type: 'video',
-      isVideo: true,
-      url,
-      videoUrl: url,
-    });
-  };
-
-  const [copiedHex, setCopiedHex] = useState<string | null>(null);
-
-  const handleCopyHex = (hex: string) => {
-    navigator.clipboard?.writeText(hex);
-    setCopiedHex(hex);
-    setTimeout(() => setCopiedHex(null), 1800);
-  };
-
-  const handleHexChange = (key: 'color1' | 'color2' | 'color3', val: string) => {
-    let hex = val.trim();
-    if (hex && !hex.startsWith('#')) hex = '#' + hex;
-    updateBg({ [key]: hex });
-  };
-
-  const handleSwapColors = () => {
-    updateBg({
-      color1: background.color2 || '#312e81',
-      color2: background.color1 || '#0f172a',
-    });
-  };
-
-  const isColorMode = background.type === 'solid' || background.type === 'gradient';
-
-  const filteredPresets =
-    activeCategory === 'all'
-      ? BACKGROUND_PRESETS
-      : BACKGROUND_PRESETS.filter((p) => p.category === activeCategory);
+  const filteredPresets = selectedCategory === 'all'
+    ? BACKGROUND_PRESETS
+    : BACKGROUND_PRESETS.filter((p) => p.category === selectedCategory);
 
   return (
-    <div className="space-y-6 text-neutral-200">
-      {/* 0. Target Scope Selector: Global vs Specific Playlist Track */}
-      {playlist && playlist.tracks.length > 0 && (
-        <div className="p-3.5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2.5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-rose-500 to-purple-600 flex items-center justify-center text-white shrink-0">
-                <ListMusic className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-white block">
-                  {isVi ? 'Phạm Vi Áp Dụng Hình Nền' : 'Background Target Scope'}
-                </span>
-                <p className="text-[10px] text-neutral-400">
-                  {isVi 
-                    ? 'Tải ảnh/video hoặc chỉnh hiệu ứng nền riêng cho từng bài hát'
-                    : 'Upload & customize individual backgrounds for each track'}
-                </p>
-              </div>
-            </div>
-
-            {activeTargetTrack && activeTargetTrack.background && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1 shrink-0">
-                <Check className="w-3 h-3" />
-                <span>{isVi ? 'Có Nền Riêng' : 'Custom BG'}</span>
-              </span>
-            )}
-          </div>
-
-          {/* Target Selection Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-            <button
-              type="button"
-              onClick={() => handleSelectTarget('global')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
-                selectedTargetId === 'global'
-                  ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30 ring-1 ring-rose-400/40'
-                  : 'bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700'
-              }`}
-            >
-              <Globe className="w-3.5 h-3.5" />
-              <span>{isVi ? '🌐 Nền Chung Dự Án' : '🌐 Project Default'}</span>
-            </button>
-
-            {playlist.tracks.map((t, idx) => {
-              const isTarget = selectedTargetId === t.id;
-              const hasCustomBg = !!t.background;
-              const isCurrentlyPlaying = idx === playlist.currentIndex;
-
-              return (
-                <button
-                  key={`${t.id || 'track'}-${idx}`}
-                  type="button"
-                  onClick={() => handleSelectTarget(t.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
-                    isTarget
-                      ? 'bg-gradient-to-r from-purple-600 to-rose-500 text-white shadow-md shadow-purple-600/30 ring-1 ring-white/20'
-                      : hasCustomBg
-                      ? 'bg-neutral-800/90 text-neutral-200 border border-purple-500/40 hover:bg-neutral-700'
-                      : 'bg-neutral-800/60 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700'
-                  }`}
-                >
-                  <Music className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate max-w-[130px]">
-                    {idx + 1}. {t.title}
-                  </span>
-                  {hasCustomBg && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" title={isVi ? 'Bài này có nền riêng' : 'Has custom background'} />
-                  )}
-                  {isCurrentlyPlaying && (
-                    <span className="text-[9px] px-1 rounded bg-rose-500/30 text-rose-300 font-bold uppercase shrink-0">
-                      {isVi ? 'Đang phát' : 'Playing'}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Active target track info and action banner */}
-          {activeTargetTrack && (
-            <div className="pt-2 border-t border-neutral-800/80 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {activeTargetTrack.background ? (
-                  <div className="text-[11px] text-purple-300 font-medium flex items-center gap-1.5">
-                    <span>{isVi ? 'Đang chỉnh nền riêng cho:' : 'Custom background for:'}</span>
-                    <strong className="text-white truncate max-w-[200px]">"{activeTargetTrack.title}"</strong>
-                  </div>
-                ) : (
-                  <div className="text-[11px] text-neutral-400 font-medium">
-                    {isVi ? 'Bài này đang dùng nền chung. Bấm bên phải để tạo nền riêng.' : 'Track using project default background. Click to create custom.'}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                {activeTargetTrack.background ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleResetTrackBackground}
-                      title={isVi ? 'Xóa nền riêng, dùng nền mặc định' : 'Reset to default background'}
-                      className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-rose-500/20 text-neutral-300 hover:text-rose-300 text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3 h-3 text-rose-400" />
-                      <span>{isVi ? 'Dùng Nền Chung' : 'Reset to Default'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onApplyBackgroundToAllTracks && onApplyBackgroundToAllTracks(background)}
-                      title={isVi ? 'Sao chép nền này cho tất cả các bài' : 'Apply this background to all tracks'}
-                      className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1"
-                    >
-                      <Copy className="w-3 h-3 text-cyan-400" />
-                      <span>{isVi ? 'Áp Dụng Cho Tất Cả' : 'Apply to All'}</span>
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleCreateTrackCustomBackground}
-                    className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-rose-500 to-purple-600 hover:opacity-90 text-white text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    <span>{isVi ? 'Tạo Nền Riêng Cho Bài Này' : 'Create Custom BG'}</span>
-                  </button>
-                )}
-
-                {onSelectTrackForPlayback && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const idx = playlist.tracks.findIndex((t) => t.id === selectedTargetId);
-                      if (idx >= 0) onSelectTrackForPlayback(idx);
-                    }}
-                    title={isVi ? 'Phát bài này trên sân khấu' : 'Play this track on stage'}
-                    className="px-2.5 py-1 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 text-[11px] font-medium border border-cyan-500/30 transition-all cursor-pointer flex items-center gap-1"
-                  >
-                    <Disc className="w-3 h-3" />
-                    <span>{isVi ? 'Phát Thử' : 'Play'}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 1. Background Source Selection (Preset, Custom Color: Solid & Gradient, Custom Image / Video Upload) */}
-      <div className="space-y-3.5">
-        <div className="flex items-center justify-between">
-          <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
-            {isVi ? 'Hình / Video Nền (Background Source)' : 'Background Image & Video Source'}
-          </label>
+    <div className="space-y-6 pb-12">
+      {/* 1. Main Mode Selector: Hình nền đơn | Nhiều Ảnh */}
+      <div className="bg-neutral-900/80 p-3 rounded-2xl border border-neutral-800 shadow-md">
+        <div className="flex items-center justify-between mb-2 px-1">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => imageInputRef.current?.click()}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition-all cursor-pointer"
-              title={isVi ? 'Tải ảnh PNG/JPG từ máy tính' : 'Upload custom PNG/JPG image'}
-            >
-              <Upload className="w-3 h-3" />
-              <span>{isVi ? 'Tải Ảnh' : 'Upload Image'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => videoInputRef.current?.click()}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-semibold transition-all cursor-pointer shadow-sm"
-              title={isVi ? 'Tải video MP4 làm nền chuyển động' : 'Upload custom MP4 video background'}
-            >
-              <Video className="w-3 h-3 text-rose-400" />
-              <span>{isVi ? 'Tải Video MP4' : 'Upload MP4'}</span>
-            </button>
+            <ImageIcon className="w-4 h-4 text-cyan-400" />
+            <span className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+              {isVi ? 'Phương Pháp Tạo Hình Nền' : 'Background Creation Mode'}
+            </span>
           </div>
+          <span className="text-[10px] text-neutral-400">
+            {mode === 'single'
+              ? (isVi ? '1 Hình nền cố định xuyên suốt' : '1 Static or looping background')
+              : (isVi ? `${slides.length} Slide chuyển cảnh tự động` : `${slides.length} Automatic animated slides`)}
+          </span>
         </div>
 
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleCustomImageUpload}
-        />
+        <div className="grid grid-cols-2 gap-2">
+          {/* Option A: Hình nền đơn */}
+          <button
+            type="button"
+            onClick={() => update({ mode: 'single' })}
+            className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              mode === 'single'
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white border-cyan-400 shadow-lg shadow-cyan-600/25 ring-2 ring-cyan-500/30'
+                : 'bg-neutral-950/80 text-neutral-400 border-neutral-800 hover:text-neutral-200 hover:bg-neutral-800/60'
+            }`}
+          >
+            <ImageIcon className="w-4 h-4" />
+            <span>{isVi ? 'Hình Nền Đơn (Single)' : 'Single Background'}</span>
+          </button>
 
-        <input
-          ref={videoInputRef}
-          type="file"
-          accept="video/mp4,video/*,.mp4,.mov,.webm"
-          className="hidden"
-          onChange={handleCustomVideoUpload}
-        />
-
-        {/* Source Mode Primary Switcher: Preset Images / Video vs Custom Color (Solid & Gradient) */}
-        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-neutral-900/90 border border-neutral-800">
+          {/* Option B: Nhiều Ảnh (Slideshow) */}
           <button
             type="button"
             onClick={() => {
-              if (isColorMode) {
-                updateBg({
-                  type: 'preset',
-                  isVideo: false,
-                  url: background.url || BACKGROUND_PRESETS[0].url,
-                });
-              }
+              const firstSlide = slides[0];
+              update({
+                mode: 'slides',
+                slides: slides,
+                url: firstSlide?.url || background.url,
+                type: firstSlide?.type || 'preset',
+                isVideo: Boolean(firstSlide?.isVideo),
+                videoUrl: firstSlide?.videoUrl || '',
+              });
             }}
-            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              !isColorMode && !background.isVideo
-                ? 'bg-neutral-800 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
+            className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              mode === 'slides'
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-indigo-400 shadow-lg shadow-indigo-600/25 ring-2 ring-indigo-500/30'
+                : 'bg-neutral-950/80 text-neutral-400 border-neutral-800 hover:text-neutral-200 hover:bg-neutral-800/60'
             }`}
           >
-            <ImageIcon className="w-3.5 h-3.5" />
-            <span>{isVi ? 'Ảnh Mẫu (Presets)' : 'Image Presets'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (!isColorMode) {
-                updateBg({
-                  type: background.type === 'solid' ? 'solid' : 'gradient',
-                  isVideo: false,
-                  color1: background.color1 || '#0f172a',
-                  color2: background.color2 || '#312e81',
-                  color3: background.color3 || '#7c3aed',
-                  gradientAngle: background.gradientAngle ?? 135,
-                  gradientType: background.gradientType || 'linear',
-                  radialOrigin: background.radialOrigin || 'center',
-                  useThreeColors: background.useThreeColors ?? false,
-                });
-              }
-            }}
-            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              isColorMode
-                ? 'bg-neutral-800 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
-            }`}
-          >
-            <Palette className="w-3.5 h-3.5" />
-            <span>{isVi ? 'Màu Tùy Chỉnh (Solid & Gradient)' : 'Custom Color (Solid & Gradient)'}</span>
+            <Layers className="w-4 h-4" />
+            <span>{isVi ? 'Nhiều Ảnh (Slides)' : 'Multi-Image Slideshow'}</span>
           </button>
         </div>
+      </div>
 
-        {/* --- VIEW 1: IMAGE PRESETS & UPLOADS --- */}
-        {!isColorMode && (
-          <div className="space-y-3">
-            {/* Video Mode Active Notice & Fade In / Fade Out Loop Settings */}
-            {background.isVideo && (
-              <div className="space-y-2.5 p-3 rounded-xl bg-gradient-to-br from-rose-950/40 via-neutral-900/90 to-neutral-950/80 border border-rose-500/30">
-                <div className="flex items-center justify-between pb-2 border-b border-rose-500/20">
-                  <div className="flex items-center gap-2">
-                    <Film className="w-4 h-4 text-rose-400 animate-pulse" />
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-xs text-rose-200">
-                          {isVi ? 'Đang phát nền Video MP4 động' : 'Active MP4 Video Background'}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                          MP4 Loop
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-neutral-400">
-                        {isVi ? 'Tự động hòa trộn mờ dần khi video ngắn hơn thời lượng bài hát' : 'Smooth loop fade transitions for shorter video clips'}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => updateBg({ type: 'preset', isVideo: false, url: BACKGROUND_PRESETS[0].url })}
-                    className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-[11px] font-medium text-rose-300 transition-all cursor-pointer border border-rose-500/40"
-                  >
-                    {isVi ? 'Về Preset Ảnh' : 'Return to Image Preset'}
-                  </button>
-                </div>
-
-                {/* Video Loop Fade In / Out Switch & Parameters */}
-                <div className="space-y-2 pt-1">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={background.videoLoopFade !== false}
-                        onChange={(e) => updateBg({ videoLoopFade: e.target.checked })}
-                        className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700 cursor-pointer"
-                      />
-                      <span className="text-xs font-bold text-rose-200 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-rose-400" />
-                        {isVi ? 'Hiệu ứng Fade In - Fade Out khi Lặp lại' : 'Fade In / Out Loop Effect'}
-                      </span>
-                    </label>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      background.videoLoopFade !== false
-                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                        : 'bg-neutral-800/60 text-neutral-400 border-neutral-700/60'
-                    }`}>
-                      {background.videoLoopFade !== false ? (isVi ? 'Đang Bật' : 'Enabled') : (isVi ? 'Đã Tắt' : 'Disabled')}
-                    </span>
-                  </div>
-
-                  {background.videoLoopFade !== false && (
-                    <div className="space-y-2.5 pt-2 border-t border-rose-500/20">
-                      {/* Fade Duration */}
-                      <div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-neutral-300 font-medium">
-                            {isVi ? 'Thời gian chuyển mờ (Fade Duration)' : 'Fade Transition Duration'}
-                          </span>
-                          <span className="text-rose-400 font-mono font-bold">
-                            {(background.videoFadeDuration ?? 1.0).toFixed(1)}s
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0.3}
-                          max={3.0}
-                          step={0.1}
-                          value={background.videoFadeDuration ?? 1.0}
-                          onChange={(e) => updateBg({ videoFadeDuration: parseFloat(e.target.value) })}
-                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
-                        />
-                      </div>
-
-                      {/* Fade Dip Color & Presets */}
-                      <div>
-                        <div className="flex justify-between items-center text-xs mb-1.5">
-                          <span className="text-neutral-300 font-medium">
-                            {isVi ? 'Màu nền mờ dần (Fade Dip Color)' : 'Fade Dip Color'}
-                          </span>
-                          <span className="font-mono text-[11px] text-rose-400 font-bold">
-                            {background.videoFadeColor || '#000000'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            value={background.videoFadeColor || '#000000'}
-                            onChange={(e) => updateBg({ videoFadeColor: e.target.value })}
-                            className="w-8 h-8 rounded-lg bg-transparent border border-neutral-700 cursor-pointer"
-                          />
-                          <div className="flex items-center gap-1.5 flex-wrap flex-1">
-                            {[
-                              { name: 'Đen Tuyền', hex: '#000000' },
-                              { name: 'Xanh Đêm', hex: '#0a0f1d' },
-                              { name: 'Tím Than', hex: '#1a102f' },
-                              { name: 'Xám Khói', hex: '#18181b' },
-                              { name: 'Xanh Rêu Tối', hex: '#051c14' },
-                            ].map((col) => (
-                              <button
-                                key={col.hex}
-                                type="button"
-                                onClick={() => updateBg({ videoFadeColor: col.hex })}
-                                style={{ backgroundColor: col.hex }}
-                                className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${
-                                  (background.videoFadeColor || '#000000').toLowerCase() === col.hex.toLowerCase()
-                                    ? 'border-white scale-110 shadow-md ring-2 ring-rose-500/50'
-                                    : 'border-neutral-700 opacity-80 hover:opacity-100'
-                                }`}
-                                title={col.name}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      <p className="text-[10px] text-rose-300/80 leading-relaxed">
-                        {isVi
-                          ? '✦ Khi video MP4 ngắn hơn thời lượng nhạc, video sẽ tự động mờ dần ở cuối vòng lặp và từ từ sáng lại ở đầu vòng lặp tiếp theo, tạo hiệu ứng chuyển tiếp mềm mại và loại bỏ giật khung hình.'
-                          : '✦ When the MP4 clip is shorter than the track, it seamlessly fades out and dissolves back in at each loop boundary, eliminating harsh jumps.'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Custom Uploaded Image Active Notice */}
-            {background.type === 'upload' && !background.isVideo && (
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-200 text-xs">
-                <div className="flex items-center gap-2 truncate">
-                  <div className="w-6 h-6 rounded-md overflow-hidden bg-neutral-800 shrink-0 border border-cyan-500/40">
-                    <img src={background.url} alt="Uploaded" className="w-full h-full object-cover" />
-                  </div>
-                  <span className="font-semibold truncate">{isVi ? 'Đang dùng Ảnh tải lên từ máy tính' : 'Active Custom Uploaded Image'}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => updateBg({ type: 'preset', isVideo: false, url: BACKGROUND_PRESETS[0].url })}
-                  className="px-2 py-0.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-[11px] font-medium text-cyan-300 transition-all cursor-pointer shrink-0"
-                >
-                  {isVi ? 'Về Preset Ảnh' : 'Return to Presets'}
-                </button>
-              </div>
-            )}
-
-            {/* Category Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium shrink-0 transition-all cursor-pointer ${
-                    activeCategory === cat.id
-                      ? 'bg-cyan-600 text-white shadow-sm'
-                      : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                  }`}
-                >
-                  {isVi ? cat.nameVi : cat.nameEn}
-                </button>
-              ))}
-            </div>
-
-            {/* Preset Gallery Grid */}
-            <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1 bg-neutral-900/40 border border-neutral-800/80 rounded-2xl custom-scrollbar">
-              {filteredPresets.map((preset) => {
-                const isSelected = !background.isVideo && background.type === 'preset' && background.url === preset.url;
+      {/* ============================================================ */}
+      {/* MODE 1: HÌNH NỀN ĐƠN (Single Background)                     */}
+      {/* ============================================================ */}
+      {mode === 'single' && (
+        <div className="space-y-5">
+          {/* Sub-selector for Single Background Types */}
+          <div className="bg-neutral-900/50 p-3 rounded-2xl border border-neutral-800">
+            <span className="text-[11px] font-semibold text-neutral-300 block mb-2 px-1">
+              {isVi ? 'Chọn nguồn hình nền đơn:' : 'Select single background source:'}
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { id: 'gradient', nameVi: 'Nền Màu Tùy Chỉnh', nameEn: 'Custom Color', icon: Palette },
+                { id: 'preset', nameVi: 'Ảnh Mẫu (Presets)', nameEn: 'Image Presets', icon: ImageIcon },
+                { id: 'upload', nameVi: 'Ảnh Upload', nameEn: 'Upload Image', icon: Upload },
+                { id: 'video', nameVi: 'Mp4 Upload', nameEn: 'Mp4 Video', icon: Video },
+              ].map((src) => {
+                const Icon = src.icon;
+                const isSelected = src.id === 'gradient'
+                  ? (background.type === 'gradient' || background.type === 'solid')
+                  : background.type === src.id;
                 return (
                   <button
-                    key={preset.id}
+                    key={src.id}
                     type="button"
-                    onClick={() => updateBg({ type: 'preset', isVideo: false, url: preset.url })}
-                    className={`relative aspect-video rounded-xl overflow-hidden border transition-all group cursor-pointer ${
+                    onClick={() => {
+                      if (src.id === 'gradient') {
+                        update({ type: 'gradient', isVideo: false });
+                      } else if (src.id === 'preset') {
+                        update({ type: 'preset', isVideo: false, url: background.url || BACKGROUND_PRESETS[0].url });
+                      } else if (src.id === 'upload') {
+                        update({ type: 'upload', isVideo: false });
+                      } else if (src.id === 'video') {
+                        update({ type: 'video', isVideo: true });
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl text-center border transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
                       isSelected
-                        ? 'border-cyan-400 ring-2 ring-cyan-500/50 scale-[0.98]'
-                        : 'border-neutral-800 hover:border-neutral-600'
+                        ? 'bg-cyan-500/20 border-cyan-500/60 text-white shadow-sm'
+                        : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:border-neutral-700'
                     }`}
                   >
-                    <img
-                      src={preset.thumbnail}
-                      alt={isVi ? preset.nameVi : (preset.nameEn || preset.name)}
-                      loading="lazy"
-                      crossOrigin="anonymous"
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1.5">
-                      <span className="text-[10px] font-medium text-white truncate drop-shadow">
-                        {isVi ? preset.nameVi : (preset.nameEn || preset.name)}
-                      </span>
-                    </div>
+                    <Icon className={`w-4 h-4 ${isSelected ? 'text-cyan-400' : 'text-neutral-500'}`} />
+                    <span className="text-xs font-semibold">{isVi ? src.nameVi : src.nameEn}</span>
                   </button>
                 );
               })}
             </div>
-
-            {/* Quick Discover Banner for Custom Color & Gradient */}
-            <button
-              type="button"
-              onClick={() => {
-                updateBg({
-                  type: 'gradient',
-                  isVideo: false,
-                  color1: background.color1 || '#0f172a',
-                  color2: background.color2 || '#312e81',
-                  color3: background.color3 || '#7c3aed',
-                  gradientAngle: background.gradientAngle ?? 135,
-                  gradientType: background.gradientType || 'linear',
-                  radialOrigin: background.radialOrigin || 'center',
-                });
-              }}
-              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-950/40 via-purple-950/40 to-indigo-950/40 hover:from-cyan-900/50 hover:to-indigo-900/50 border border-cyan-500/30 hover:border-cyan-400/50 text-xs text-neutral-300 hover:text-white flex items-center justify-between transition-all cursor-pointer group shadow-sm"
-            >
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-md bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Palette className="w-3 h-3" />
-                </div>
-                <div className="text-left">
-                  <span className="font-semibold text-white block text-xs">
-                    {isVi ? 'Màu Nền Tùy Chỉnh (Solid & Gradient)' : 'Custom Color & Gradient Background'}
-                  </span>
-                  <span className="text-[10px] text-neutral-400 block">
-                    {isVi ? 'Tùy biến màu đơn AMOLED hoặc dải chuyển sắc 360°' : 'Set solid AMOLED colors or multi-color 360° gradients'}
-                  </span>
-                </div>
-              </div>
-              <span className="text-xs text-cyan-400 font-bold group-hover:translate-x-0.5 transition-transform">→</span>
-            </button>
           </div>
-        )}
 
-        {/* --- VIEW 2: CUSTOM COLOR SETTINGS (SOLID & GRADIENT) --- */}
-        {isColorMode && (
-          <div className="space-y-3.5 p-3 rounded-2xl bg-neutral-900/70 border border-neutral-800">
-            {/* Sub-type Mode Toggle: Solid Color vs Gradient */}
-            <div className="flex items-center gap-1.5 p-1 bg-neutral-950/80 rounded-xl border border-neutral-800">
-              <button
-                type="button"
-                onClick={() => updateBg({ type: 'solid', isVideo: false })}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  background.type === 'solid'
-                    ? 'bg-neutral-800 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
-                }`}
-              >
-                <div
-                  className="w-3.5 h-3.5 rounded-full border border-white/40 shadow-xs"
-                  style={{ backgroundColor: background.color1 || '#0f172a' }}
-                />
-                <span>{isVi ? 'Màu Đơn (Solid Color)' : 'Solid Color'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => updateBg({ type: 'gradient', isVideo: false })}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  background.type === 'gradient'
-                    ? 'bg-neutral-800 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/40'
-                }`}
-              >
-                <div
-                  className="w-3.5 h-3.5 rounded-full border border-white/40 shadow-xs"
-                  style={{
-                    background: `linear-gradient(135deg, ${background.color1 || '#0f172a'}, ${
-                      background.useThreeColors && background.color3 ? background.color3 + ', ' : ''
-                    }${background.color2 || '#312e81'})`,
-                  }}
-                />
-                <span>{isVi ? 'Chuyển Sắc (Gradient)' : 'Gradient'}</span>
-              </button>
-            </div>
-
-            {/* Live Visual Preview Card */}
-            <div
-              className="relative h-20 rounded-xl border border-neutral-700/60 shadow-inner overflow-hidden flex items-end p-2 transition-all"
-              style={{
-                background:
-                  background.type === 'solid'
-                    ? background.color1 || '#0f172a'
-                    : background.gradientType === 'radial'
-                    ? `radial-gradient(circle at ${
-                        background.radialOrigin === 'top' ? 'top' : background.radialOrigin === 'bottom' ? 'bottom' : 'center'
-                      }, ${background.color1 || '#0f172a'}, ${
-                        background.useThreeColors && background.color3 ? background.color3 + ', ' : ''
-                      }${background.color2 || '#312e81'})`
-                    : `linear-gradient(${background.gradientAngle ?? 135}deg, ${background.color1 || '#0f172a'}, ${
-                        background.useThreeColors && background.color3 ? background.color3 + ', ' : ''
-                      }${background.color2 || '#312e81'})`,
-              }}
-            >
-              <div className="flex items-center justify-between w-full bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10 text-white">
-                <div className="flex items-center gap-2 text-xs font-mono">
-                  <span className="font-bold uppercase tracking-wider">
-                    {background.type === 'solid'
-                      ? (background.color1 || '#0f172a')
-                      : `${background.color1 || '#0f172a'} ➔ ${background.color2 || '#312e81'}`}
-                  </span>
-                  {background.type === 'gradient' && (
-                    <span className="px-1.5 py-0.5 rounded bg-white/15 text-[10px] text-cyan-300 font-sans font-medium">
-                      {background.gradientType === 'radial'
-                        ? (isVi ? 'Tỏa tròn' : 'Radial')
-                        : `${background.gradientAngle ?? 135}°`}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-neutral-300 font-medium">
-                    {background.type === 'solid'
-                      ? (isVi ? 'Màu Đơn' : 'Solid')
-                      : (isVi ? 'Chuyển Sắc' : 'Gradient')}
-                  </span>
-                </div>
+          {/* Sub-view A: Nền Màu Tùy Chỉnh (Custom Color) */}
+          {(background.type === 'gradient' || background.type === 'solid') && (
+            <div className="bg-neutral-900/50 p-4 rounded-2xl border border-neutral-800 space-y-4">
+              <div className="flex items-center gap-2 border-b border-neutral-800/80 pb-2.5">
+                <Palette className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+                  {isVi ? 'Nền Màu Tùy Chỉnh (Solid & Gradient)' : 'Custom Color & Gradients'}
+                </h3>
               </div>
-            </div>
 
-            {/* === CONTROLS FOR SOLID COLOR === */}
-            {background.type === 'solid' && (
-              <div className="space-y-3">
-                {/* Color Picker & Hex Input */}
-                <div className="flex items-center justify-between gap-3 p-2 rounded-xl bg-neutral-950/70 border border-neutral-800">
-                  <div className="flex items-center gap-2.5">
-                    <label className="relative cursor-pointer group">
+              {/* Gradient vs Solid Mode */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => update({ type: 'gradient', gradientType: 'linear' })}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
+                    background.type === 'gradient' && background.gradientType !== 'radial'
+                      ? 'bg-cyan-500/20 border-cyan-500 text-white'
+                      : 'bg-neutral-950 border-neutral-800 text-neutral-400'
+                  }`}
+                >
+                  {isVi ? 'Linear Gradient (Thẳng)' : 'Linear Gradient'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => update({ type: 'gradient', gradientType: 'radial' })}
+                  className={`flex-1 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
+                    background.type === 'gradient' && background.gradientType === 'radial'
+                      ? 'bg-cyan-500/20 border-cyan-500 text-white'
+                      : 'bg-neutral-950 border-neutral-800 text-neutral-400'
+                  }`}
+                >
+                  {isVi ? 'Radial Gradient (Tâm Tròn)' : 'Radial Gradient'}
+                </button>
+              </div>
+
+              {/* Color Pickers */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <span className="text-[11px] text-neutral-400 block mb-1">{isVi ? 'Màu 1 (Chính)' : 'Color 1'}</span>
+                  <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 p-2 rounded-xl">
+                    <input
+                      type="color"
+                      value={background.color1 || '#0f172a'}
+                      onChange={(e) => update({ color1: e.target.value })}
+                      className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
+                    />
+                    <span className="text-xs font-mono text-neutral-300">{background.color1 || '#0f172a'}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-neutral-400 block mb-1">{isVi ? 'Màu 2 (Phụ)' : 'Color 2'}</span>
+                  <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 p-2 rounded-xl">
+                    <input
+                      type="color"
+                      value={background.color2 || '#312e81'}
+                      onChange={(e) => update({ color2: e.target.value })}
+                      className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
+                    />
+                    <span className="text-xs font-mono text-neutral-300">{background.color2 || '#312e81'}</span>
+                  </div>
+                </div>
+
+                {background.useThreeColors && (
+                  <div>
+                    <span className="text-[11px] text-neutral-400 block mb-1">{isVi ? 'Màu 3 (Điểm Nhấn)' : 'Color 3'}</span>
+                    <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 p-2 rounded-xl">
                       <input
                         type="color"
-                        value={background.color1 || '#0f172a'}
-                        onChange={(e) => updateBg({ color1: e.target.value })}
-                        className="sr-only"
+                        value={background.color3 || '#7c3aed'}
+                        onChange={(e) => update({ color3: e.target.value })}
+                        className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
                       />
-                      <div
-                        className="w-9 h-9 rounded-xl border border-white/20 shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center"
-                        style={{ backgroundColor: background.color1 || '#0f172a' }}
-                      >
-                        <Paintbrush className="w-4 h-4 text-white/70 drop-shadow" />
-                      </div>
-                    </label>
-                    <div>
-                      <span className="text-xs font-semibold text-neutral-200 block">
-                        {isVi ? 'Màu Nền Chính' : 'Main Color'}
-                      </span>
-                      <span className="text-[11px] text-neutral-400 font-mono">
-                        {background.color1 || '#0f172a'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      value={background.color1 || '#0f172a'}
-                      onChange={(e) => handleHexChange('color1', e.target.value)}
-                      placeholder="#0f172a"
-                      maxLength={7}
-                      className="w-24 px-2 py-1 rounded-lg bg-neutral-900 border border-neutral-700 text-xs font-mono text-cyan-300 uppercase focus:outline-none focus:border-cyan-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleCopyHex(background.color1 || '#0f172a')}
-                      className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-neutral-400 hover:text-white transition-all cursor-pointer"
-                      title={isVi ? 'Sao chép mã HEX' : 'Copy HEX code'}
-                    >
-                      {copiedHex === (background.color1 || '#0f172a') ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Curated Solid Color Swatches */}
-                <div className="space-y-2 pt-1">
-                  <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
-                    {isVi ? 'Bảng Màu Đơn Chuẩn Studio (Curated Palettes)' : 'Curated Studio Palettes'}
-                  </label>
-                  {SOLID_COLOR_PALETTES.map((palette, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <span className="text-[10px] text-neutral-400 font-medium block">
-                        {isVi ? palette.categoryVi : palette.categoryEn}
-                      </span>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {palette.colors.map((c) => {
-                          const isPicked = (background.color1 || '#0f172a').toLowerCase() === c.hex.toLowerCase();
-                          return (
-                            <button
-                              key={c.hex}
-                              type="button"
-                              onClick={() => updateBg({ color1: c.hex })}
-                              title={`${isVi ? c.nameVi : c.nameEn} (${c.hex})`}
-                              className={`relative w-7 h-7 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-                                isPicked
-                                  ? 'border-cyan-400 ring-2 ring-cyan-500/60 scale-110'
-                                  : 'border-neutral-700 hover:border-neutral-400 hover:scale-105'
-                              }`}
-                              style={{ backgroundColor: c.hex }}
-                            >
-                              {isPicked && <Check className="w-3 h-3 text-white drop-shadow-md" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* === CONTROLS FOR GRADIENT COLOR === */}
-            {background.type === 'gradient' && (
-              <div className="space-y-3.5">
-                {/* Gradient Style (Linear vs Radial) & Stops Count */}
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Style */}
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                      {isVi ? 'Kiểu Gradient' : 'Gradient Type'}
-                    </label>
-                    <div className="grid grid-cols-2 gap-1 p-0.5 bg-neutral-950 rounded-lg border border-neutral-800">
-                      <button
-                        type="button"
-                        onClick={() => updateBg({ gradientType: 'linear' })}
-                        className={`py-1 text-center rounded text-[11px] font-semibold transition-all cursor-pointer ${
-                          background.gradientType !== 'radial'
-                            ? 'bg-neutral-800 text-cyan-300 shadow-sm border border-cyan-500/30'
-                            : 'text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        {isVi ? 'Tuyến tính' : 'Linear'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => updateBg({ gradientType: 'radial' })}
-                        className={`py-1 text-center rounded text-[11px] font-semibold transition-all cursor-pointer ${
-                          background.gradientType === 'radial'
-                            ? 'bg-neutral-800 text-cyan-300 shadow-sm border border-cyan-500/30'
-                            : 'text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        {isVi ? 'Tỏa tròn' : 'Radial'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Stop count (2 Colors vs 3 Colors) */}
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                      {isVi ? 'Số Lượng Màu' : 'Color Stops'}
-                    </label>
-                    <div className="grid grid-cols-2 gap-1 p-0.5 bg-neutral-950 rounded-lg border border-neutral-800">
-                      <button
-                        type="button"
-                        onClick={() => updateBg({ useThreeColors: false })}
-                        className={`py-1 text-center rounded text-[11px] font-semibold transition-all cursor-pointer ${
-                          !background.useThreeColors
-                            ? 'bg-neutral-800 text-cyan-300 shadow-sm border border-cyan-500/30'
-                            : 'text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        {isVi ? '2 Màu' : '2 Colors'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => updateBg({ useThreeColors: true, color3: background.color3 || '#7c3aed' })}
-                        className={`py-1 text-center rounded text-[11px] font-semibold transition-all cursor-pointer ${
-                          background.useThreeColors
-                            ? 'bg-neutral-800 text-cyan-300 shadow-sm border border-cyan-500/30'
-                            : 'text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        {isVi ? '3 Màu' : '3 Colors'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Color Pickers Row */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                      {isVi ? 'Các Điểm Màu Chuyển' : 'Color Stops'}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleSwapColors}
-                      className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-300 text-[11px] font-medium transition-all cursor-pointer"
-                      title={isVi ? 'Đảo ngược vị trí Màu 1 và Màu 2' : 'Swap Color 1 and Color 2'}
-                    >
-                      <ArrowRightLeft className="w-3 h-3 text-cyan-400" />
-                      <span>{isVi ? 'Đảo Chiều' : 'Swap Colors'}</span>
-                    </button>
-                  </div>
-
-                  <div className={`grid gap-2 ${background.useThreeColors ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                    {/* Color 1 (Start) */}
-                    <div className="p-2 rounded-xl bg-neutral-950/70 border border-neutral-800 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-neutral-400 uppercase">
-                          {isVi ? 'Màu 1 (Đầu)' : 'Color 1'}
-                        </span>
-                        <div
-                          className="w-3.5 h-3.5 rounded-full border border-white/20"
-                          style={{ backgroundColor: background.color1 || '#0f172a' }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <label className="relative cursor-pointer shrink-0">
-                          <input
-                            type="color"
-                            value={background.color1 || '#0f172a'}
-                            onChange={(e) => updateBg({ color1: e.target.value })}
-                            className="sr-only"
-                          />
-                          <div
-                            className="w-7 h-7 rounded-lg border border-white/20 shadow-xs hover:scale-105 transition-transform"
-                            style={{ backgroundColor: background.color1 || '#0f172a' }}
-                          />
-                        </label>
-                        <input
-                          type="text"
-                          value={background.color1 || '#0f172a'}
-                          onChange={(e) => handleHexChange('color1', e.target.value)}
-                          className="w-full px-1.5 py-1 rounded bg-neutral-900 border border-neutral-700 text-[11px] font-mono text-cyan-300 uppercase focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Color 3 (Middle) - Only if 3-color mode */}
-                    {background.useThreeColors && (
-                      <div className="p-2 rounded-xl bg-neutral-950/70 border border-neutral-800 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-neutral-400 uppercase">
-                            {isVi ? 'Màu Giữa' : 'Color 3'}
-                          </span>
-                          <div
-                            className="w-3.5 h-3.5 rounded-full border border-white/20"
-                            style={{ backgroundColor: background.color3 || '#7c3aed' }}
-                          />
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <label className="relative cursor-pointer shrink-0">
-                            <input
-                              type="color"
-                              value={background.color3 || '#7c3aed'}
-                              onChange={(e) => updateBg({ color3: e.target.value })}
-                              className="sr-only"
-                            />
-                            <div
-                              className="w-7 h-7 rounded-lg border border-white/20 shadow-xs hover:scale-105 transition-transform"
-                              style={{ backgroundColor: background.color3 || '#7c3aed' }}
-                            />
-                          </label>
-                          <input
-                            type="text"
-                            value={background.color3 || '#7c3aed'}
-                            onChange={(e) => handleHexChange('color3', e.target.value)}
-                            className="w-full px-1.5 py-1 rounded bg-neutral-900 border border-neutral-700 text-[11px] font-mono text-cyan-300 uppercase focus:outline-none"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Color 2 (End) */}
-                    <div className="p-2 rounded-xl bg-neutral-950/70 border border-neutral-800 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-neutral-400 uppercase">
-                          {isVi ? 'Màu 2 (Cuối)' : 'Color 2'}
-                        </span>
-                        <div
-                          className="w-3.5 h-3.5 rounded-full border border-white/20"
-                          style={{ backgroundColor: background.color2 || '#312e81' }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <label className="relative cursor-pointer shrink-0">
-                          <input
-                            type="color"
-                            value={background.color2 || '#312e81'}
-                            onChange={(e) => updateBg({ color2: e.target.value })}
-                            className="sr-only"
-                          />
-                          <div
-                            className="w-7 h-7 rounded-lg border border-white/20 shadow-xs hover:scale-105 transition-transform"
-                            style={{ backgroundColor: background.color2 || '#312e81' }}
-                          />
-                        </label>
-                        <input
-                          type="text"
-                          value={background.color2 || '#312e81'}
-                          onChange={(e) => handleHexChange('color2', e.target.value)}
-                          className="w-full px-1.5 py-1 rounded bg-neutral-900 border border-neutral-700 text-[11px] font-mono text-cyan-300 uppercase focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Linear Angle Slider & Direction Shortcuts (Only if Linear) */}
-                {background.gradientType !== 'radial' && (
-                  <div className="space-y-2 p-2.5 rounded-xl bg-neutral-950/70 border border-neutral-800">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <RotateCw className="w-3.5 h-3.5 text-cyan-400" />
-                        <span className="text-xs font-semibold text-neutral-200">
-                          {isVi ? 'Góc Xoay Dải Màu (Linear Angle)' : 'Linear Gradient Angle'}
-                        </span>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-cyan-300 px-2 py-0.5 rounded bg-neutral-900 border border-neutral-700">
-                        {background.gradientAngle ?? 135}°
-                      </span>
-                    </div>
-
-                    <input
-                      type="range"
-                      min="0"
-                      max="360"
-                      step="5"
-                      value={background.gradientAngle ?? 135}
-                      onChange={(e) => updateBg({ gradientAngle: Number(e.target.value) })}
-                      className="w-full accent-cyan-500 cursor-pointer"
-                    />
-
-                    {/* Quick Direction Buttons */}
-                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 pt-1">
-                      {GRADIENT_ANGLES.map((d) => {
-                        const isCurrent = (background.gradientAngle ?? 135) === d.angle;
-                        return (
-                          <button
-                            key={d.angle}
-                            type="button"
-                            onClick={() => updateBg({ gradientAngle: d.angle })}
-                            title={`${d.label} - ${d.nameVi}`}
-                            className={`py-1 rounded text-center transition-all cursor-pointer text-[11px] font-semibold flex items-center justify-center gap-0.5 ${
-                              isCurrent
-                                ? 'bg-cyan-600 text-white shadow-xs'
-                                : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-800'
-                            }`}
-                          >
-                            <span>{d.arrow}</span>
-                            <span>{d.label}</span>
-                          </button>
-                        );
-                      })}
+                      <span className="text-xs font-mono text-neutral-300">{background.color3 || '#7c3aed'}</span>
                     </div>
                   </div>
                 )}
-
-                {/* Radial Origin Controls (Only if Radial) */}
-                {background.gradientType === 'radial' && (
-                  <div className="space-y-2 p-2.5 rounded-xl bg-neutral-950/70 border border-neutral-800">
-                    <label className="block text-xs font-semibold text-neutral-200">
-                      {isVi ? 'Vị Trí Tâm Tỏa Tròn (Radial Origin)' : 'Radial Center Origin'}
-                    </label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[
-                        { id: 'center', labelVi: 'Tâm Giữa', labelEn: 'Center' },
-                        { id: 'top', labelVi: 'Đỉnh Trên', labelEn: 'Top' },
-                        { id: 'bottom', labelVi: 'Đáy Dưới', labelEn: 'Bottom' },
-                      ].map((pos) => {
-                        const isPos = (background.radialOrigin || 'center') === pos.id;
-                        return (
-                          <button
-                            key={pos.id}
-                            type="button"
-                            onClick={() => updateBg({ radialOrigin: pos.id as 'center' | 'top' | 'bottom' })}
-                            className={`py-1.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer text-center ${
-                              isPos
-                                ? 'bg-neutral-800 text-cyan-300 border border-cyan-500/40 shadow-xs'
-                                : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
-                            }`}
-                          >
-                            {isVi ? pos.labelVi : pos.labelEn}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Curated Gradient Presets */}
-                <div className="space-y-2 pt-1">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
-                      {isVi ? 'Mẫu Gradient Chuẩn Studio (Presets)' : 'Studio Gradient Presets'}
-                    </label>
-                    <span className="text-[10px] text-neutral-500 font-medium">12 presets</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {GRADIENT_PRESETS.map((gp) => {
-                      const isApplied =
-                        background.color1 === gp.color1 &&
-                        background.color2 === gp.color2 &&
-                        (!gp.useThreeColors || background.color3 === gp.color3);
-
-                      return (
-                        <button
-                          key={gp.id}
-                          type="button"
-                          onClick={() => {
-                            updateBg({
-                              type: 'gradient',
-                              isVideo: false,
-                              color1: gp.color1,
-                              color2: gp.color2,
-                              color3: gp.color3,
-                              useThreeColors: gp.useThreeColors,
-                              gradientAngle: gp.angle,
-                              gradientType: gp.type,
-                            });
-                          }}
-                          className={`p-1.5 rounded-xl border text-left transition-all cursor-pointer group ${
-                            isApplied
-                              ? 'border-cyan-400 ring-2 ring-cyan-500/50 bg-neutral-800/80 scale-[0.98]'
-                              : 'border-neutral-800 hover:border-neutral-600 bg-neutral-950/60'
-                          }`}
-                        >
-                          <div
-                            className="h-8 rounded-lg mb-1.5 border border-white/10 group-hover:scale-102 transition-transform shadow-inner"
-                            style={{
-                              background: `linear-gradient(${gp.angle}deg, ${gp.color1}, ${
-                                gp.useThreeColors && gp.color3 ? gp.color3 + ', ' : ''
-                              }${gp.color2})`,
-                            }}
-                          />
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-medium text-neutral-200 truncate group-hover:text-cyan-300">
-                              {isVi ? gp.nameVi : gp.nameEn}
-                            </span>
-                            {isApplied && <Check className="w-3 h-3 text-cyan-400 shrink-0" />}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Switch back to Preset Gallery */}
-            <div className="pt-2 border-t border-neutral-800/80">
-              <button
-                type="button"
-                onClick={() => {
-                  updateBg({
-                    type: 'preset',
-                    isVideo: false,
-                    url: background.url || BACKGROUND_PRESETS[0].url,
-                  });
-                }}
-                className="w-full py-1.5 px-3 rounded-xl bg-neutral-800/80 hover:bg-neutral-800 border border-neutral-700 text-xs font-semibold text-neutral-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              >
-                <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
-                <span>{isVi ? 'Quay Lại Thư Viện Ảnh (Preset Gallery)' : 'Return to Image Presets'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 2. Image Filters & Adjustments */}
-      <div className="space-y-3.5 pt-2 border-t border-neutral-800/80">
-        <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
-          {isVi ? 'Bộ Lọc & Hiệu Ứng Nền (Filters)' : 'Background Filters & FX'}
-        </label>
-
-        {/* Blur slider */}
-        <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-neutral-400">{isVi ? 'Độ làm mờ (Blur)' : 'Blur Radius'}</span>
-            <span className="text-cyan-400 font-mono">{background.blur}px</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={25}
-            value={background.blur}
-            onChange={(e) => updateBg({ blur: parseInt(e.target.value) })}
-            className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-          />
-        </div>
-
-        {/* Brightness */}
-        <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-neutral-400">{isVi ? 'Độ sáng (Brightness)' : 'Brightness'}</span>
-            <span className="text-cyan-400 font-mono">{background.brightness}%</span>
-          </div>
-          <input
-            type="range"
-            min={30}
-            max={130}
-            value={background.brightness}
-            onChange={(e) => updateBg({ brightness: parseInt(e.target.value) })}
-            className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-          />
-        </div>
-
-        {/* Vignette Shadow */}
-        <div>
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-neutral-400">{isVi ? 'Viền đen nghệ thuật (Vignette)' : 'Artistic Vignette'}</span>
-            <span className="text-cyan-400 font-mono">{background.vignette}%</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={85}
-            value={background.vignette}
-            onChange={(e) => updateBg({ vignette: parseInt(e.target.value) })}
-            className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-          />
-        </div>
-
-        {/* Beat & Bass Zoom Settings Panel */}
-        <div className="p-3.5 rounded-2xl bg-neutral-900/80 border border-cyan-500/30 space-y-3.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-                <Gauge className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-neutral-200 block">
-                  {isVi ? 'Zoom Nền Theo Nhịp (Beat & Bass Zoom)' : 'Beat & Bass Zoom Dynamics'}
-                </span>
-                <span className="text-[10px] text-neutral-400">
-                  {isVi ? 'Phóng to co giãn nền theo nhịp trống Kick & giai điệu' : 'Pumps and scales background in sync with kicks and tempo'}
-                </span>
-              </div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={background.beatZoom}
-                onChange={(e) => updateBg({ beatZoom: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
-            </label>
-          </div>
-
-          {background.beatZoom && (
-            <div className="space-y-3 pt-2 border-t border-neutral-800/80">
-              {/* 1. Nguồn nhịp (Trigger Audio Source) */}
-              <div>
-                <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
-                  <Disc className="w-3 h-3 text-cyan-400" />
-                  {isVi ? 'Nguồn bắt nhịp âm thanh (Audio Source)' : 'Audio Detection Source'}
-                </span>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {ZOOM_TRIGGERS.map((trig) => {
-                    const Icon = trig.icon;
-                    const isSelected = (background.zoomTrigger || 'bass') === trig.id;
-                    return (
-                      <button
-                        key={trig.id}
-                        type="button"
-                        onClick={() => updateBg({ zoomTrigger: trig.id })}
-                        className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-                          isSelected
-                            ? 'bg-cyan-500/20 border-cyan-500 text-white shadow-sm ring-1 ring-cyan-500/40'
-                            : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-cyan-300' : 'text-neutral-500'}`} />
-                          <span className={`text-[11px] font-semibold truncate ${isSelected ? 'text-cyan-200' : 'text-neutral-300'}`}>
-                            {isVi ? trig.nameVi : trig.nameEn}
-                          </span>
-                        </div>
-                        <span className="text-[9px] text-neutral-400 line-clamp-2 leading-tight">
-                          {isVi ? trig.descVi : trig.descEn}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
-              {/* 2. Kiểu chuyển động (Motion Style) */}
-              <div>
-                <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
-                  <Zap className="w-3 h-3 text-cyan-400" />
-                  {isVi ? 'Kiểu chuyển động Zoom (Motion Style)' : 'Motion Curve Style'}
-                </span>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {ZOOM_STYLES.map((st) => {
-                    const Icon = st.icon;
-                    const isSelected = (background.zoomStyle || 'pulse') === st.id;
-                    return (
-                      <button
-                        key={st.id}
-                        type="button"
-                        onClick={() => updateBg({ zoomStyle: st.id })}
-                        className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2 ${
-                          isSelected
-                            ? 'bg-cyan-500/20 border-cyan-500 text-white shadow-sm ring-1 ring-cyan-500/40'
-                            : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${isSelected ? 'text-cyan-300' : 'text-neutral-500'}`} />
-                        <div className="min-w-0">
-                          <span className={`text-xs font-semibold block ${isSelected ? 'text-cyan-200' : 'text-neutral-300'}`}>
-                            {isVi ? st.nameVi : st.nameEn}
-                          </span>
-                          <span className="text-[9px] text-neutral-400 block leading-tight">
-                            {isVi ? st.descVi : st.descEn}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 3. Tốc độ Zoom (Speed Setting: Slow to Fast) */}
-              <div className="p-2.5 rounded-xl bg-black/30 border border-neutral-800 space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-neutral-300 font-medium flex items-center gap-1.5">
-                    <Gauge className="w-3.5 h-3.5 text-cyan-400" />
-                    {isVi ? 'Tốc độ phản hồi (Slow → Fast)' : 'Response Speed (Slow → Fast)'}
-                  </span>
-                  <span className="text-cyan-400 font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/20">
-                    {(background.zoomSpeed !== undefined ? background.zoomSpeed : 1.0).toFixed(1)}x{' '}
-                    {(background.zoomSpeed || 1.0) <= 0.6 ? (isVi ? '(Chậm êm)' : '(Smooth)') : (background.zoomSpeed || 1.0) >= 2.0 ? (isVi ? '(Cực nhanh)' : '(Ultra)') : (isVi ? '(Chuẩn)' : '(Normal)')}
-                  </span>
-                </div>
+              {/* 3 Colors Toggle */}
+              <label className="flex items-center gap-2 cursor-pointer pt-1">
                 <input
-                  type="range"
-                  min={0.4}
-                  max={3.0}
-                  step={0.1}
-                  value={background.zoomSpeed !== undefined ? background.zoomSpeed : 1.0}
-                  onChange={(e) => updateBg({ zoomSpeed: parseFloat(e.target.value) })}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                  type="checkbox"
+                  checked={background.useThreeColors || false}
+                  onChange={(e) => update({ useThreeColors: e.target.checked })}
+                  className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700"
                 />
-                
-                {/* Speed Quick Presets */}
-                <div className="flex items-center gap-1 pt-1">
-                  {SPEED_PRESETS.map((sp) => {
-                    const currentSpeed = background.zoomSpeed !== undefined ? background.zoomSpeed : 1.0;
-                    const isActive = Math.abs(currentSpeed - sp.value) < 0.05;
-                    return (
-                      <button
-                        key={sp.value}
-                        type="button"
-                        onClick={() => updateBg({ zoomSpeed: sp.value })}
-                        className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
-                          isActive
-                            ? 'bg-cyan-500 text-white font-bold shadow-sm'
-                            : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        {isVi ? sp.labelVi : sp.labelEn} ({sp.value}x)
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                <span className="text-xs text-neutral-300">
+                  {isVi ? 'Sử dụng dải chuyển sắc 3 màu (3-Color Gradient)' : 'Use 3-color gradient blending'}
+                </span>
+              </label>
 
-              {/* 4. Biên độ Zoom (Zoom Intensity Scale) */}
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-300 font-medium">{isVi ? 'Độ phóng to (Zoom Scale / Intensity)' : 'Zoom Intensity Scale'}</span>
-                  <span className="text-cyan-400 font-mono">
-                    {((background.zoomIntensity !== undefined ? background.zoomIntensity : 0.05) * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0.01}
-                  max={0.15}
-                  step={0.005}
-                  value={background.zoomIntensity !== undefined ? background.zoomIntensity : 0.05}
-                  onChange={(e) => updateBg({ zoomIntensity: parseFloat(e.target.value) })}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                />
-                <div className="flex justify-between text-[9px] text-neutral-500 mt-0.5">
-                  <span>{isVi ? 'Nhẹ nhàng (1%)' : 'Subtle (1%)'}</span>
-                  <span>{isVi ? 'Vừa phải (5%)' : 'Balanced (5%)'}</span>
-                  <span>{isVi ? 'Mạnh mẽ (15%)' : 'Intense (15%)'}</span>
-                </div>
-              </div>
-
-              {/* 5. Invert Zoom Direction */}
-              <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/60 border border-neutral-800 cursor-pointer">
+              {/* Gradient Angle Slider */}
+              {background.gradientType !== 'radial' && (
                 <div>
-                  <span className="text-[11px] font-medium text-neutral-300 block">
-                    {isVi ? 'Đảo chiều Zoom (Zoom Out khi có beat)' : 'Invert Zoom (Zoom Out on beat)'}
-                  </span>
-                  <span className="text-[9px] text-neutral-500">
-                    {isVi ? 'Mặc định là phóng to ra (Zoom In), bật lên để thu nhỏ lại khi đập nhịp' : 'Default scales outward; enable to compress inward on beats'}
-                  </span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={!!background.zoomInvert}
-                  onChange={(e) => updateBg({ zoomInvert: e.target.checked })}
-                  className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700 ml-2"
-                />
-              </label>
-            </div>
-          )}
-        </div>
-
-        {/* 2.2 Hiệu Ứng Nhiễu Sóng Nền (Background Glitch Effect) */}
-        <div className="p-3 bg-neutral-900/90 rounded-2xl border border-neutral-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center">
-                <Tv className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-neutral-200 block">
-                  {isVi ? 'Hiệu Ứng Nhiễu Sóng Nền (Glitch Effect)' : 'Background Glitch & Scanline Effect'}
-                </span>
-                <span className="text-[10px] text-neutral-400">
-                  {isVi ? 'Tách màu RGB, cắt lát xé hình & quét vạch VHS theo nhịp nhạc' : 'RGB chromatic displacement, tearing slices & VHS scanlines on beat'}
-                </span>
-              </div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={background.glitchEffect || false}
-                onChange={(e) => updateBg({ glitchEffect: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500"></div>
-            </label>
-          </div>
-
-          {background.glitchEffect && (
-            <div className="space-y-3 pt-2 border-t border-neutral-800/80">
-              {/* 1. Nguồn kích hoạt Glitch (Trigger) */}
-              <div>
-                <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
-                  <Disc className="w-3 h-3 text-rose-400" />
-                  {isVi ? 'Thời điểm kích hoạt giật nhiễu (Trigger)' : 'Glitch Trigger Event'}
-                </span>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {GLITCH_TRIGGERS.map((trig) => {
-                    const Icon = trig.icon;
-                    const isSelected = (background.glitchTrigger || 'bass') === trig.id;
-                    return (
-                      <button
-                        key={trig.id}
-                        type="button"
-                        onClick={() => updateBg({ glitchTrigger: trig.id })}
-                        className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center gap-1 ${
-                          isSelected
-                            ? 'bg-rose-500/20 border-rose-500 text-white shadow-sm ring-1 ring-rose-500/40'
-                            : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-rose-300' : 'text-neutral-500'}`} />
-                        <span className={`text-[10px] font-semibold truncate ${isSelected ? 'text-rose-200' : 'text-neutral-300'}`}>
-                          {isVi ? trig.nameVi : trig.nameEn}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 2. Kiểu nhiễu (Glitch Style) */}
-              <div>
-                <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
-                  <Zap className="w-3 h-3 text-rose-400" />
-                  {isVi ? 'Kiểu hiệu ứng Glitch (Glitch Style)' : 'Glitch Visual Style'}
-                </span>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {GLITCH_STYLES.map((st) => {
-                    const Icon = st.icon;
-                    const isSelected = (background.glitchStyle || 'rgb-shift') === st.id;
-                    return (
-                      <button
-                        key={st.id}
-                        type="button"
-                        onClick={() => updateBg({ glitchStyle: st.id })}
-                        className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex items-start gap-2 ${
-                          isSelected
-                            ? 'bg-rose-500/20 border-rose-500 text-white shadow-sm ring-1 ring-rose-500/40'
-                            : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${isSelected ? 'text-rose-300' : 'text-neutral-500'}`} />
-                        <div className="min-w-0">
-                          <span className={`text-xs font-semibold block ${isSelected ? 'text-rose-200' : 'text-neutral-300'}`}>
-                            {isVi ? st.nameVi : st.nameEn}
-                          </span>
-                          <span className="text-[9px] text-neutral-400 block leading-tight">
-                            {isVi ? st.descVi : st.descEn}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 3. Cường độ Glitch (Intensity Slider) */}
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-300 font-medium">{isVi ? 'Cường độ xé hình & giật nhiễu' : 'Glitch Intensity & Tearing'}</span>
-                  <span className="text-rose-400 font-mono font-bold">
-                    {Math.round((background.glitchIntensity !== undefined ? background.glitchIntensity : 0.45) * 100)}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={0.1}
-                  max={1.0}
-                  step={0.05}
-                  value={background.glitchIntensity !== undefined ? background.glitchIntensity : 0.45}
-                  onChange={(e) => updateBg({ glitchIntensity: parseFloat(e.target.value) })}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
-                />
-                
-                {/* Intensity Quick Presets */}
-                <div className="flex items-center gap-1 pt-1">
-                  {[
-                    { labelVi: 'Nhẹ êm', labelEn: 'Subtle', val: 0.25 },
-                    { labelVi: 'Vừa phải', labelEn: 'Medium', val: 0.45 },
-                    { labelVi: 'Mạnh mẽ', labelEn: 'Strong', val: 0.75 },
-                    { labelVi: 'Bùng nổ', labelEn: 'Extreme', val: 1.0 },
-                  ].map((p) => {
-                    const cur = background.glitchIntensity !== undefined ? background.glitchIntensity : 0.45;
-                    const active = Math.abs(cur - p.val) < 0.05;
-                    return (
-                      <button
-                        key={p.val}
-                        type="button"
-                        onClick={() => updateBg({ glitchIntensity: p.val })}
-                        className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
-                          active
-                            ? 'bg-rose-500 text-white font-bold shadow-sm'
-                            : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        {isVi ? p.labelVi : p.labelEn}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 4. Tách màu RGB (Chromatic Aberration Split) */}
-              <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/60 border border-neutral-800 cursor-pointer">
-                <div className="flex items-center gap-2">
-                  <Split className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                  <div>
-                    <span className="text-[11px] font-medium text-neutral-300 block">
-                      {isVi ? 'Tách sắc sai quang học RGB (Color Split)' : 'RGB Chromatic Color Split'}
-                    </span>
-                    <span className="text-[9px] text-neutral-500">
-                      {isVi ? 'Tạo viền bóng đỏ và xanh lam (Anaglyph 3D) khi có chấn động' : 'Creates red and blue 3D anaglyph borders on heavy impact'}
-                    </span>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-400">{isVi ? 'Góc xoay dải màu' : 'Gradient Angle'}</span>
+                    <span className="text-cyan-400 font-mono font-bold">{background.gradientAngle || 135}°</span>
                   </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={360}
+                    value={background.gradientAngle || 135}
+                    onChange={(e) => update({ gradientAngle: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                  />
                 </div>
-                <input
-                  type="checkbox"
-                  checked={background.glitchColorSplit !== false}
-                  onChange={(e) => updateBg({ glitchColorSplit: e.target.checked })}
-                  className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700 ml-2"
-                />
-              </label>
-            </div>
-          )}
-        </div>
+              )}
 
-        {/* NEW: Circle Ripple Effect (Gợn Sóng Tròn Đồng Tâm) */}
-        <div className="p-3.5 rounded-2xl bg-neutral-900/80 border border-neutral-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-teal-500/15 border border-teal-500/30 flex items-center justify-center">
-                <Radio className="w-4 h-4 text-teal-400" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
-                    {isVi ? 'Hiệu Ứng Sóng Gợn Tròn (Circle Ripple)' : 'Circle Ripple Effect'}
-                  </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                    {isVi ? 'Mới' : 'New'}
-                  </span>
-                </div>
-                <p className="text-[11px] text-neutral-400">
-                  {isVi 
-                    ? 'Các vòng tròn đồng tâm lan tỏa mượt mà từ tâm hoặc đĩa nhạc, co giãn theo nhịp bass'
-                    : 'Smooth concentric ripple waves expanding outward and pulsing to bass kicks'}
-                </p>
-              </div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={background.circleRipple === true}
-                onChange={(e) => updateBg({ circleRipple: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-500"></div>
-            </label>
-          </div>
-
-          {background.circleRipple && (
-            <div className="space-y-3 pt-1 border-t border-neutral-800/80">
-              {/* Origin Selection */}
-              <div>
-                <label className="block text-[11px] font-medium text-neutral-400 mb-1.5">
-                  {isVi ? 'Tâm Điểm Lan Tỏa Sóng (Origin Point)' : 'Ripple Center Origin'}
-                </label>
-                <div className="grid grid-cols-3 gap-1.5">
+              {/* Quick Palettes */}
+              <div className="pt-2 border-t border-neutral-800/80">
+                <span className="text-[11px] text-neutral-400 block mb-2">{isVi ? 'Bộ phối màu gợi ý:' : 'Curated Palettes:'}</span>
+                <div className="flex flex-wrap gap-2">
                   {[
-                    { id: 'center', labelVi: 'Giữa màn hình', labelEn: 'Canvas Center' },
-                    { id: 'cover', labelVi: 'Tâm Đĩa / Badge', labelEn: 'Cover Art / Badge' },
-                    { id: 'bottom', labelVi: 'Chân màn hình', labelEn: 'Bottom Canvas' },
-                  ].map((org) => (
+                    { name: 'Dark Cyber', c1: '#0f172a', c2: '#312e81', c3: '#7c3aed' },
+                    { name: 'Sunset Glow', c1: '#4a044e', c2: '#9d174d', c3: '#f97316' },
+                    { name: 'Deep Emerald', c1: '#022c22', c2: '#064e3b', c3: '#059669' },
+                    { name: 'Nordic Midnight', c1: '#030712', c2: '#111827', c3: '#1f2937' },
+                  ].map((pal) => (
                     <button
-                      key={org.id}
+                      key={pal.name}
                       type="button"
-                      onClick={() => updateBg({ circleRippleOrigin: org.id as any })}
-                      className={`py-1.5 px-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer truncate ${
-                        (background.circleRippleOrigin || 'center') === org.id
-                          ? 'bg-teal-500/20 border-teal-500 text-teal-300 shadow-sm'
-                          : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                      }`}
+                      onClick={() => update({ color1: pal.c1, color2: pal.c2, color3: pal.c3, useThreeColors: true })}
+                      className="px-2.5 py-1.5 rounded-xl bg-neutral-950 border border-neutral-800 hover:border-cyan-500/50 flex items-center gap-1.5 cursor-pointer text-xs text-neutral-300"
                     >
-                      {isVi ? org.labelVi : org.labelEn}
+                      <div className="flex -space-x-1">
+                        <div className="w-3 h-3 rounded-full border border-black" style={{ backgroundColor: pal.c1 }} />
+                        <div className="w-3 h-3 rounded-full border border-black" style={{ backgroundColor: pal.c2 }} />
+                        <div className="w-3 h-3 rounded-full border border-black" style={{ backgroundColor: pal.c3 }} />
+                      </div>
+                      <span>{pal.name}</span>
                     </button>
                   ))}
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* Quick Presets */}
-              <div className="grid grid-cols-4 gap-1.5">
-                {[
-                  { nameVi: 'Mặt nước êm', nameEn: 'Gentle', count: 3, speed: 0.8, op: 0.3, width: 2, glow: false },
-                  { nameVi: 'Radar âm nhạc', nameEn: 'Sonar', count: 4, speed: 1.1, op: 0.45, width: 2.5, glow: true },
-                  { nameVi: 'EDM Pulse', nameEn: 'EDM', count: 6, speed: 1.6, op: 0.65, width: 3.5, glow: true },
-                  { nameVi: 'Mega Bass', nameEn: 'Bass Wave', count: 8, speed: 2.2, op: 0.85, width: 4.5, glow: true },
-                ].map((p, idx) => (
+          {/* Sub-view B: Ảnh Mẫu (Image Presets) */}
+          {background.type === 'preset' && (
+            <div className="bg-neutral-900/50 p-4 rounded-2xl border border-neutral-800 space-y-4">
+              <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-cyan-400" />
+                  <h3 className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+                    {isVi ? 'Thư Viện Ảnh Mẫu (Image Presets)' : 'Curated Image Presets'}
+                  </h3>
+                </div>
+                <span className="text-[10px] text-neutral-400">{filteredPresets.length} {isVi ? 'ảnh' : 'photos'}</span>
+              </div>
+
+              {/* Categories */}
+              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                {CATEGORIES.map((cat) => (
                   <button
-                    key={idx}
+                    key={cat.id}
                     type="button"
-                    onClick={() => updateBg({ 
-                      circleRippleCount: p.count, 
-                      circleRippleSpeed: p.speed, 
-                      circleRippleOpacity: p.op, 
-                      circleRippleLineWidth: p.width,
-                      circleRippleGlow: p.glow
-                    })}
-                    className="py-1 px-1 rounded-lg text-[10px] font-medium bg-neutral-950/60 border border-neutral-800 text-neutral-400 hover:text-teal-300 hover:border-teal-500/40 transition-all cursor-pointer truncate"
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-3 py-1 rounded-xl text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                      selectedCategory === cat.id
+                        ? 'bg-cyan-500 text-neutral-950 font-bold'
+                        : 'bg-neutral-950 border border-neutral-800 text-neutral-400 hover:text-white'
+                    }`}
                   >
-                    {isVi ? p.nameVi : p.nameEn}
+                    {isVi ? cat.nameVi : cat.nameEn}
                   </button>
                 ))}
               </div>
 
-              {/* Color Picker & Quick Palette */}
-              <div>
-                <div className="flex justify-between items-center text-xs mb-1.5">
-                  <span className="text-neutral-400">{isVi ? 'Màu gợn sóng' : 'Ripple Color'}</span>
-                  <span className="font-mono text-[11px] text-teal-400">{background.circleRippleColor || '#ffffff'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={background.circleRippleColor || '#ffffff'}
-                    onChange={(e) => updateBg({ circleRippleColor: e.target.value })}
-                    className="w-8 h-8 rounded-lg bg-transparent border border-neutral-700 cursor-pointer"
-                  />
-                  <div className="flex items-center gap-1.5 flex-wrap flex-1">
-                    {[
-                      { name: 'Trắng', hex: '#ffffff' },
-                      { name: 'Xanh Cyan', hex: '#06b6d4' },
-                      { name: 'Xanh Teal', hex: '#14b8a6' },
-                      { name: 'Hồng Neon', hex: '#f43f5e' },
-                      { name: 'Vàng Kim', hex: '#fbbf24' },
-                      { name: 'Tím Cyber', hex: '#a855f7' },
-                      { name: 'Cam Lửa', hex: '#f97316' },
-                    ].map((col) => (
-                      <button
-                        key={col.hex}
-                        type="button"
-                        onClick={() => updateBg({ circleRippleColor: col.hex })}
-                        style={{ backgroundColor: col.hex }}
-                        className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${
-                          (background.circleRippleColor || '#ffffff').toLowerCase() === col.hex.toLowerCase()
-                            ? 'border-white scale-110 shadow-md ring-2 ring-teal-500/50'
-                            : 'border-transparent opacity-80 hover:opacity-100'
-                        }`}
-                        title={col.name}
+              {/* Presets Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+                {filteredPresets.map((preset) => {
+                  const isSelected = background.url === preset.url;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => update({ type: 'preset', url: preset.url, isVideo: false })}
+                      className={`group relative rounded-xl overflow-hidden aspect-video border text-left transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-cyan-400 ring-2 ring-cyan-500/50 scale-[1.02]'
+                          : 'border-neutral-800 hover:border-neutral-600'
+                      }`}
+                    >
+                      <img
+                        src={preset.thumbnail}
+                        alt={preset.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
                       />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Sliders: Opacity, Count, Speed, Line Width */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-neutral-400">{isVi ? 'Độ mờ đục' : 'Opacity'}</span>
-                    <span className="text-teal-400 font-mono">
-                      {Math.round((background.circleRippleOpacity ?? 0.4) * 100)}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.05}
-                    max={1.0}
-                    step={0.05}
-                    value={background.circleRippleOpacity ?? 0.4}
-                    onChange={(e) => updateBg({ circleRippleOpacity: parseFloat(e.target.value) })}
-                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-neutral-400">{isVi ? 'Số lượng vòng' : 'Ring Count'}</span>
-                    <span className="text-teal-400 font-mono">{background.circleRippleCount ?? 4}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={1}
-                    max={10}
-                    step={1}
-                    value={background.circleRippleCount ?? 4}
-                    onChange={(e) => updateBg({ circleRippleCount: parseInt(e.target.value) })}
-                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-neutral-400">{isVi ? 'Tốc độ lan tỏa' : 'Expansion Speed'}</span>
-                    <span className="text-teal-400 font-mono">{(background.circleRippleSpeed ?? 1.0).toFixed(1)}x</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0.2}
-                    max={3.0}
-                    step={0.1}
-                    value={background.circleRippleSpeed ?? 1.0}
-                    onChange={(e) => updateBg({ circleRippleSpeed: parseFloat(e.target.value) })}
-                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-neutral-400">{isVi ? 'Độ dày nét viền' : 'Line Width'}</span>
-                    <span className="text-teal-400 font-mono">{(background.circleRippleLineWidth ?? 2.5).toFixed(1)}px</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={1}
-                    max={10}
-                    step={0.5}
-                    value={background.circleRippleLineWidth ?? 2.5}
-                    onChange={(e) => updateBg({ circleRippleLineWidth: parseFloat(e.target.value) })}
-                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-teal-500"
-                  />
-                </div>
-              </div>
-
-              {/* Toggles: Audio Reactive & Neon Glow */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/60 border border-neutral-800 cursor-pointer">
-                  <span className="text-[11px] font-medium text-neutral-300">
-                    {isVi ? 'Nảy nở theo nhịp Bass' : 'Bass Beat Reactive'}
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={background.circleRippleReactive !== false}
-                    onChange={(e) => updateBg({ circleRippleReactive: e.target.checked })}
-                    className="rounded text-teal-500 focus:ring-teal-500 bg-neutral-800 border-neutral-700 ml-2"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/60 border border-neutral-800 cursor-pointer">
-                  <span className="text-[11px] font-medium text-neutral-300">
-                    {isVi ? 'Hào quang Neon phát sáng' : 'Neon Luminous Glow'}
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={background.circleRippleGlow !== false}
-                    onChange={(e) => updateBg({ circleRippleGlow: e.target.checked })}
-                    className="rounded text-teal-500 focus:ring-teal-500 bg-neutral-800 border-neutral-700 ml-2"
-                  />
-                </label>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-2">
+                        <span className="text-[11px] font-medium text-white truncate drop-shadow-sm">
+                          {isVi ? preset.nameVi : preset.name}
+                        </span>
+                      </div>
+                      {isSelected && (
+                        <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-cyan-500 text-neutral-950 flex items-center justify-center shadow-md">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
-        </div>
 
-        {/* Video Loop Fade In / Out Transition (Available for video backgrounds) */}
-        <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Film className="w-4 h-4 text-rose-400" />
-              <div>
-                <span className="text-xs font-bold text-neutral-200 block">
-                  {isVi ? 'Lặp Video Fade In / Out (MP4 Transition)' : 'MP4 Loop Fade In / Out'}
+          {/* Sub-view C: Ảnh Upload (Upload Image) */}
+          {background.type === 'upload' && (
+            <div className="bg-neutral-900/50 p-4 rounded-2xl border border-neutral-800 space-y-4">
+              <div className="flex items-center gap-2 border-b border-neutral-800/80 pb-2.5">
+                <Upload className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+                  {isVi ? 'Tải Lên Ảnh Tùy Chỉnh (Upload Image)' : 'Upload Custom Image File'}
+                </h3>
+              </div>
+
+              {/* Upload Dropzone */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full p-6 rounded-2xl border-2 border-dashed border-neutral-700 hover:border-cyan-500 bg-neutral-950/60 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-neutral-200">
+                  {isVi ? 'Bấm để chọn ảnh từ máy tính (PNG, JPG, WEBP)' : 'Click to browse image file (PNG, JPG, WEBP)'}
                 </span>
                 <span className="text-[10px] text-neutral-400">
-                  {isVi ? 'Tự động hòa trộn mờ khi Video MP4 ngắn hơn thời lượng nhạc' : 'Smooth loop fade transitions when video is shorter than audio'}
+                  {isVi ? 'Hỗ trợ độ phân giải cao 1080p, 2K, 4K sắc nét' : 'Supports Full HD, 2K and 4K high resolution'}
                 </span>
-              </div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={background.videoLoopFade !== false}
-                onChange={(e) => updateBg({ videoLoopFade: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500"></div>
-            </label>
-          </div>
+              </button>
 
-          {background.videoLoopFade !== false && (
-            <div className="space-y-2.5 pt-2 border-t border-neutral-800">
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">{isVi ? 'Thời gian chuyển mờ' : 'Fade Duration'}</span>
-                  <span className="text-rose-400 font-mono font-bold">{(background.videoFadeDuration ?? 1.0).toFixed(1)}s</span>
-                </div>
-                <input
-                  type="range"
-                  min={0.3}
-                  max={3.0}
-                  step={0.1}
-                  value={background.videoFadeDuration ?? 1.0}
-                  onChange={(e) => updateBg({ videoFadeDuration: parseFloat(e.target.value) })}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center text-xs mb-1.5">
-                  <span className="text-neutral-400">{isVi ? 'Màu nền khi mờ' : 'Fade Dip Color'}</span>
-                  <span className="font-mono text-[11px] text-rose-400 font-bold">{background.videoFadeColor || '#000000'}</span>
-                </div>
-                <div className="flex items-center gap-2">
+              {/* Direct URL Input */}
+              <div className="space-y-1.5 pt-2 border-t border-neutral-800/80">
+                <span className="text-[11px] text-neutral-300 font-medium block">
+                  {isVi ? 'Hoặc dán đường dẫn ảnh trực tiếp (Image URL):' : 'Or paste direct image URL:'}
+                </span>
+                <div className="flex gap-2">
                   <input
-                    type="color"
-                    value={background.videoFadeColor || '#000000'}
-                    onChange={(e) => updateBg({ videoFadeColor: e.target.value })}
-                    className="w-8 h-8 rounded-lg bg-transparent border border-neutral-700 cursor-pointer"
+                    type="url"
+                    placeholder="https://images.unsplash.com/photo-..."
+                    value={directUrlInput}
+                    onChange={(e) => setDirectUrlInput(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-cyan-500"
                   />
-                  <div className="flex items-center gap-1.5 flex-wrap flex-1">
-                    {[
-                      { name: 'Đen Tuyền', hex: '#000000' },
-                      { name: 'Xanh Đêm', hex: '#0a0f1d' },
-                      { name: 'Tím Than', hex: '#1a102f' },
-                      { name: 'Xám Khói', hex: '#18181b' },
-                      { name: 'Xanh Rêu Tối', hex: '#051c14' },
-                    ].map((col) => (
-                      <button
-                        key={col.hex}
-                        type="button"
-                        onClick={() => updateBg({ videoFadeColor: col.hex })}
-                        style={{ backgroundColor: col.hex }}
-                        className={`w-6 h-6 rounded-full border transition-all cursor-pointer ${
-                          (background.videoFadeColor || '#000000').toLowerCase() === col.hex.toLowerCase()
-                            ? 'border-white scale-110 shadow-md ring-2 ring-rose-500/50'
-                            : 'border-neutral-700 opacity-80 hover:opacity-100'
-                        }`}
-                        title={col.name}
-                      />
-                    ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (directUrlInput.trim()) {
+                        update({ type: 'upload', url: directUrlInput.trim(), isVideo: false });
+                        setDirectUrlInput('');
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    {isVi ? 'Áp Dụng' : 'Apply'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Active Image Preview */}
+              {background.url && (
+                <div className="pt-2">
+                  <span className="text-[11px] text-neutral-400 block mb-1.5">{isVi ? 'Ảnh hiện tại đang dùng:' : 'Currently active image:'}</span>
+                  <div className="relative rounded-xl overflow-hidden aspect-video border border-neutral-700 max-h-48">
+                    <img src={background.url} alt="Current Background" className="w-full h-full object-cover" />
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
-        </div>
-      </div>
 
-      {/* 3. Particle Overlays */}
-      <div className="space-y-3.5 pt-2 border-t border-neutral-800/80">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
-            {isVi ? 'Hiệu Ứng Hạt Lơ Lửng (Particles)' : 'Floating Particle Overlays'}
-          </label>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={particles.enabled}
-              onChange={(e) => updatePt({ enabled: e.target.checked })}
-              className="sr-only peer"
-            />
-            <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
-          </label>
-        </div>
+          {/* Sub-view D: Mp4 Upload (Upload Video MP4) */}
+          {background.type === 'video' && (
+            <div className="bg-neutral-900/50 p-4 rounded-2xl border border-neutral-800 space-y-4">
+              <div className="flex items-center gap-2 border-b border-neutral-800/80 pb-2.5">
+                <Video className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+                  {isVi ? 'Tải Lên Video MP4 Nền Lặp (Video MP4 Loop)' : 'Upload MP4 Video Background'}
+                </h3>
+              </div>
 
-        {/* Particle Type Buttons */}
-        <div className="grid grid-cols-2 gap-2">
-          {PARTICLE_TYPES.map((pt) => {
-            const Icon = pt.icon;
-            const isSelected = particles.type === pt.id;
-            return (
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/webm"
+                onChange={handleVideoUpload}
+                className="hidden"
+              />
               <button
-                key={pt.id}
-                onClick={() => updatePt({ type: pt.id, enabled: pt.id !== 'none' })}
-                className={`p-2 rounded-xl border text-left transition-all flex items-center justify-between gap-1.5 cursor-pointer ${
-                  isSelected
-                    ? 'bg-cyan-500/15 border-cyan-500 text-white shadow-sm ring-1 ring-cyan-500/30'
-                    : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                }`}
+                type="button"
+                onClick={() => videoInputRef.current?.click()}
+                className="w-full p-6 rounded-2xl border-2 border-dashed border-neutral-700 hover:border-cyan-500 bg-neutral-950/60 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors group"
               >
-                <div className="flex items-center gap-2 truncate">
-                  <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-cyan-400' : 'text-neutral-400'}`} />
-                  <span className="text-xs font-semibold truncate">{isVi ? pt.nameVi : pt.nameEn}</span>
+                <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform">
+                  <Video className="w-5 h-5" />
                 </div>
-                {(pt.badgeVi || pt.badgeEn) && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 whitespace-nowrap">
-                    {isVi ? pt.badgeVi : pt.badgeEn}
-                  </span>
-                )}
+                <span className="text-xs font-semibold text-neutral-200">
+                  {isVi ? 'Bấm để chọn file video MP4 từ máy tính' : 'Click to browse MP4/WebM video file'}
+                </span>
+                <span className="text-[10px] text-neutral-400">
+                  {isVi ? 'Video sẽ tự động lặp mượt mà đồng bộ theo bài hát' : 'Video loops continuously in sync with the song'}
+                </span>
               </button>
-            );
-          })}
-        </div>
 
-        {/* Particle Controls & Customization */}
-        {particles.enabled && particles.type !== 'none' && (
-          <div className="space-y-4 pt-1">
-            {/* 1. DEDICATED SNOWFALL & WIND DIRECTION CONTROLS */}
-            {particles.type === 'snow' && (
-              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-sky-950/40 via-neutral-900 to-cyan-950/30 border border-sky-500/30 space-y-3.5 shadow-sm">
-                <div className="flex items-center justify-between pb-2 border-b border-sky-500/20">
-                  <div className="flex items-center gap-2">
-                    <CloudSnow className="w-4 h-4 text-sky-400" />
-                    <span className="text-xs font-bold text-sky-200">
-                      {isVi ? 'Tùy Chỉnh Tuyết Rơi & Hướng Gió (Snow & Wind Dynamics)' : 'Snowfall & Wind Dynamics'}
-                    </span>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                    {isVi ? 'Vật Lý Gió ❄️' : 'Wind Physics ❄️'}
-                  </span>
-                </div>
-
-                {/* Snowflake Type Selector */}
-                <div>
-                  <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
-                    <Snowflake className="w-3.5 h-3.5 text-sky-400" />
-                    {isVi ? 'Kiểu Bông Tuyết (Snowflake Type)' : 'Snowflake Geometry'}
-                  </span>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {SNOWFLAKE_TYPES.map((st) => {
-                      const isSelected = (particles.snowFlakeType || 'mixed') === st.id;
-                      return (
-                        <button
-                          key={st.id}
-                          type="button"
-                          onClick={() => updatePt({ snowFlakeType: st.id })}
-                          className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/40'
-                              : 'bg-neutral-900/70 border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                          }`}
-                        >
-                          <span className={`text-xs font-semibold block ${isSelected ? 'text-sky-200' : 'text-neutral-300'}`}>
-                            {isVi ? st.nameVi : st.nameEn}
-                          </span>
-                          <span className="text-[9px] text-neutral-400 block leading-tight">
-                            {isVi ? st.descVi : st.descEn}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Wind Direction Angle (-60° to +60°) */}
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-neutral-300 flex items-center gap-1.5 font-medium">
-                      <Compass className="w-3.5 h-3.5 text-sky-400" />
-                      {isVi ? 'Hướng gió thổi (Wind Angle)' : 'Wind Direction Angle'}
-                    </span>
-                    <span className="text-sky-400 font-mono font-bold">
-                      {(particles.snowWindAngle !== undefined ? particles.snowWindAngle : 15) > 0 ? `+${particles.snowWindAngle ?? 15}° ${isVi ? '(Sang Phải)' : '(Rightward)'}` : (particles.snowWindAngle ?? 15) < 0 ? `${particles.snowWindAngle}° ${isVi ? '(Sang Trái)' : '(Leftward)'}` : `0° ${isVi ? '(Thẳng Đứng)' : '(Vertical)'}`}
-                    </span>
-                  </div>
+              {/* Loop Fade In/Out Controls */}
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 space-y-3">
+                <label className="flex items-center gap-2.5 cursor-pointer">
                   <input
-                    type="range"
-                    min={-60}
-                    max={60}
-                    step={5}
-                    value={particles.snowWindAngle !== undefined ? particles.snowWindAngle : 15}
-                    onChange={(e) => updatePt({ snowWindAngle: parseInt(e.target.value) })}
-                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-400"
+                    type="checkbox"
+                    checked={background.videoLoopFade !== false}
+                    onChange={(e) => update({ videoLoopFade: e.target.checked })}
+                    className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700"
                   />
-                  
-                  {/* Wind Direction Quick Presets */}
-                  <div className="flex items-center gap-1 pt-1.5">
-                    {[
-                      { labelVi: 'Gió Trái (-35°)', labelEn: 'Left (-35°)', val: -35 },
-                      { labelVi: 'Thẳng đứng (0°)', labelEn: 'Vertical (0°)', val: 0 },
-                      { labelVi: 'Gió Nhẹ (+15°)', labelEn: 'Breeze (+15°)', val: 15 },
-                      { labelVi: 'Gió Mạnh (+45°)', labelEn: 'Gale (+45°)', val: 45 },
-                    ].map((wp) => {
-                      const cur = particles.snowWindAngle !== undefined ? particles.snowWindAngle : 15;
-                      const active = cur === wp.val;
-                      return (
-                        <button
-                          key={wp.val}
-                          type="button"
-                          onClick={() => updatePt({ snowWindAngle: wp.val })}
-                          className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
-                            active
-                              ? 'bg-sky-500 text-white font-bold shadow-sm'
-                              : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
-                          }`}
-                        >
-                          {isVi ? wp.labelVi : wp.labelEn}
-                        </button>
-                      );
-                    })}
+                  <div>
+                    <span className="text-xs font-semibold text-neutral-200 block">
+                      {isVi ? 'Fade In / Out khi Video ngắn hơn bài hát' : 'Loop Fade In / Out Transition'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Chuyển cảnh mờ dần mềm mại mỗi khi video hết và lặp lại' : 'Smooth dissolve fade at loop boundaries'}
+                    </span>
                   </div>
-                </div>
+                </label>
 
-                {/* Wind Speed Multiplier & Turbulence */}
-                <div className="grid grid-cols-2 gap-3 pt-1">
+                {background.videoLoopFade !== false && (
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-400 flex items-center gap-1">
-                        <Wind className="w-3 h-3 text-sky-400" />
-                        {isVi ? 'Tốc độ gió' : 'Wind Velocity'}
-                      </span>
-                      <span className="text-sky-400 font-mono">
-                        {(particles.snowWindSpeed !== undefined ? particles.snowWindSpeed : 1.0).toFixed(1)}x
+                      <span className="text-neutral-400">{isVi ? 'Thời gian mờ dần (Fade Duration)' : 'Fade Duration'}</span>
+                      <span className="text-cyan-400 font-mono font-bold">
+                        {(background.videoFadeDuration !== undefined ? background.videoFadeDuration : 1.0).toFixed(1)}s
                       </span>
                     </div>
                     <input
                       type="range"
                       min={0.3}
-                      max={2.5}
+                      max={3.0}
                       step={0.1}
-                      value={particles.snowWindSpeed !== undefined ? particles.snowWindSpeed : 1.0}
-                      onChange={(e) => updatePt({ snowWindSpeed: parseFloat(e.target.value) })}
-                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-400"
+                      value={background.videoFadeDuration !== undefined ? background.videoFadeDuration : 1.0}
+                      onChange={(e) => update({ videoFadeDuration: parseFloat(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                     />
                   </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-400">{isVi ? 'Độ chao đảo (Turbulence)' : 'Turbulence'}</span>
-                      <span className="text-sky-400 font-mono">
-                        {particles.snowTurbulence !== undefined ? particles.snowTurbulence : 40}%
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={particles.snowTurbulence !== undefined ? particles.snowTurbulence : 40}
-                      onChange={(e) => updatePt({ snowTurbulence: parseInt(e.target.value) })}
-                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-400"
-                    />
-                  </div>
-                </div>
+                )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* 1.5 DEDICATED RAINFALL & WIND DIRECTION CONTROLS */}
-            {particles.type === 'rain' && (
-              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-950/40 via-neutral-900 to-cyan-950/40 border border-blue-500/30 space-y-3.5 shadow-sm">
-                <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
-                  <div className="flex items-center gap-2">
-                    <CloudRain className="w-4 h-4 text-blue-400" />
-                    <span className="text-xs font-bold text-blue-200">
-                      {isVi ? 'Tùy Chỉnh Mưa Rơi & Hướng Gió (Rain & Wind Dynamics)' : 'Rain & Wind Dynamics'}
+          {/* Apply to All Playlist Button */}
+          {playlist && playlist.tracks.length > 1 && onApplyBackgroundToAllTracks && (
+            <button
+              type="button"
+              onClick={() => onApplyBackgroundToAllTracks(background)}
+              className="w-full py-2.5 px-4 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-semibold text-neutral-200 flex items-center justify-center gap-2 cursor-pointer transition-all"
+            >
+              <ListMusic className="w-4 h-4 text-cyan-400" />
+              <span>{isVi ? 'Áp dụng hình nền này cho tất cả bài trong Playlist' : 'Apply this background to all tracks in playlist'}</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODE 2: NHIỀU ẢNH (Multi-Image Slideshow)                    */}
+      {/* ============================================================ */}
+      {mode === 'slides' && (
+        <div className="space-y-5">
+          {/* Slideshow Overview Header Banner */}
+          <div className="bg-gradient-to-br from-indigo-950/40 via-neutral-900 to-purple-950/40 p-4 rounded-2xl border border-indigo-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  {isVi ? 'Danh Sách Slide Chuyển Cảnh' : 'Multi-Slide Sequence'}
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-500/30 text-indigo-300 border border-indigo-500/40">
+                  {slides.length} {isVi ? 'Slide' : 'Slides'}
+                </span>
+              </div>
+              <div className="text-[11px] text-neutral-400 flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>
+                    {isVi ? 'Tổng thời lượng slide:' : 'Total slides:'}{' '}
+                    <b className="text-white font-mono">{slides.reduce((acc, s) => acc + (s.duration || 0), 0)}s</b>
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Music className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>
+                    {isVi ? 'Bài MP3 đang chọn:' : 'Active MP3:'}{' '}
+                    <b className="text-emerald-300 font-mono">{activeSongDuration}s</b>
+                  </span>
+                </div>
+                {playlist && playlist.tracks && playlist.tracks.length > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <ListMusic className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>
+                      {isVi ? 'Toàn bộ Playlist:' : 'All Playlist:'}{' '}
+                      <b className="text-cyan-300 font-mono">{totalPlaylistDuration}s</b>
                     </span>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                    {isVi ? 'Vật Lý Mưa 🌧️' : 'Rain Physics 🌧️'}
-                  </span>
-                </div>
+                )}
+              </div>
+            </div>
 
-                {/* Raindrop Type Selector */}
-                <div>
-                  <span className="text-[11px] font-semibold text-neutral-300 block mb-1.5 flex items-center gap-1">
-                    <Droplets className="w-3.5 h-3.5 text-blue-400" />
-                    {isVi ? 'Kiểu Hạt Mưa (Raindrop Type)' : 'Raindrop Geometry & Streaks'}
-                  </span>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {RAINDROP_TYPES.map((rt) => {
-                      const isSelected = (particles.rainDropType || 'mixed') === rt.id;
-                      return (
-                        <button
-                          key={rt.id}
-                          type="button"
-                          onClick={() => updatePt({ rainDropType: rt.id })}
-                          className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-blue-500/25 border-blue-400 text-white shadow-sm ring-1 ring-blue-500/40'
-                              : 'bg-neutral-900/70 border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                          }`}
-                        >
-                          <span className={`text-xs font-semibold block ${isSelected ? 'text-blue-200' : 'text-neutral-300'}`}>
-                            {isVi ? rt.nameVi : rt.nameEn}
-                          </span>
-                          <span className="text-[9px] text-neutral-400 block leading-tight">
-                            {isVi ? rt.descVi : rt.descEn}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+            <button
+              type="button"
+              onClick={handleAddSlide}
+              className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isVi ? '+ Thêm Slide Mới' : '+ Add New Slide'}</span>
+            </button>
+          </div>
 
-                {/* Wind Dynamics: Fixed Tilt or Random Shifting Wind */}
-                <div className="space-y-2.5">
-                  {/* Random Wind Option (Hướng gió ngẫu nhiên & biến thiên) */}
-                  <div className="p-3 rounded-xl bg-blue-950/40 border border-blue-500/30 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={particles.rainRandomWind || false}
-                          onChange={(e) => updatePt({ rainRandomWind: e.target.checked })}
-                          className="rounded text-blue-500 focus:ring-blue-500 bg-neutral-800 border-neutral-700 cursor-pointer"
-                        />
-                        <span className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
-                          <Shuffle className="w-3.5 h-3.5 text-blue-400" />
-                          {isVi ? 'Hướng Gió Ngẫu Nhiên (Random Wind Gusts)' : 'Random Wind Shifts (Dynamic Gusts)'}
-                        </span>
-                      </label>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                        particles.rainRandomWind
-                          ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                          : 'bg-neutral-800/60 text-neutral-400 border-neutral-700/60'
-                      }`}>
-                        {particles.rainRandomWind ? (isVi ? 'Gió Biến Thiên Tự Nhiên' : 'Dynamic Shifting Active') : (isVi ? 'Góc Gió Cố Định' : 'Fixed Angle')}
+          {/* List of Slide Cards */}
+          <div className="space-y-4">
+            {slides.map((slide, index) => {
+              const isLastSlide = index === slides.length - 1;
+              const prevDurationsSum = sumPreviousSlidesDuration(index);
+              const autoCalcSong = Math.max(2, activeSongDuration - prevDurationsSum);
+              const autoCalcPlaylist = Math.max(2, totalPlaylistDuration - prevDurationsSum);
+
+              return (
+                <div
+                  key={slide.id}
+                  className="bg-neutral-900/60 p-4 rounded-2xl border border-neutral-800 hover:border-neutral-700 transition-all space-y-3.5 shadow-sm"
+                >
+                  {/* Slide Card Header */}
+                  <div className="flex items-center justify-between border-b border-neutral-800 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-mono text-xs font-bold flex items-center justify-center border border-indigo-500/30">
+                        #{index + 1}
                       </span>
+                      <input
+                        type="text"
+                        value={slide.name || `Slide ${index + 1}`}
+                        onChange={(e) => handleUpdateSlide(slide.id, { name: e.target.value })}
+                        className="bg-transparent text-xs font-bold text-neutral-200 focus:outline-none focus:underline"
+                      />
                     </div>
 
-                    {particles.rainRandomWind ? (
-                      <div className="pt-2 border-t border-blue-500/20 space-y-2">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-neutral-400">{isVi ? 'Tốc độ đổi chiều gió (Gust Shift Speed)' : 'Gust Shift Speed'}</span>
-                          <span className="text-blue-400 font-mono font-bold">{(particles.rainRandomWindSpeed ?? 1.0).toFixed(1)}x</span>
+                    <div className="flex items-center gap-1">
+                      {/* Move Up */}
+                      <button
+                        type="button"
+                        onClick={() => handleMoveSlide(index, 'up')}
+                        disabled={index === 0}
+                        className="p-1 rounded-lg text-neutral-400 hover:text-white disabled:opacity-30 cursor-pointer"
+                        title={isVi ? 'Di chuyển lên' : 'Move Up'}
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Move Down */}
+                      <button
+                        type="button"
+                        onClick={() => handleMoveSlide(index, 'down')}
+                        disabled={index === slides.length - 1}
+                        className="p-1 rounded-lg text-neutral-400 hover:text-white disabled:opacity-30 cursor-pointer"
+                        title={isVi ? 'Di chuyển xuống' : 'Move Down'}
+                      >
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Duplicate */}
+                      <button
+                        type="button"
+                        onClick={() => handleDuplicateSlide(index)}
+                        className="p-1 rounded-lg text-neutral-400 hover:text-indigo-400 cursor-pointer"
+                        title={isVi ? 'Nhân đôi slide' : 'Duplicate Slide'}
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Delete */}
+                      {slides.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSlide(slide.id)}
+                          className="p-1 rounded-lg text-neutral-400 hover:text-rose-400 cursor-pointer ml-1"
+                          title={isVi ? 'Xóa slide' : 'Delete Slide'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Slide Content Source Selection */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Left: Thumbnail & Source Picker */}
+                    <div className="space-y-2.5">
+                      <div className="relative rounded-xl overflow-hidden aspect-video border border-neutral-700 bg-neutral-950 flex items-center justify-center">
+                        {slide.type === 'solid' ? (
+                          <div
+                            className="w-full h-full"
+                            style={{ backgroundColor: slide.color1 || '#0f172a' }}
+                          />
+                        ) : slide.type === 'gradient' ? (
+                          <div
+                            className="w-full h-full"
+                            style={{
+                              background:
+                                slide.gradientType === 'radial'
+                                  ? slide.useThreeColors
+                                    ? `radial-gradient(circle at ${slide.radialOrigin || 'center'}, ${slide.color1 || '#312e81'}, ${slide.color2 || '#0f172a'}, ${slide.color3 || '#7c3aed'})`
+                                    : `radial-gradient(circle at ${slide.radialOrigin || 'center'}, ${slide.color1 || '#312e81'}, ${slide.color2 || '#0f172a'})`
+                                  : slide.useThreeColors
+                                  ? `linear-gradient(${slide.gradientAngle ?? 135}deg, ${slide.color1 || '#0f172a'}, ${slide.color2 || '#312e81'}, ${slide.color3 || '#7c3aed'})`
+                                  : `linear-gradient(${slide.gradientAngle ?? 135}deg, ${slide.color1 || '#0f172a'}, ${slide.color2 || '#312e81'})`,
+                            }}
+                          />
+                        ) : slide.type === 'video' ? (
+                          slide.videoUrl || slide.url ? (
+                            <div className="relative w-full h-full group">
+                              <video
+                                ref={(el) => {
+                                  if (el) {
+                                    if (playingSlideVideoId === slide.id) {
+                                      el.play().catch(() => {});
+                                    } else {
+                                      el.pause();
+                                    }
+                                  }
+                                }}
+                                src={slide.videoUrl || slide.url}
+                                loop
+                                muted
+                                playsInline
+                                preload="metadata"
+                                className="w-full h-full object-cover"
+                              />
+                              {/* Small Play/Pause Preview Control for Slide Video */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPlayingSlideVideoId(playingSlideVideoId === slide.id ? null : slide.id);
+                                }}
+                                className="absolute inset-0 m-auto w-9 h-9 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-sm border border-white/20 transition-all cursor-pointer shadow-lg hover:scale-110"
+                                title={
+                                  playingSlideVideoId === slide.id
+                                    ? (isVi ? 'Tạm dừng xem trước video' : 'Pause preview')
+                                    : (isVi ? 'Xem trước video MP4' : 'Play preview')
+                                }
+                              >
+                                {playingSlideVideoId === slide.id ? (
+                                  <Pause className="w-4 h-4 fill-white" />
+                                ) : (
+                                  <Play className="w-4 h-4 fill-white translate-x-0.5" />
+                                )}
+                              </button>
+                              {/* Video duration badge */}
+                              {slide.videoDuration && (
+                                <span className="absolute top-1.5 right-1.5 text-[9px] px-1.5 py-0.5 rounded-md bg-black/80 text-indigo-300 font-mono border border-indigo-500/30">
+                                  {slide.videoDuration}s
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center gap-1 text-neutral-500">
+                              <Video className="w-6 h-6 text-indigo-400/70" />
+                              <span className="text-[11px]">{isVi ? 'Chưa chọn video MP4' : 'No MP4 video selected'}</span>
+                            </div>
+                          )
+                        ) : slide.url ? (
+                          <img src={slide.url} alt={slide.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs text-neutral-500">{isVi ? 'Chưa có ảnh' : 'No image'}</span>
+                        )}
+                        <span className="absolute bottom-1.5 left-1.5 text-[9px] px-1.5 py-0.5 rounded-md bg-black/70 text-white font-mono uppercase">
+                          {slide.type === 'video' ? 'MP4 VIDEO' : slide.type}
+                        </span>
+                      </div>
+
+                      {/* Source Chips (4 Options: Ảnh Mẫu | Tải Ảnh | Mp4 Upload | Màu Sắc) */}
+                      <div className="grid grid-cols-4 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextPreset = BACKGROUND_PRESETS[(index + 1) % BACKGROUND_PRESETS.length];
+                            handleUpdateSlide(slide.id, { type: 'preset', isVideo: false, url: slide.url || nextPreset.url });
+                          }}
+                          className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold border text-center transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                            slide.type === 'preset'
+                              ? 'bg-indigo-500/25 border-indigo-400 text-indigo-200'
+                              : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <ImageIcon className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{isVi ? 'Ảnh Mẫu' : 'Preset'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveSlidePickerId(slide.id);
+                            slideFileInputRef.current?.click();
+                          }}
+                          className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold border text-center transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                            slide.type === 'upload'
+                              ? 'bg-indigo-500/25 border-indigo-400 text-indigo-200'
+                              : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <Upload className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{isVi ? 'Tải Ảnh' : 'Image'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleUpdateSlide(slide.id, { type: 'video', isVideo: true });
+                            if (!slide.videoUrl) {
+                              setActiveSlideVideoPickerId(slide.id);
+                              slideVideoInputRef.current?.click();
+                            }
+                          }}
+                          className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold border text-center transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                            slide.type === 'video'
+                              ? 'bg-indigo-500/25 border-indigo-400 text-indigo-200'
+                              : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <Video className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{isVi ? 'Mp4 Upload' : 'MP4'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleUpdateSlide(slide.id, {
+                              type: slide.type === 'solid' ? 'solid' : 'gradient',
+                              isVideo: false,
+                              color1: slide.color1 || '#1e1b4b',
+                              color2: slide.color2 || '#0f172a',
+                              color3: slide.color3 || '#7c3aed',
+                              gradientAngle: slide.gradientAngle ?? 135,
+                              gradientType: slide.gradientType || 'linear',
+                            });
+                          }}
+                          className={`py-1.5 px-1 rounded-lg text-[10px] font-semibold border text-center transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                            slide.type === 'gradient' || slide.type === 'solid'
+                              ? 'bg-indigo-500/25 border-indigo-400 text-indigo-200'
+                              : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          <Palette className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{isVi ? 'Màu Sắc' : 'Color'}</span>
+                        </button>
+                      </div>
+
+                      {/* Quick Preset Strip when slide.type === 'preset' */}
+                      {slide.type === 'preset' && (
+                        <div className="flex gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none">
+                          {BACKGROUND_PRESETS.map((pr) => (
+                            <button
+                              key={pr.id}
+                              type="button"
+                              onClick={() => handleUpdateSlide(slide.id, { type: 'preset', isVideo: false, url: pr.url })}
+                              className={`relative w-12 h-8 rounded-lg overflow-hidden shrink-0 border transition-all cursor-pointer ${
+                                slide.url === pr.url
+                                  ? 'border-indigo-400 ring-1 ring-indigo-400 scale-105'
+                                  : 'border-neutral-800 opacity-70 hover:opacity-100'
+                              }`}
+                              title={isVi ? pr.nameVi : pr.name}
+                            >
+                              <img src={pr.thumbnail} alt={pr.name} className="w-full h-full object-cover" />
+                            </button>
+                          ))}
                         </div>
+                      )}
+
+                      {/* MP4 Video Upload Panel when slide.type === 'video' */}
+                      {slide.type === 'video' && (
+                        <div className="p-2.5 rounded-xl bg-neutral-950/80 border border-indigo-500/30 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold text-indigo-300 flex items-center gap-1.5">
+                              <Video className="w-3.5 h-3.5" />
+                              {isVi ? 'Video MP4 của Slide này' : 'Slide MP4 Video'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveSlideVideoPickerId(slide.id);
+                                slideVideoInputRef.current?.click();
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
+                            >
+                              <Upload className="w-3 h-3" />
+                              <span>{slide.videoUrl ? (isVi ? 'Đổi File MP4' : 'Replace MP4') : (isVi ? 'Chọn File MP4' : 'Upload MP4')}</span>
+                            </button>
+                          </div>
+
+                          {/* MP4 Duration & Loop / Cut Status Info */}
+                          {slide.videoDuration ? (
+                            <div className="p-2 rounded-lg bg-neutral-900/90 border border-neutral-800 space-y-1.5 text-[10px]">
+                              <div className="flex items-center justify-between">
+                                <span className="text-neutral-300">
+                                  {isVi ? 'Thời lượng file MP4 gốc:' : 'Original MP4 length:'}{' '}
+                                  <b className="text-indigo-300 font-mono font-bold">{slide.videoDuration}s</b>
+                                </span>
+                                {slide.duration !== slide.videoDuration && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateSlide(slide.id, { duration: slide.videoDuration! })}
+                                    className="px-2 py-0.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-bold cursor-pointer text-[9px] flex items-center gap-1"
+                                    title={isVi ? 'Khớp thời lượng slide bằng thời lượng video MP4' : 'Set slide duration to video duration'}
+                                  >
+                                    <Zap className="w-2.5 h-2.5" />
+                                    <span>{isVi ? `Đặt Slide = ${slide.videoDuration}s` : `Match = ${slide.videoDuration}s`}</span>
+                                  </button>
+                                )}
+                              </div>
+
+                              {slide.duration > slide.videoDuration ? (
+                                <div className="text-amber-400 flex items-center gap-1 leading-tight">
+                                  <RefreshCw className="w-3 h-3 shrink-0" />
+                                  <span>
+                                    {isVi
+                                      ? `Slide (${slide.duration}s) > MP4 (${slide.videoDuration}s) → Video tự động lặp lại (Loop).`
+                                      : `Slide (${slide.duration}s) > MP4 (${slide.videoDuration}s) → Video will loop.`}
+                                  </span>
+                                </div>
+                              ) : slide.duration < slide.videoDuration ? (
+                                <div className="text-cyan-400 flex items-center gap-1 leading-tight">
+                                  <Scissors className="w-3 h-3 shrink-0" />
+                                  <span>
+                                    {isVi
+                                      ? `Slide (${slide.duration}s) < MP4 (${slide.videoDuration}s) → Video phát ${slide.duration}s rồi cắt chuyển slide.`
+                                      : `Slide (${slide.duration}s) < MP4 (${slide.videoDuration}s) → Video plays ${slide.duration}s then cuts.`}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="text-emerald-400 flex items-center gap-1 leading-tight">
+                                  <Check className="w-3 h-3 shrink-0" />
+                                  <span>
+                                    {isVi
+                                      ? 'Thời lượng Slide khớp 100% với video MP4.'
+                                      : 'Slide duration matches video duration perfectly.'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-neutral-400 leading-tight">
+                              {isVi
+                                ? 'Hỗ trợ định dạng .MP4 / .WebM. Preview chỉ phát khi bấm Play nhạc, không lag app.'
+                                : 'Supports .MP4 / .WebM. Preview only plays on music playback to prevent app lag.'}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Full Color & Gradient Studio when slide.type === 'gradient' | 'solid' */}
+                      {(slide.type === 'gradient' || slide.type === 'solid') && (
+                        <div className="p-2.5 rounded-xl bg-neutral-950/90 border border-indigo-500/30 space-y-2.5">
+                          {/* 1. Kiểu màu: Solid | Linear Gradient | Radial Gradient */}
+                          <div>
+                            <span className="text-[10px] text-neutral-400 font-medium block mb-1">
+                              {isVi ? 'Kiểu màu nền Slide:' : 'Slide Color Mode:'}
+                            </span>
+                            <div className="grid grid-cols-3 gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateSlide(slide.id, { type: 'solid' })}
+                                className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
+                                  slide.type === 'solid'
+                                    ? 'bg-indigo-500/25 border-indigo-400 text-white'
+                                    : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                                }`}
+                              >
+                                {isVi ? 'Màu Đơn (Solid)' : 'Solid'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateSlide(slide.id, { type: 'gradient', gradientType: 'linear' })}
+                                className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
+                                  slide.type === 'gradient' && slide.gradientType !== 'radial'
+                                    ? 'bg-indigo-500/25 border-indigo-400 text-white'
+                                    : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                                }`}
+                              >
+                                {isVi ? 'Linear (Thẳng)' : 'Linear'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateSlide(slide.id, { type: 'gradient', gradientType: 'radial' })}
+                                className={`py-1 px-1.5 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
+                                  slide.type === 'gradient' && slide.gradientType === 'radial'
+                                    ? 'bg-indigo-500/25 border-indigo-400 text-white'
+                                    : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                                }`}
+                              >
+                                {isVi ? 'Radial (Tròn)' : 'Radial'}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 2. Color Pickers (1, 2 or 3 Colors) */}
+                          <div className={`grid ${slide.type === 'solid' ? 'grid-cols-1' : slide.useThreeColors ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5`}>
+                            <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 p-1.5 rounded-lg">
+                              <input
+                                type="color"
+                                value={slide.color1 || '#1e1b4b'}
+                                onChange={(e) => handleUpdateSlide(slide.id, { color1: e.target.value })}
+                                className="w-4 h-4 rounded cursor-pointer bg-transparent border-0 shrink-0"
+                              />
+                              <span className="text-[10px] font-mono text-neutral-300 truncate">{slide.color1 || '#1e1b4b'}</span>
+                            </div>
+
+                            {slide.type === 'gradient' && (
+                              <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 p-1.5 rounded-lg">
+                                <input
+                                  type="color"
+                                  value={slide.color2 || '#0f172a'}
+                                  onChange={(e) => handleUpdateSlide(slide.id, { color2: e.target.value })}
+                                  className="w-4 h-4 rounded cursor-pointer bg-transparent border-0 shrink-0"
+                                />
+                                <span className="text-[10px] font-mono text-neutral-300 truncate">{slide.color2 || '#0f172a'}</span>
+                              </div>
+                            )}
+
+                            {slide.type === 'gradient' && slide.useThreeColors && (
+                              <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 p-1.5 rounded-lg">
+                                <input
+                                  type="color"
+                                  value={slide.color3 || '#7c3aed'}
+                                  onChange={(e) => handleUpdateSlide(slide.id, { color3: e.target.value })}
+                                  className="w-4 h-4 rounded cursor-pointer bg-transparent border-0 shrink-0"
+                                />
+                                <span className="text-[10px] font-mono text-neutral-300 truncate">{slide.color3 || '#7c3aed'}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 3. Gradient Extra Options: 3-Color toggle, Angle or Radial Origin */}
+                          {slide.type === 'gradient' && (
+                            <div className="space-y-2 pt-0.5">
+                              <label className="flex items-center gap-1.5 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={slide.useThreeColors || false}
+                                  onChange={(e) => handleUpdateSlide(slide.id, { useThreeColors: e.target.checked, color3: slide.color3 || '#7c3aed' })}
+                                  className="rounded text-indigo-500 focus:ring-indigo-500 bg-neutral-800 border-neutral-700 cursor-pointer"
+                                />
+                                <span className="text-[10px] text-neutral-300">
+                                  {isVi ? 'Phối 3 màu chuyển sắc (3-Color Gradient)' : '3-Color Gradient Blend'}
+                                </span>
+                              </label>
+
+                              {slide.gradientType !== 'radial' ? (
+                                <div>
+                                  <div className="flex justify-between text-[10px] mb-1">
+                                    <span className="text-neutral-400">{isVi ? 'Góc xoay Gradient:' : 'Gradient Angle:'}</span>
+                                    <span className="text-indigo-400 font-mono font-bold">{slide.gradientAngle ?? 135}°</span>
+                                  </div>
+                                  <input
+                                    type="range"
+                                    min={0}
+                                    max={360}
+                                    step={5}
+                                    value={slide.gradientAngle ?? 135}
+                                    onChange={(e) => handleUpdateSlide(slide.id, { gradientAngle: parseInt(e.target.value) })}
+                                    className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                                  />
+                                </div>
+                              ) : (
+                                <div>
+                                  <span className="text-[10px] text-neutral-400 block mb-1">
+                                    {isVi ? 'Tâm tỏa tròn (Radial Origin):' : 'Radial Origin:'}
+                                  </span>
+                                  <div className="grid grid-cols-5 gap-1">
+                                    {[
+                                      { id: 'center', labelVi: 'Giữa', labelEn: 'Center' },
+                                      { id: 'top', labelVi: 'Trên', labelEn: 'Top' },
+                                      { id: 'bottom', labelVi: 'Dưới', labelEn: 'Bottom' },
+                                      { id: 'left', labelVi: 'Trái', labelEn: 'Left' },
+                                      { id: 'right', labelVi: 'Phải', labelEn: 'Right' },
+                                    ].map((org) => (
+                                      <button
+                                        key={org.id}
+                                        type="button"
+                                        onClick={() => handleUpdateSlide(slide.id, { radialOrigin: org.id as any })}
+                                        className={`py-1 rounded text-[9px] font-medium border cursor-pointer ${
+                                          (slide.radialOrigin || 'center') === org.id
+                                            ? 'bg-indigo-500/25 border-indigo-400 text-white'
+                                            : 'bg-neutral-900 border-neutral-800 text-neutral-400'
+                                        }`}
+                                      >
+                                        {isVi ? org.labelVi : org.labelEn}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* 4. Quick Curated Color Palettes */}
+                          <div className="pt-1 border-t border-neutral-800/80">
+                            <span className="text-[9px] text-neutral-500 block mb-1">
+                              {isVi ? 'Bảng màu mẫu nhanh:' : 'Quick Color Presets:'}
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {[
+                                { name: 'Cyber', c1: '#0f172a', c2: '#312e81', c3: '#ec4899' },
+                                { name: 'Sunset', c1: '#4a044e', c2: '#9d174d', c3: '#f97316' },
+                                { name: 'Emerald', c1: '#022c22', c2: '#065f46', c3: '#10b981' },
+                                { name: 'Ocean', c1: '#082f49', c2: '#0369a1', c3: '#38bdf8' },
+                                { name: 'Lofi', c1: '#1e1b4b', c2: '#4c1d95', c3: '#c084fc' },
+                                { name: 'Dark', c1: '#030712', c2: '#111827', c3: '#374151' },
+                              ].map((pal) => (
+                                <button
+                                  key={pal.name}
+                                  type="button"
+                                  onClick={() =>
+                                    handleUpdateSlide(slide.id, {
+                                      color1: pal.c1,
+                                      color2: pal.c2,
+                                      color3: pal.c3,
+                                    })
+                                  }
+                                  className="px-1.5 py-0.5 rounded-md bg-neutral-900 border border-neutral-800 hover:border-indigo-400 flex items-center gap-1 cursor-pointer text-[9px] text-neutral-300"
+                                >
+                                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: pal.c1 }} />
+                                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: pal.c3 }} />
+                                  <span>{pal.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right: Timing, Transitions & Ken Burns */}
+                    <div className="space-y-3">
+                      {/* 1. Slide Interval / Duration */}
+                      <div>
+                        <div className="flex justify-between items-center text-xs mb-1">
+                          <span className="text-neutral-300 font-medium flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                            {isVi ? 'Thời lượng hiển thị (Duration):' : 'Slide Duration:'}
+                          </span>
+                          <span className="text-indigo-400 font-mono font-bold">{slide.duration}s</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={2}
+                          max={90}
+                          step={1}
+                          value={slide.duration}
+                          onChange={(e) => handleUpdateSlide(slide.id, { duration: parseInt(e.target.value) })}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                        />
+
+                        {/* Special Auto-calc Indicator for Last Slide */}
+                        {isLastSlide && (
+                          <div className="mt-2 p-2 rounded-xl bg-indigo-950/40 border border-indigo-500/30 space-y-1.5">
+                            <div className="flex items-center justify-between text-[10px] text-indigo-300">
+                              <span>
+                                {isVi ? 'Khớp theo Bài MP3 hiện tại:' : 'Match active MP3:'}{' '}
+                                <b className="text-emerald-300 font-mono font-bold">{autoCalcSong}s</b>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleAutoCalcLastSlide(activeSongDuration)}
+                                className="px-2 py-0.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-[9px] font-bold transition-colors cursor-pointer"
+                              >
+                                {isVi ? `⚡ Điền ${autoCalcSong}s` : `⚡ Fill ${autoCalcSong}s`}
+                              </button>
+                            </div>
+                            {playlist && playlist.tracks && playlist.tracks.length > 1 && (
+                              <div className="flex items-center justify-between text-[10px] text-neutral-400 border-t border-neutral-800/60 pt-1">
+                                <span>
+                                  {isVi ? 'Khớp theo toàn bộ Playlist:' : 'Match full Playlist:'}{' '}
+                                  <b className="text-cyan-300 font-mono font-bold">{autoCalcPlaylist}s</b>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAutoCalcLastSlide(totalPlaylistDuration)}
+                                  className="px-2 py-0.5 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white text-[9px] font-bold transition-colors cursor-pointer"
+                                >
+                                  {isVi ? `⚡ Điền ${autoCalcPlaylist}s` : `⚡ Fill ${autoCalcPlaylist}s`}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 2. Transition Type & Duration */}
+                      <div>
+                        <div className="flex justify-between items-center text-xs mb-1">
+                          <span className="text-neutral-300 font-medium">
+                            {isVi ? 'Hiệu ứng chuyển cảnh (Transition):' : 'Transition Effect:'}
+                          </span>
+                          <span className="text-indigo-400 font-mono font-bold">
+                            {(slide.transitionDuration ?? 1.2).toFixed(1)}s
+                          </span>
+                        </div>
+
+                        <select
+                          value={slide.transitionType || 'crossfade'}
+                          onChange={(e) => handleUpdateSlide(slide.id, { transitionType: e.target.value as SlideTransitionType })}
+                          className="w-full px-2.5 py-1.5 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-200 focus:outline-none focus:border-indigo-500 mb-1.5 cursor-pointer"
+                        >
+                          {TRANSITION_TYPES.map((tr) => (
+                            <option key={tr.id} value={tr.id}>
+                              {isVi ? tr.nameVi : tr.nameEn}
+                            </option>
+                          ))}
+                        </select>
+
                         <input
                           type="range"
                           min={0.3}
                           max={3.0}
                           step={0.1}
-                          value={particles.rainRandomWindSpeed ?? 1.0}
-                          onChange={(e) => updatePt({ rainRandomWindSpeed: parseFloat(e.target.value) })}
-                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                          value={slide.transitionDuration ?? 1.2}
+                          onChange={(e) => handleUpdateSlide(slide.id, { transitionDuration: parseFloat(e.target.value) })}
+                          className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                         />
-                        <p className="text-[10px] text-blue-300/80 leading-relaxed">
-                          {isVi 
-                            ? '✦ Gió tự động đổi chiều lượn sóng liên tục giữa trái và phải theo thời gian thực tạo cảm giác mưa rào chân thực ngoài trời.'
-                            : '✦ Wind direction organically sways between left and right over time like natural stormy rainfall.'}
-                        </p>
                       </div>
-                    ) : (
-                      /* Wind Direction Angle (-60° to +60°) when random wind is off */
-                      <div className="pt-1 border-t border-neutral-800/80 space-y-2">
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-neutral-300 flex items-center gap-1.5 font-medium">
-                            <Compass className="w-3.5 h-3.5 text-blue-400" />
-                            {isVi ? 'Hướng gió thổi & góc nghiêng (Wind Angle)' : 'Wind Tilt Angle'}
-                          </span>
-                          <span className="text-blue-400 font-mono font-bold">
-                            {(particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10) > 0 ? `+${particles.rainWindAngle ?? 10}° ${isVi ? '(Sang Phải)' : '(Rightward)'}` : (particles.rainWindAngle ?? 10) < 0 ? `${particles.rainWindAngle}° ${isVi ? '(Sang Trái)' : '(Leftward)'}` : `0° ${isVi ? '(Thẳng Đứng)' : '(Vertical)'}`}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-60}
-                          max={60}
-                          step={5}
-                          value={particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10}
-                          onChange={(e) => updatePt({ rainWindAngle: parseInt(e.target.value) })}
-                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
-                        />
-                        
-                        {/* Wind Direction Quick Presets */}
-                        <div className="flex items-center gap-1 pt-0.5">
-                          {[
-                            { labelVi: 'Gió Trái (-35°)', labelEn: 'Left (-35°)', val: -35 },
-                            { labelVi: 'Thẳng đứng (0°)', labelEn: 'Vertical (0°)', val: 0 },
-                            { labelVi: 'Gió Nhẹ (+10°)', labelEn: 'Breeze (+10°)', val: 10 },
-                            { labelVi: 'Gió Bão (+40°)', labelEn: 'Storm (+40°)', val: 40 },
-                          ].map((wp) => {
-                            const cur = particles.rainWindAngle !== undefined ? particles.rainWindAngle : 10;
-                            const active = cur === wp.val;
-                            return (
-                              <button
-                                key={wp.val}
-                                type="button"
-                                onClick={() => updatePt({ rainWindAngle: wp.val })}
-                                className={`flex-1 py-1 rounded-lg text-[10px] font-medium transition-all cursor-pointer ${
-                                  active
-                                    ? 'bg-blue-500 text-white font-bold shadow-sm'
-                                    : 'bg-neutral-800/80 text-neutral-400 hover:text-neutral-200'
-                                }`}
+
+                      {/* 3. Ken Burns Pan / Zoom */}
+                      <div className="pt-1 space-y-2">
+                        <label className="flex items-start gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={slide.kenBurns !== false}
+                            onChange={(e) => handleUpdateSlide(slide.id, { kenBurns: e.target.checked })}
+                            className="rounded text-indigo-500 focus:ring-indigo-500 bg-neutral-800 border-neutral-700 mt-0.5 cursor-pointer"
+                          />
+                          <div>
+                            <span className="text-xs font-semibold text-neutral-200 block">
+                              {isVi ? 'Hiệu ứng Ken Burns (Pan & Zoom nhẹ)' : 'Ken Burns Organic Motion'}
+                            </span>
+                            <span className="text-[10px] text-neutral-400 block leading-tight">
+                              {isVi 
+                                ? 'Tự động mở rộng tỷ lệ (overscale) chống hở viền đen khi chuyển động'
+                                : 'Overscales image dimension to eliminate black border gaps'}
+                            </span>
+                          </div>
+                        </label>
+
+                        {/* Ken Burns Detailed Settings Panel */}
+                        {slide.kenBurns !== false && (
+                          <div className="p-2.5 rounded-xl bg-neutral-950/80 border border-indigo-500/25 space-y-2.5">
+                            {/* Direction */}
+                            <div>
+                              <div className="flex justify-between items-center text-[10px] mb-1">
+                                <span className="text-neutral-400 font-medium">
+                                  {isVi ? 'Hướng chuyển động (Motion Direction):' : 'Motion Direction:'}
+                                </span>
+                                <span className="text-indigo-400 font-mono font-bold text-[9px] uppercase">
+                                  {slide.kenBurnsDirection || 'auto'}
+                                </span>
+                              </div>
+                              <select
+                                value={slide.kenBurnsDirection || 'auto'}
+                                onChange={(e) => handleUpdateSlide(slide.id, { kenBurnsDirection: e.target.value as KenBurnsDirection })}
+                                className="w-full px-2 py-1 rounded-lg bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
                               >
-                                {isVi ? wp.labelVi : wp.labelEn}
-                              </button>
-                            );
-                          })}
-                        </div>
+                                {KEN_BURNS_DIRECTIONS.map((dir) => (
+                                  <option key={dir.id} value={dir.id}>
+                                    {isVi ? dir.nameVi : dir.nameEn}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Zoom Scale */}
+                            <div>
+                              <div className="flex justify-between items-center text-[10px] mb-1">
+                                <span className="text-neutral-400">{isVi ? 'Tỷ lệ Zoom (Zoom Scale):' : 'Zoom Scale:'}</span>
+                                <span className="text-indigo-400 font-mono font-bold">
+                                  {(slide.kenBurnsScale ?? 1.18).toFixed(2)}x
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min={1.05}
+                                max={1.35}
+                                step={0.01}
+                                value={slide.kenBurnsScale ?? 1.18}
+                                onChange={(e) => handleUpdateSlide(slide.id, { kenBurnsScale: parseFloat(e.target.value) })}
+                                className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                              />
+                            </div>
+
+                            {/* Pan & Zoom Speed */}
+                            <div>
+                              <div className="flex justify-between items-center text-[10px] mb-1">
+                                <span className="text-neutral-400">{isVi ? 'Tốc độ lướt (Speed):' : 'Pan Speed:'}</span>
+                                <span className="text-indigo-400 font-mono font-bold">
+                                  {(slide.kenBurnsSpeed ?? 1.0).toFixed(1)}x
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min={0.3}
+                                max={2.5}
+                                step={0.1}
+                                value={slide.kenBurnsSpeed ?? 1.0}
+                                onChange={(e) => handleUpdateSlide(slide.id, { kenBurnsSpeed: parseFloat(e.target.value) })}
+                                className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
 
-                {/* Wind Speed Multiplier & Turbulence */}
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-400 flex items-center gap-1">
-                        <Wind className="w-3 h-3 text-blue-400" />
-                        {isVi ? 'Tốc độ gió' : 'Wind Velocity'}
-                      </span>
-                      <span className="text-blue-400 font-mono">
-                        {(particles.rainWindSpeed !== undefined ? particles.rainWindSpeed : 1.2).toFixed(1)}x
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.3}
-                      max={2.5}
-                      step={0.1}
-                      value={particles.rainWindSpeed !== undefined ? particles.rainWindSpeed : 1.2}
-                      onChange={(e) => updatePt({ rainWindSpeed: parseFloat(e.target.value) })}
-                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
-                    />
-                  </div>
+          {/* Hidden Slide Image & Video MP4 Upload Inputs */}
+          <input
+            ref={slideFileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleSlideImageUpload}
+            className="hidden"
+          />
+          <input
+            ref={slideVideoInputRef}
+            type="file"
+            accept="video/mp4,video/webm"
+            onChange={handleSlideVideoUpload}
+            className="hidden"
+          />
 
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-400">{isVi ? 'Độ chao đảo (Turbulence)' : 'Turbulence'}</span>
-                      <span className="text-blue-400 font-mono">
-                        {particles.rainTurbulence !== undefined ? particles.rainTurbulence : 25}%
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={particles.rainTurbulence !== undefined ? particles.rainTurbulence : 25}
-                      onChange={(e) => updatePt({ rainTurbulence: parseInt(e.target.value) })}
-                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
-                    />
-                  </div>
-                </div>
-
-                {/* Raindrop Length Scale & Splash Toggle */}
-                <div className="grid grid-cols-2 gap-3 pt-1 border-t border-blue-500/20">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-400 flex items-center gap-1">
-                        <Droplet className="w-3 h-3 text-blue-400" />
-                        {isVi ? 'Độ dài vệt giọt mưa' : 'Streak Length Scale'}
-                      </span>
-                      <span className="text-blue-400 font-mono">
-                        {(particles.rainLengthScale !== undefined ? particles.rainLengthScale : 1.2).toFixed(1)}x
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.5}
-                      max={3.0}
-                      step={0.1}
-                      value={particles.rainLengthScale !== undefined ? particles.rainLengthScale : 1.2}
-                      onChange={(e) => updatePt({ rainLengthScale: parseFloat(e.target.value) })}
-                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-blue-400"
-                    />
-                  </div>
-
-                  <div className="flex flex-col justify-end">
-                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-900/80 border border-neutral-800 cursor-pointer">
-                      <div className="flex items-center gap-1.5">
-                        <Waves className="w-3.5 h-3.5 text-blue-400" />
-                        <span className="text-[11px] font-medium text-neutral-300">{isVi ? 'Tóe nước đáy' : 'Ground Splash Ripples'}</span>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={particles.rainSplash !== false}
-                        onChange={(e) => updatePt({ rainSplash: e.target.checked })}
-                        className="rounded text-blue-500 focus:ring-blue-500 bg-neutral-800 border-neutral-700 cursor-pointer"
-                      />
-                    </label>
-                  </div>
-                </div>
+          {/* ============================================================ */}
+          {/* CUỐI TAB: CÀI ĐẶT TỰ ĐỘNG CHO TOÀN BỘ SLIDE (Batch Settings) */}
+          {/* ============================================================ */}
+          <div className="bg-neutral-900/80 p-4 rounded-2xl border border-indigo-500/30 space-y-3.5 shadow-md">
+            <div className="flex items-center gap-2 border-b border-neutral-800/80 pb-2.5">
+              <Sliders className="w-4 h-4 text-indigo-400" />
+              <div>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  {isVi ? 'Cài Đặt Tự Động Cho Toàn Bộ Slide (Batch Auto Settings)' : 'Batch Auto Settings for All Slides'}
+                </h3>
+                <p className="text-[10px] text-neutral-400">
+                  {isVi 
+                    ? 'Áp dụng nhanh thời lượng, kiểu chuyển cảnh và Ken Burns đồng bộ cho mọi slide' 
+                    : 'Quickly distribute duration or apply transition styles across all slides'}
+                </p>
               </div>
-            )}
+            </div>
 
-            {/* SPEED LINES DEDICATED CONTROLS */}
-            {particles.type === 'speed-lines' && (
-              <div className="p-3.5 bg-gradient-to-br from-sky-950/40 to-neutral-900/80 border border-sky-500/30 rounded-2xl space-y-3.5 shadow-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-sky-500/20 border border-sky-500/40 flex items-center justify-center">
-                      <Zap className="w-3.5 h-3.5 text-sky-400" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-white block">
-                        {isVi ? 'Tùy Chỉnh Vệt Tốc Độ (Speed Lines)' : 'Speed Lines Dynamics'}
-                      </span>
-                      <span className="text-[10px] text-neutral-400">
-                        {isVi ? 'Vệt line tốc độ cao phong cách Anime / Manga' : 'High-speed action streak overlays'}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 font-semibold">
-                    {particles.speedLineMode === 'converge-center' ? (isVi ? 'Về tâm' : 'Converge') : (isVi ? 'Song song ngang' : 'Horizontal')}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {/* Batch Action 1: Chia đều thời lượng */}
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-xs font-bold text-neutral-200">
+                    {isVi ? 'Chia Đều Thời Lượng Slide' : 'Distribute Duration Evenly'}
                   </span>
                 </div>
-
-                {/* 1. Mode selection: Horizontal vs Converge to Center */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-neutral-300 block">
-                    {isVi ? 'Kiểu Đường Chạy (Speed Line Motion)' : 'Speed Line Motion Pattern'}
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => updatePt({ speedLineMode: 'horizontal' })}
-                      className={`p-2 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer ${
-                        (particles.speedLineMode || 'horizontal') === 'horizontal'
-                          ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
-                          : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
-                      }`}
-                    >
-                      <div className="font-bold">{isVi ? '1. Song Song Chiều Ngang' : '1. Horizontal Parallel'}</div>
-                      <div className="text-[10px] text-neutral-400 mt-0.5">{isVi ? 'Chạy ngang khung hình' : 'Lateral speed streaks'}</div>
-                    </button>
-                    <button
-                      onClick={() => updatePt({ speedLineMode: 'converge-center' })}
-                      className={`p-2 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer ${
-                        particles.speedLineMode === 'converge-center'
-                          ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
-                          : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
-                      }`}
-                    >
-                      <div className="font-bold">{isVi ? '2. Chiều Đứng Về Tâm' : '2. Inward to Center'}</div>
-                      <div className="text-[10px] text-neutral-400 mt-0.5">{isVi ? 'Tụ về tâm như phác thảo' : 'Anime focal warp lines'}</div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* 1B. Direction & Tilt Angle selector for Horizontal mode */}
-                {(!particles.speedLineMode || particles.speedLineMode === 'horizontal') && (
-                  <div className="space-y-2.5">
-                    <div>
-                      <label className="text-[11px] font-bold text-neutral-300 block mb-1.5">
-                        {isVi ? 'Hướng Chạy Chiều Ngang' : 'Horizontal Direction'}
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => updatePt({ speedLineDirection: 'right-to-left' })}
-                          className={`py-1.5 px-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
-                            (particles.speedLineDirection || 'right-to-left') === 'right-to-left'
-                              ? 'bg-sky-500/20 border-sky-500 text-sky-200 font-bold'
-                              : 'bg-neutral-900/70 border-neutral-800 text-neutral-400'
-                          }`}
-                        >
-                          {isVi ? '← Phải sang Trái' : '← Right to Left'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => updatePt({ speedLineDirection: 'left-to-right' })}
-                          className={`py-1.5 px-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer ${
-                            particles.speedLineDirection === 'left-to-right'
-                              ? 'bg-sky-500/20 border-sky-500 text-sky-200 font-bold'
-                              : 'bg-neutral-900/70 border-neutral-800 text-neutral-400'
-                          }`}
-                        >
-                          {isVi ? 'Trái sang Phải →' : 'Left to Right →'}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Speed Line Tilt (Độ nghiêng -45 -> 45 độ) */}
-                    <div className="pt-1">
-                      <div className="flex justify-between items-center text-xs mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-neutral-300 font-medium">{isVi ? 'Độ nghiêng vệt line (Tilt Angle)' : 'Line Tilt Angle'}</span>
-                          {(particles.speedLineTilt !== undefined && particles.speedLineTilt !== 0) && (
-                            <button
-                              type="button"
-                              onClick={() => updatePt({ speedLineTilt: 0 })}
-                              className="text-[10px] text-sky-400 hover:text-sky-300 underline cursor-pointer"
-                            >
-                              {isVi ? 'Đặt lại 0°' : 'Reset 0°'}
-                            </button>
-                          )}
-                        </div>
-                        <span className="text-sky-400 font-mono font-bold">
-                          {(particles.speedLineTilt || 0) > 0 ? `+${particles.speedLineTilt}°` : `${particles.speedLineTilt || 0}°`}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min={-45}
-                        max={45}
-                        step={1}
-                        value={particles.speedLineTilt || 0}
-                        onChange={(e) => updatePt({ speedLineTilt: parseInt(e.target.value) })}
-                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
-                      />
-                      <div className="flex justify-between text-[10px] text-neutral-500 mt-0.5 font-mono">
-                        <button
-                          type="button"
-                          onClick={() => updatePt({ speedLineTilt: -45 })}
-                          className="hover:text-sky-300 cursor-pointer transition-colors"
-                        >
-                          -45° {isVi ? '(Lên)' : '(Up)'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => updatePt({ speedLineTilt: 0 })}
-                          className="hover:text-sky-300 cursor-pointer transition-colors"
-                        >
-                          0° {isVi ? '(Ngang)' : '(Flat)'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => updatePt({ speedLineTilt: 45 })}
-                          className="hover:text-sky-300 cursor-pointer transition-colors"
-                        >
-                          +45° {isVi ? '(Xuống)' : '(Down)'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 1C. Inward to Center settings: Vertical Center & Horizontal Center */}
-                {particles.speedLineMode === 'converge-center' && (
-                  <div className="space-y-3 pt-1 border-t border-sky-500/20">
-                    {/* Vertical Center */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-neutral-300 block">
-                          {isVi ? 'Tâm Tụ Chiều Đứng (Vertical Center)' : 'Vertical Center Position'}
-                        </label>
-                        <span className="text-[11px] text-sky-400 font-mono">
-                          {particles.speedLineCenterY !== undefined
-                            ? particles.speedLineCenterY
-                            : (particles.speedLineVerticalCenter === 'top' ? 25 : particles.speedLineVerticalCenter === 'bottom' ? 75 : 50)}%
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => updatePt({ speedLineVerticalCenter: 'top', speedLineCenterY: 25 })}
-                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
-                            (particles.speedLineVerticalCenter === 'top' || (particles.speedLineCenterY !== undefined && particles.speedLineCenterY <= 35))
-                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
-                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
-                          }`}
-                        >
-                          <div className="font-bold">{isVi ? 'Top Center' : 'Top Center'}</div>
-                          <div className="text-[10px] text-neutral-400">{isVi ? 'Phía trên (25%)' : 'Upper (25%)'}</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => updatePt({ speedLineVerticalCenter: 'center', speedLineCenterY: 50 })}
-                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
-                            ((particles.speedLineVerticalCenter || 'center') === 'center' && (particles.speedLineCenterY === undefined || (particles.speedLineCenterY > 35 && particles.speedLineCenterY < 65)))
-                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
-                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
-                          }`}
-                        >
-                          <div className="font-bold">{isVi ? 'Center Center' : 'Center Center'}</div>
-                          <div className="text-[10px] text-neutral-400">{isVi ? 'Ở giữa (50%)' : 'Middle (50%)'}</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => updatePt({ speedLineVerticalCenter: 'bottom', speedLineCenterY: 75 })}
-                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
-                            (particles.speedLineVerticalCenter === 'bottom' || (particles.speedLineCenterY !== undefined && particles.speedLineCenterY >= 65))
-                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
-                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
-                          }`}
-                        >
-                          <div className="font-bold">{isVi ? 'Bottom Center' : 'Bottom Center'}</div>
-                          <div className="text-[10px] text-neutral-400">{isVi ? 'Phía dưới (75%)' : 'Lower (75%)'}</div>
-                        </button>
-                      </div>
-
-                      {/* Fine-tune Center Y % slider */}
-                      <div className="pt-1">
-                        <div className="flex justify-between text-[11px] mb-1">
-                          <span className="text-neutral-400">{isVi ? 'Tinh chỉnh vị trí tâm theo % chiều cao (Fine-tune Center Y %)' : 'Fine-tune Center Y %'}</span>
-                          <span className="text-sky-400 font-mono">
-                            {particles.speedLineCenterY !== undefined
-                              ? particles.speedLineCenterY
-                              : (particles.speedLineVerticalCenter === 'top' ? 25 : particles.speedLineVerticalCenter === 'bottom' ? 75 : 50)}%
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={10}
-                          max={90}
-                          step={5}
-                          value={particles.speedLineCenterY !== undefined
-                            ? particles.speedLineCenterY
-                            : (particles.speedLineVerticalCenter === 'top' ? 25 : particles.speedLineVerticalCenter === 'bottom' ? 75 : 50)}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            let vCenter: 'top' | 'center' | 'bottom' = 'center';
-                            if (val <= 35) vCenter = 'top';
-                            else if (val >= 65) vCenter = 'bottom';
-                            updatePt({ speedLineCenterY: val, speedLineVerticalCenter: vCenter });
-                          }}
-                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Horizontal Center Position */}
-                    <div className="space-y-1.5 pt-2 border-t border-sky-500/15">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-neutral-300 block">
-                          {isVi ? 'Tâm Tụ Chiều Ngang (Horizontal Center)' : 'Horizontal Center Position'}
-                        </label>
-                        <span className="text-[11px] text-sky-400 font-mono">
-                          {particles.speedLineCenterX !== undefined
-                            ? particles.speedLineCenterX
-                            : (particles.speedLineHorizontalCenter === 'left' ? 25 : particles.speedLineHorizontalCenter === 'right' ? 75 : 50)}%
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => updatePt({ speedLineHorizontalCenter: 'left', speedLineCenterX: 25 })}
-                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
-                            (particles.speedLineHorizontalCenter === 'left' || (particles.speedLineCenterX !== undefined && particles.speedLineCenterX <= 35))
-                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
-                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
-                          }`}
-                        >
-                          <div className="font-bold">{isVi ? 'Left Center' : 'Left Center'}</div>
-                          <div className="text-[10px] text-neutral-400">{isVi ? 'Bên trái (25%)' : 'Left (25%)'}</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => updatePt({ speedLineHorizontalCenter: 'center', speedLineCenterX: 50 })}
-                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
-                            ((particles.speedLineHorizontalCenter || 'center') === 'center' && (particles.speedLineCenterX === undefined || (particles.speedLineCenterX > 35 && particles.speedLineCenterX < 65)))
-                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
-                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
-                          }`}
-                        >
-                          <div className="font-bold">{isVi ? 'Center Center' : 'Center Center'}</div>
-                          <div className="text-[10px] text-neutral-400">{isVi ? 'Ở giữa (50%)' : 'Middle (50%)'}</div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => updatePt({ speedLineHorizontalCenter: 'right', speedLineCenterX: 75 })}
-                          className={`py-2 px-1.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
-                            (particles.speedLineHorizontalCenter === 'right' || (particles.speedLineCenterX !== undefined && particles.speedLineCenterX >= 65))
-                              ? 'bg-sky-500/25 border-sky-400 text-white shadow-sm ring-1 ring-sky-500/50'
-                              : 'bg-neutral-900/80 border-neutral-800 text-neutral-400 hover:text-white'
-                          }`}
-                        >
-                          <div className="font-bold">{isVi ? 'Right Center' : 'Right Center'}</div>
-                          <div className="text-[10px] text-neutral-400">{isVi ? 'Bên phải (75%)' : 'Right (75%)'}</div>
-                        </button>
-                      </div>
-
-                      {/* Fine-tune Center X % slider */}
-                      <div className="pt-1">
-                        <div className="flex justify-between text-[11px] mb-1">
-                          <span className="text-neutral-400">{isVi ? 'Tinh chỉnh vị trí tâm theo % chiều rộng (Fine-tune Center X %)' : 'Fine-tune Center X %'}</span>
-                          <span className="text-sky-400 font-mono">
-                            {particles.speedLineCenterX !== undefined
-                              ? particles.speedLineCenterX
-                              : (particles.speedLineHorizontalCenter === 'left' ? 25 : particles.speedLineHorizontalCenter === 'right' ? 75 : 50)}%
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={10}
-                          max={90}
-                          step={5}
-                          value={particles.speedLineCenterX !== undefined
-                            ? particles.speedLineCenterX
-                            : (particles.speedLineHorizontalCenter === 'left' ? 25 : particles.speedLineHorizontalCenter === 'right' ? 75 : 50)}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            let hCenter: 'left' | 'center' | 'right' = 'center';
-                            if (val <= 35) hCenter = 'left';
-                            else if (val >= 65) hCenter = 'right';
-                            updatePt({ speedLineCenterX: val, speedLineHorizontalCenter: hCenter });
-                          }}
-                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Sliders: Speed, Length, Random Length, Width, Blur */}
-                <div className="space-y-3 pt-1 border-t border-sky-500/20">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-300 font-medium">{isVi ? 'Tốc độ vệt line' : 'Line Speed'}</span>
-                      <span className="text-sky-400 font-mono">{(particles.speedLineSpeed !== undefined ? particles.speedLineSpeed : 1.0).toFixed(1)}x</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0.2}
-                      max={3.5}
-                      step={0.1}
-                      value={particles.speedLineSpeed !== undefined ? particles.speedLineSpeed : 1.0}
-                      onChange={(e) => updatePt({ speedLineSpeed: parseFloat(e.target.value) })}
-                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-300 font-medium">{isVi ? 'Chiều dài vệt line' : 'Line Length'}</span>
-                      <span className="text-sky-400 font-mono">{particles.speedLineLength || 140}px</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={40}
-                      max={420}
-                      step={5}
-                      value={particles.speedLineLength || 140}
-                      onChange={(e) => updatePt({ speedLineLength: parseInt(e.target.value) })}
-                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-300 font-medium">{isVi ? 'Độ dài ngẫu nhiên' : 'Random Length Variance'}</span>
-                      <span className="text-sky-400 font-mono">{particles.speedLineRandomLength !== undefined ? particles.speedLineRandomLength : 55}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={particles.speedLineRandomLength !== undefined ? particles.speedLineRandomLength : 55}
-                      onChange={(e) => updatePt({ speedLineRandomLength: parseInt(e.target.value) })}
-                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-neutral-300 font-medium">{isVi ? 'Độ dày nét line' : 'Line Width'}</span>
-                        <span className="text-sky-400 font-mono">{particles.speedLineWidth || 2.5}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={1}
-                        max={12}
-                        step={0.5}
-                        value={particles.speedLineWidth || 2.5}
-                        onChange={(e) => updatePt({ speedLineWidth: parseFloat(e.target.value) })}
-                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-neutral-300 font-medium">{isVi ? 'Độ nhòe mờ (Blur)' : 'Motion Blur'}</span>
-                        <span className="text-sky-400 font-mono">{particles.speedLineBlur !== undefined ? particles.speedLineBlur : 5}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={20}
-                        step={1}
-                        value={particles.speedLineBlur !== undefined ? particles.speedLineBlur : 5}
-                        onChange={(e) => updatePt({ speedLineBlur: parseInt(e.target.value) })}
-                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* SILK RIBBON RAIN DEDICATED CONTROLS */}
-            {(particles.type === 'spaghetti' || (particles.type as any) === 'silk-ribbon') && (
-              <div className="p-3.5 bg-gradient-to-br from-pink-950/40 to-neutral-900/80 border border-pink-500/30 rounded-2xl space-y-3.5 shadow-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-pink-500/20 border border-pink-500/40 flex items-center justify-center">
-                      <Waves className="w-3.5 h-3.5 text-pink-400" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-white block">
-                        {isVi ? 'Mưa Mảnh Ruy Băng Lụa (Silk Ribbon)' : 'Silk Ribbon Rain Dynamics'}
-                      </span>
-                      <span className="text-[10px] text-neutral-400">
-                        {isVi ? 'Dải ruy băng lụa óng ánh uốn lượn bồng bềnh' : 'Flowing glossy silk ribbon strips'}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 font-semibold">
-                    {isVi ? 'Mềm Mại 🎀' : 'Silky 🎀'}
-                  </span>
-                </div>
-
-                <div className="space-y-3 pt-1 border-t border-pink-500/20">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-neutral-300 font-medium">{isVi ? 'Độ dài ruy băng' : 'Ribbon Length'}</span>
-                        <span className="text-pink-400 font-mono">{particles.ribbonLength || 160}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={50}
-                        max={480}
-                        step={10}
-                        value={particles.ribbonLength || 160}
-                        onChange={(e) => updatePt({ ribbonLength: parseInt(e.target.value) })}
-                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-neutral-300 font-medium">{isVi ? 'Bản rộng / Độ dày' : 'Thickness'}</span>
-                        <span className="text-pink-400 font-mono">{particles.ribbonThickness || 8}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={3}
-                        max={30}
-                        step={1}
-                        value={particles.ribbonThickness || 8}
-                        onChange={(e) => updatePt({ ribbonThickness: parseInt(e.target.value) })}
-                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-neutral-300 font-medium">{isVi ? 'Độ xoắn uốn lượn' : '3D Twist Amount'}</span>
-                        <span className="text-pink-400 font-mono">{particles.ribbonTwist !== undefined ? particles.ribbonTwist : 1.8}x</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0.5}
-                        max={4.0}
-                        step={0.1}
-                        value={particles.ribbonTwist !== undefined ? particles.ribbonTwist : 1.8}
-                        onChange={(e) => updatePt({ ribbonTwist: parseFloat(e.target.value) })}
-                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-neutral-300 font-medium">{isVi ? 'Độ phát sáng dạ quang' : 'Silk Sheen Glow'}</span>
-                        <span className="text-pink-400 font-mono">{particles.ribbonGlow !== undefined ? particles.ribbonGlow : 15}px</span>
-                      </div>
-                      <input
-                        type="range"
-                        min={0}
-                        max={35}
-                        step={1}
-                        value={particles.ribbonGlow !== undefined ? particles.ribbonGlow : 15}
-                        onChange={(e) => updatePt({ ribbonGlow: parseInt(e.target.value) })}
-                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* A. Particle Shape Selector */}
-            {particles.type !== 'snow' && particles.type !== 'rain' && particles.type !== 'hyperspace' && particles.type !== 'speed-lines' && particles.type !== 'spaghetti' && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider block">
-                    {isVi ? 'Hình Dáng Hạt (Particle Shape)' : 'Particle Geometry'}
-                  </label>
-                  {(particles.type === 'dust' || particles.type === 'stars') && (
-                    <span className="text-[10px] text-cyan-400 font-semibold">
-                      {isVi ? 'Mở khóa hình học cho Lofi & Stars' : 'Unlocked for Lofi & Stars'}
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleAutoDistributeAll(activeSongDuration)}
+                    className="py-1.5 px-2.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 text-left transition-all cursor-pointer flex items-center justify-between"
+                  >
+                    <span className="text-[11px] font-semibold text-emerald-300">
+                      {isVi ? `⚡ Theo bài MP3 (${activeSongDuration}s)` : `⚡ By active MP3 (${activeSongDuration}s)`}
                     </span>
+                    <span className="text-[10px] text-emerald-400/80 font-mono">
+                      ~{Math.round(activeSongDuration / Math.max(1, slides.length))}s/slide
+                    </span>
+                  </button>
+
+                  {playlist && playlist.tracks && playlist.tracks.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleAutoDistributeAll(totalPlaylistDuration)}
+                      className="py-1.5 px-2.5 rounded-lg bg-indigo-950/60 hover:bg-indigo-900/60 border border-indigo-500/40 text-left transition-all cursor-pointer flex items-center justify-between"
+                    >
+                      <span className="text-[11px] font-semibold text-indigo-300">
+                        {isVi ? `⚡ Theo Playlist (${totalPlaylistDuration}s)` : `⚡ By Playlist (${totalPlaylistDuration}s)`}
+                      </span>
+                      <span className="text-[10px] text-indigo-400/80 font-mono">
+                        ~{Math.round(totalPlaylistDuration / Math.max(1, slides.length))}s/slide
+                      </span>
+                    </button>
                   )}
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {PARTICLE_SHAPES.map((shapeItem) => {
-                    const Icon = shapeItem.icon;
-                    const defaultShape = particles.type === 'dust' ? 'silk-fluff' : (particles.type === 'stars' ? 'star' : 'circle');
-                    const currentShape = particles.shape || defaultShape;
-                    const isSelected = currentShape === shapeItem.id;
-                    return (
-                      <button
-                        key={shapeItem.id}
-                        onClick={() => updatePt({ shape: shapeItem.id })}
-                        className={`p-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-cyan-500/20 border-cyan-500 text-white shadow-sm ring-1 ring-cyan-500/40'
-                            : 'bg-neutral-900/70 border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                        }`}
-                      >
-                        <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-cyan-400' : 'text-neutral-400'}`} />
-                        <span>{isVi ? shapeItem.nameVi : shapeItem.nameEn}</span>
-                      </button>
-                    );
-                  })}
+              </div>
+
+              {/* Batch Action 2: Ken Burns All Toggle */}
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 flex flex-col justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-xs font-bold text-neutral-200">
+                    {isVi ? 'Đồng Bộ Ken Burns Pan/Zoom' : 'Sync Ken Burns Motion'}
+                  </span>
                 </div>
-
-                {/* Fluffy Silk Ball & Glow enhancement for Lofi / Stars / Custom shapes */}
-                {(particles.type === 'dust' || particles.type === 'stars' || particles.shape === 'silk-fluff' || particles.shape === 'circle') && (
-                  <div className="mt-2.5 p-3 bg-neutral-900/70 border border-neutral-800 rounded-xl space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={particles.silkFluffGlow !== undefined ? particles.silkFluffGlow : true}
-                          onChange={(e) => updatePt({ silkFluffGlow: e.target.checked })}
-                          className="w-4 h-4 rounded border-neutral-700 bg-neutral-800 text-cyan-500 focus:ring-cyan-500/30 accent-cyan-500 cursor-pointer"
-                        />
-                        <span className="text-xs font-bold text-neutral-200">
-                          {isVi ? 'Hiệu ứng quả bóng tơ mờ viền (Fluffy Silk Ball)' : 'Fluffy Silk Ball Glow Effect'}
-                        </span>
-                      </label>
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                          (particles.silkFluffGlow !== undefined ? particles.silkFluffGlow : true)
-                            ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                            : 'bg-neutral-800 text-neutral-500 border border-neutral-700'
-                        }`}>
-                          {(particles.silkFluffGlow !== undefined ? particles.silkFluffGlow : true)
-                            ? (isVi ? 'BẬT' : 'ON')
-                            : (isVi ? 'TẮT' : 'OFF')}
-                        </span>
-                        <span className="text-[10px] text-cyan-400 font-mono">
-                          {(particles.silkFluffGlow !== undefined ? particles.silkFluffGlow : true)
-                            ? `${particles.particleGlowRadius !== undefined ? particles.particleGlowRadius : 18}px`
-                            : '0px'}
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-neutral-400 leading-relaxed">
-                      {isVi
-                        ? 'Tăng độ mờ viền sâu và vầng phát sáng bồng bềnh xung quanh hạt nhìn giống quả bóng tơ xốp mịn.'
-                        : 'Softens particle edges with multi-layered feathered glow aura for a fluffy silk pom-pom aesthetic.'}
-                    </p>
-                    <div className={(particles.silkFluffGlow !== undefined ? particles.silkFluffGlow : true) ? 'opacity-100' : 'opacity-40'}>
-                      <input
-                        type="range"
-                        min={0}
-                        max={45}
-                        step={1}
-                        value={particles.particleGlowRadius !== undefined ? particles.particleGlowRadius : 18}
-                        onChange={(e) => updatePt({ particleGlowRadius: parseInt(e.target.value) })}
-                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* B. Color Mode Selector */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Palette className="w-3.5 h-3.5 text-cyan-400" />
-                  {isVi ? 'Phong Cách & Màu Sắc Hạt' : 'Particle Color Palette & Palette Theme'}
-                </label>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {COLOR_MODES.map((mode) => {
-                  const currentMode = particles.colorMode || 'custom';
-                  const isSelected = currentMode === mode.id;
-                  return (
-                    <button
-                      key={mode.id}
-                      onClick={() => updatePt({ colorMode: mode.id })}
-                      className={`p-2 rounded-xl border text-left transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-cyan-500/20 border-cyan-500 text-white shadow-sm ring-1 ring-cyan-500/40'
-                          : 'bg-neutral-900/70 border-neutral-800 text-neutral-400 hover:text-neutral-200'
-                      }`}
-                    >
-                      <span className="text-xs font-semibold block">{isVi ? mode.nameVi : mode.nameEn}</span>
-                      <span className="text-[10px] text-neutral-400 block truncate">{isVi ? mode.descVi : mode.descEn}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Custom Color Pickers and Swatches */}
-              {(!particles.colorMode || particles.colorMode === 'custom') && (
-                <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-2.5 mt-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-300">{isVi ? 'Màu chính của hạt:' : 'Primary Particle Color:'}</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={particles.color || '#ffffff'}
-                        onChange={(e) => updatePt({ color: e.target.value })}
-                        className="w-7 h-7 rounded-lg border border-neutral-700 bg-transparent cursor-pointer"
-                      />
-                      <span className="text-xs font-mono text-neutral-400 uppercase">{particles.color || '#ffffff'}</span>
-                    </div>
-                  </div>
-
-                  {/* Secondary Flash Color */}
-                  <div className="flex items-center justify-between pt-1 border-t border-neutral-800/60">
-                    <span className="text-xs text-neutral-300">{isVi ? 'Màu chớp sáng (Flash):' : 'Secondary Flash Color:'}</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={particles.secondaryColor || '#ec4899'}
-                        onChange={(e) => updatePt({ secondaryColor: e.target.value })}
-                        className="w-7 h-7 rounded-lg border border-neutral-700 bg-transparent cursor-pointer"
-                      />
-                      <span className="text-xs font-mono text-neutral-400 uppercase">{particles.secondaryColor || '#ec4899'}</span>
-                    </div>
-                  </div>
-
-                  {/* Quick Color Swatches */}
-                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                    {QUICK_COLORS.map((c) => (
-                      <button
-                        key={c.color}
-                        onClick={() => updatePt({ color: c.color })}
-                        title={isVi ? c.nameVi : c.nameEn}
-                        className="w-5 h-5 rounded-full border border-neutral-700 hover:scale-110 transition-transform cursor-pointer"
-                        style={{ backgroundColor: c.color }}
-                      />
-                    ))}
-                  </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleKenBurnsAll(true)}
+                    className="flex-1 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs font-semibold border border-indigo-500/40 cursor-pointer"
+                  >
+                    {isVi ? 'Bật Cho Tất Cả' : 'Enable All'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleKenBurnsAll(false)}
+                    className="flex-1 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 text-xs font-semibold border border-neutral-700 cursor-pointer"
+                  >
+                    {isVi ? 'Tắt Cho Tất Cả' : 'Disable All'}
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* C. Dynamic Bass-Reactive Color & Flash on Beat Drop */}
-            <div className="p-3 rounded-xl bg-gradient-to-r from-neutral-900/90 to-cyan-950/30 border border-cyan-500/30 space-y-3">
-              <label className="flex items-center justify-between cursor-pointer">
-                <div className="flex items-start gap-2.5">
-                  <Activity className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <span className="text-xs font-bold text-neutral-100 block">
-                      {isVi ? 'Đổi Màu & Chớp Sáng Theo Bass (Bass Reactive Color)' : 'Bass Reactive Color & Flash'}
-                    </span>
-                    <span className="text-[10px] text-neutral-400 leading-relaxed block">
-                      {isVi ? 'Hạt bừng sáng rực rỡ và chuyển màu flash theo từng nhịp drop của bài hát' : 'Particles flash brightly and burst into secondary accents on beat drops'}
-                    </span>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={particles.bassReactiveColor ?? true}
-                  onChange={(e) => updatePt({ bassReactiveColor: e.target.checked })}
-                  className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700 w-4 h-4 ml-2"
-                />
-              </label>
+            {/* Batch Action 3: Apply Uniform Transition to All Slides */}
+            <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2">
+              <span className="text-xs font-bold text-neutral-200 block">
+                {isVi ? 'Áp Dụng Kiểu Chuyển Cảnh Cho Tất Cả Slide:' : 'Apply Transition Style to All Slides:'}
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <select
+                  value={batchTransition}
+                  onChange={(e) => setBatchTransition(e.target.value as SlideTransitionType)}
+                  className="px-2.5 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                >
+                  {TRANSITION_TYPES.map((tr) => (
+                    <option key={tr.id} value={tr.id}>
+                      {isVi ? tr.nameVi : tr.nameEn}
+                    </option>
+                  ))}
+                </select>
 
-              {(particles.bassReactiveColor ?? true) && (
-                <div className="pt-2 border-t border-cyan-500/20">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-neutral-300">{isVi ? 'Độ bùng nổ chớp sáng (Flash Boost)' : 'Flash Explosion Boost'}</span>
-                    <span className="text-cyan-400 font-mono">{(particles.bassFlashBoost || 1.5).toFixed(1)}x</span>
-                  </div>
+                <div className="flex items-center gap-2">
                   <input
                     type="range"
-                    min={0.5}
-                    max={2.5}
+                    min={0.3}
+                    max={3.0}
                     step={0.1}
-                    value={particles.bassFlashBoost || 1.5}
-                    onChange={(e) => updatePt({ bassFlashBoost: parseFloat(e.target.value) })}
-                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                    value={batchTransDuration}
+                    onChange={(e) => setBatchTransDuration(parseFloat(e.target.value))}
+                    className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                   />
+                  <span className="text-xs font-mono font-bold text-indigo-400">{batchTransDuration.toFixed(1)}s</span>
                 </div>
-              )}
-            </div>
 
-            {/* D. Size Scale & Glow Sliders */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">{isVi ? 'Kích thước hạt' : 'Particle Scale'}</span>
-                  <span className="text-cyan-400 font-mono">{(particles.sizeScale || 1.0).toFixed(1)}x</span>
-                </div>
-                <input
-                  type="range"
-                  min={0.5}
-                  max={2.5}
-                  step={0.1}
-                  value={particles.sizeScale || 1.0}
-                  onChange={(e) => updatePt({ sizeScale: parseFloat(e.target.value) })}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">{isVi ? 'Độ phát sáng (Glow)' : 'Glow Radius'}</span>
-                  <span className="text-cyan-400 font-mono">{particles.glowIntensity !== undefined ? particles.glowIntensity : 12}px</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={50}
-                  value={particles.glowIntensity !== undefined ? particles.glowIntensity : 12}
-                  onChange={(e) => updatePt({ glowIntensity: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                />
+                <button
+                  type="button"
+                  onClick={handleApplyBatchTransition}
+                  className="py-1.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors cursor-pointer text-center"
+                >
+                  {isVi ? 'Áp Dụng Cho Tất Cả' : 'Apply to All Slides'}
+                </button>
               </div>
             </div>
-
-            {/* E. Particle Density & Speed */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">{isVi ? 'Số lượng hạt' : 'Particle Count'}</span>
-                  <span className="text-cyan-400 font-mono">{particles.count}</span>
-                </div>
-                <input
-                  type="range"
-                  min={15}
-                  max={90}
-                  value={particles.count}
-                  onChange={(e) => updatePt({ count: parseInt(e.target.value) })}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">{isVi ? 'Tốc độ bay' : 'Flight Velocity'}</span>
-                  <span className="text-cyan-400 font-mono">{particles.speed.toFixed(1)}x</span>
-                </div>
-                <input
-                  type="range"
-                  min={0.4}
-                  max={2.5}
-                  step={0.1}
-                  value={particles.speed}
-                  onChange={(e) => updatePt({ speed: parseFloat(e.target.value) })}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                />
-              </div>
-            </div>
-
-            {/* F. Reactive Movement to Beat */}
-            <label className="flex items-center gap-2.5 p-3 rounded-xl bg-neutral-900/60 border border-neutral-800 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={particles.reactiveToBeat}
-                onChange={(e) => updatePt({ reactiveToBeat: e.target.checked })}
-                className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700"
-              />
-              <div>
-                <span className="text-xs font-semibold text-neutral-200 block">
-                  {isVi ? 'Chuyển động & Kích thước giật theo nhịp Bass' : 'Beat-Synchronized Size & Velocity Pulse'}
-                </span>
-                <span className="text-[10px] text-neutral-400">
-                  {isVi ? 'Hạt tăng tốc và phóng to khi trống kick dồn dập' : 'Particles accelerate and enlarge on punchy kick impacts'}
-                </span>
-              </div>
-            </label>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

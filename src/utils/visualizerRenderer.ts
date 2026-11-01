@@ -24,11 +24,22 @@ import {
   SlideImageItem,
   TimelineSceneItem,
   LottieItem,
+  BackgroundSlideItem,
 } from '../types';
 import { getActiveLyricInfo } from './lyricsParser';
 import { threeDVisualizerEngine } from './threeDVisualizerEngine';
-import { threeStereoRainEngine } from './threeStereoRainEngine';
 import { lottieCanvasManager } from './lottieCanvasManager';
+
+function resolveParticleSizePx(config: ParticleConfig): number {
+  if (config.sizePx !== undefined && config.sizePx >= 1) {
+    return Math.max(1, config.sizePx);
+  }
+  if (config.type === 'dust' && config.dustMinSize !== undefined && config.dustMinSize >= 1) {
+    return Math.max(1, config.dustMinSize);
+  }
+  const scale = config.sizeScale !== undefined ? config.sizeScale : 1.0;
+  return Math.max(1, Math.round(scale * 6));
+}
 
 interface Particle {
   x: number;
@@ -76,6 +87,7 @@ export class VisualizerRenderer {
   private logoImageSrc = '';
 
   private vinylRotation = 0;
+  private badgeRotation = 0;
   private peakBars: number[] = [];
   private peakVelocities: number[] = [];
   private radialPeaks: number[] = [];
@@ -177,7 +189,7 @@ export class VisualizerRenderer {
     video.playsInline = true;
     video.setAttribute('playsinline', '');
     video.setAttribute('webkit-playsinline', '');
-    video.autoplay = true;
+    video.autoplay = false;
     video.preload = 'auto';
     video.disablePictureInPicture = true;
 
@@ -232,18 +244,23 @@ export class VisualizerRenderer {
 
   public syncVideoPlayback(isPlaying: boolean, currentTime?: number) {
     this.isAudioPlaying = isPlaying;
-    if (!this.bgVideo) return;
     if (isPlaying) {
-      if (this.bgVideo.paused) {
+      if (this.bgVideo && this.bgVideo.paused) {
         this.bgVideo.play().catch(() => {});
       }
-      if (currentTime !== undefined) {
+      if (currentTime !== undefined && this.bgVideo) {
         this.syncVideoSeek(currentTime);
       }
     } else {
-      if (!this.bgVideo.paused) {
+      if (this.bgVideo && !this.bgVideo.paused) {
         this.bgVideo.pause();
       }
+      // Pause all slide videos when paused to save resources and ensure preview stops
+      this.slideVideoCache.forEach((vid) => {
+        if (!vid.paused) {
+          vid.pause();
+        }
+      });
     }
   }
 
@@ -337,29 +354,216 @@ export class VisualizerRenderer {
     };
   }
 
-  // Slide & Scene Transitions Image Cache
+  // Slide & Scene Transitions Image & Video Cache & Smooth 60FPS Ken Burns State
   private slideImageCache: Map<string, HTMLImageElement> = new Map();
+  private slideVideoCache: Map<string, HTMLVideoElement> = new Map();
+  private smoothSlideClock = 0;
+  private lastSlideClockWallTime = 0;
+  private lastRawAudioTime = 0;
+  private kbDampMap: Map<string, { scale: number; panX: number; panY: number; lastHold: number }> = new Map();
+  private surfaceDrops: Array<{
+    x: number;
+    y: number;
+    radius: number;
+    age: number;
+    maxLife: number;
+    delay: number;
+    wigglePhase: number;
+    trickleSpeed: number;
+    trailLen: number;
+  }> = [];
+  private lastSurfaceDropWallTime = 0;
 
   public getOrCreateSlideImage(url: string): HTMLImageElement | null {
     if (!url) return null;
     let img = this.slideImageCache.get(url);
     if (!img) {
       img = new Image();
-      img.crossOrigin = 'anonymous';
+      if (!url.startsWith('blob:') && !url.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
       img.src = url;
       this.slideImageCache.set(url, img);
     }
     return img;
   }
 
+  public getOrCreateSlideVideo(url: string): HTMLVideoElement | null {
+    if (!url) return null;
+    let vid = this.slideVideoCache.get(url);
+    if (!vid) {
+      vid = document.createElement('video');
+      vid.src = url;
+      vid.loop = true;
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.preload = 'auto';
+      vid.autoplay = false;
+      if (!url.startsWith('blob:') && !url.startsWith('data:')) {
+        vid.crossOrigin = 'anonymous';
+      }
+      if (!this.hiddenVideoContainer && typeof document !== 'undefined') {
+        const container = document.createElement('div');
+        container.style.position = 'fixed';
+        container.style.width = '1px';
+        container.style.height = '1px';
+        container.style.opacity = '0';
+        container.style.pointerEvents = 'none';
+        container.style.zIndex = '-9999';
+        container.style.overflow = 'hidden';
+        document.body.appendChild(container);
+        this.hiddenVideoContainer = container;
+      }
+      if (this.hiddenVideoContainer) {
+        this.hiddenVideoContainer.appendChild(vid);
+      }
+      if (this.isAudioPlaying) {
+        vid.play().catch(() => {});
+      }
+      this.slideVideoCache.set(url, vid);
+    } else if (this.isAudioPlaying && vid.paused && vid.readyState >= 2) {
+      vid.play().catch(() => {});
+    }
+    return vid;
+  }
+
   /**
-   * Calculates the current Scene Transition state based on time, slider images, and timeline scenes
+   * Compute damped, ultra-smooth Ken Burns transform that ONLY progresses after transition completes (holdProgress: 0 -> 1)
+   * Supports slide-specific motion direction, zoom scale, and pan speed.
+   */
+  private getSmoothKenBurnsPose(
+    slideKey: string,
+    slideIndex: number,
+    enabled: boolean,
+    holdProgress: number,
+    width: number,
+    height: number,
+    dt: number,
+    slide?: BackgroundSlideItem
+  ): { scale: number; panX: number; panY: number } {
+    if (!enabled) {
+      return { scale: 1.0, panX: 0, panY: 0 };
+    }
+
+    const direction = slide?.kenBurnsDirection || 'auto';
+    const userMaxScale = Math.max(1.05, Math.min(1.35, slide?.kenBurnsScale ?? 1.18));
+    const speed = Math.max(0.3, Math.min(2.5, slide?.kenBurnsSpeed ?? 1.0));
+
+    // Base bleed to prevent revealing canvas borders during pan
+    const baseOverscale = 1.12;
+    const zoomRange = Math.max(0.04, userMaxScale - 1.0);
+    const clampedHold = Math.max(0, Math.min(1, holdProgress));
+    // Cosine smoothstep easing: zero velocity at start and end
+    const ease = 0.5 - 0.5 * Math.cos(clampedHold * Math.PI);
+
+    let targetScale = baseOverscale + ease * zoomRange;
+    let targetPanX = 0;
+    let targetPanY = 0;
+
+    const maxPanDistX = width * 0.038 * speed;
+    const maxPanDistY = height * 0.028 * speed;
+
+    switch (direction) {
+      case 'zoom-in': {
+        // Pure centered zoom in
+        targetScale = baseOverscale + ease * zoomRange * 1.25;
+        targetPanX = 0;
+        targetPanY = 0;
+        break;
+      }
+      case 'zoom-out': {
+        // Pure centered zoom out
+        targetScale = baseOverscale + (1 - ease) * zoomRange * 1.25;
+        targetPanX = 0;
+        targetPanY = 0;
+        break;
+      }
+      case 'pan-left': {
+        targetScale = baseOverscale + zoomRange * 0.45;
+        targetPanX = (0.5 - ease) * 2 * maxPanDistX;
+        targetPanY = 0;
+        break;
+      }
+      case 'pan-right': {
+        targetScale = baseOverscale + zoomRange * 0.45;
+        targetPanX = (ease - 0.5) * 2 * maxPanDistX;
+        targetPanY = 0;
+        break;
+      }
+      case 'pan-up': {
+        targetScale = baseOverscale + zoomRange * 0.45;
+        targetPanX = 0;
+        targetPanY = (0.5 - ease) * 2 * maxPanDistY;
+        break;
+      }
+      case 'pan-down': {
+        targetScale = baseOverscale + zoomRange * 0.45;
+        targetPanX = 0;
+        targetPanY = (ease - 0.5) * 2 * maxPanDistY;
+        break;
+      }
+      case 'diagonal-tl-br': {
+        // Pan from top-left to bottom-right with subtle zoom
+        targetScale = baseOverscale + ease * zoomRange * 0.7;
+        targetPanX = (ease - 0.5) * 2 * maxPanDistX;
+        targetPanY = (ease - 0.5) * 2 * maxPanDistY;
+        break;
+      }
+      case 'diagonal-tr-bl': {
+        // Pan from top-right to bottom-left with subtle zoom
+        targetScale = baseOverscale + ease * zoomRange * 0.7;
+        targetPanX = (0.5 - ease) * 2 * maxPanDistX;
+        targetPanY = (ease - 0.5) * 2 * maxPanDistY;
+        break;
+      }
+      case 'auto':
+      default: {
+        // Deterministic organic motion per slide index
+        const angle = slideIndex * 2.15 + 0.45;
+        const dirX = Math.cos(angle);
+        const dirY = Math.sin(angle);
+        targetScale = baseOverscale + ease * zoomRange;
+        targetPanX = dirX * (ease - 0.5) * 2 * maxPanDistX;
+        targetPanY = dirY * (ease - 0.5) * 2 * maxPanDistY;
+        break;
+      }
+    }
+
+    let state = this.kbDampMap.get(slideKey);
+    // Reset smoothly to start pose when slide restarts a new cycle (holdProgress near 0)
+    if (!state || (clampedHold < 0.02 && state.lastHold > 0.5)) {
+      state = {
+        scale: targetScale,
+        panX: targetPanX,
+        panY: targetPanY,
+        lastHold: clampedHold,
+      };
+      this.kbDampMap.set(slideKey, state);
+      return state;
+    }
+
+    const alpha = Math.min(1, 1 - Math.exp(-Math.max(0.005, dt) * 10));
+    state.scale += (targetScale - state.scale) * alpha;
+    state.panX += (targetPanX - state.panX) * alpha;
+    state.panY += (targetPanY - state.panY) * alpha;
+    state.lastHold = clampedHold;
+
+    return {
+      scale: state.scale,
+      panX: state.panX,
+      panY: state.panY,
+    };
+  }
+
+  /**
+   * Calculates the current Scene Transition state based on 60fps smoothed clock, slider images, and timeline scenes
    */
   private getTransitionState(
     transitions: SceneTransitionsConfig | undefined,
     baseBg: BackgroundConfig,
     baseVis: VisualizerConfig,
-    currentTime: number
+    currentTime: number,
+    isPlaying: boolean = false
   ): {
     isTransitioning: boolean;
     progress: number;
@@ -369,7 +573,153 @@ export class VisualizerRenderer {
     activeVis: VisualizerConfig;
     nextVis?: VisualizerConfig;
     kenBurns: boolean;
+    toKenBurns?: boolean;
+    fromHoldProgress?: number;
+    toHoldProgress?: number;
+    fromSlideIndex?: number;
+    toSlideIndex?: number;
+    fromSlide?: BackgroundSlideItem;
+    toSlide?: BackgroundSlideItem;
+    fromElapsedInSlide?: number;
+    toElapsedInSlide?: number;
+    dt?: number;
   } {
+    // Update high-precision 60fps clock so Ken Burns & transitions never stutter on 4Hz audio.currentTime ticks
+    const now = performance.now();
+    const dt = this.lastSlideClockWallTime > 0
+      ? Math.min(0.05, Math.max(0.001, (now - this.lastSlideClockWallTime) / 1000))
+      : 0.016;
+    this.lastSlideClockWallTime = now;
+
+    if (isPlaying) {
+      this.smoothSlideClock += dt;
+      if (Math.abs(currentTime - this.smoothSlideClock) > 0.35) {
+        this.smoothSlideClock = currentTime;
+      } else {
+        this.smoothSlideClock += (currentTime - this.smoothSlideClock) * Math.min(1, dt * 8);
+      }
+    } else {
+      // User request: Preview should ONLY play background MP4 / slides when audio is playing!
+      // When paused, lock smoothSlideClock to current seek position so preview displays static frame and doesn't auto-advance.
+      this.smoothSlideClock = currentTime;
+    }
+    this.lastRawAudioTime = currentTime;
+    const slideTime = Math.max(0, this.smoothSlideClock);
+
+    // 1. Primary Support: Multi-Image Slideshow from Background Config
+    if (baseBg.mode === 'slides' && baseBg.slides && baseBg.slides.length > 0) {
+      const slides = baseBg.slides;
+      // Preload all slide images & MP4 videos into cache immediately to prevent blank frames on transition
+      for (let i = 0; i < slides.length; i++) {
+        const sl = slides[i];
+        if (sl.type === 'video' && (sl.videoUrl || sl.url)) {
+          this.getOrCreateSlideVideo(sl.videoUrl || sl.url);
+        } else if (sl.url) {
+          this.getOrCreateSlideImage(sl.url);
+        }
+      }
+
+      if (slides.length === 1) {
+        const s0 = slides[0];
+        const d0 = Math.max(3, s0.duration || 8);
+        const holdP = (slideTime % d0) / d0;
+        const elapsed0 = slideTime % d0;
+        return {
+          isTransitioning: false,
+          progress: 0,
+          type: (s0.transitionType as any) || 'crossfade',
+          fromImageUrl: s0.url || baseBg.url,
+          toImageUrl: s0.url || baseBg.url,
+          activeVis: baseVis,
+          kenBurns: s0.kenBurns ?? true,
+          toKenBurns: s0.kenBurns ?? true,
+          fromHoldProgress: holdP,
+          toHoldProgress: holdP,
+          fromSlideIndex: 0,
+          toSlideIndex: 0,
+          fromSlide: s0,
+          toSlide: s0,
+          fromElapsedInSlide: elapsed0,
+          toElapsedInSlide: elapsed0,
+          dt,
+        };
+      }
+
+      const durations = slides.map((s) => Math.max(2, s.duration || 8));
+      const totalDur = durations.reduce((a, b) => a + b, 0);
+      const modTime = totalDur > 0 ? slideTime % totalDur : 0;
+
+      let acc = 0;
+      let activeIdx = 0;
+      let startActive = 0;
+      let durActive = durations[0];
+
+      for (let i = 0; i < slides.length; i++) {
+        const d = durations[i];
+        if (modTime >= acc && (modTime < acc + d || i === slides.length - 1)) {
+          activeIdx = i;
+          startActive = acc;
+          durActive = d;
+          break;
+        }
+        acc += d;
+      }
+
+      const nextIdx = (activeIdx + 1) % slides.length;
+      const curSlide = slides[activeIdx];
+      const nextSlide = slides[nextIdx];
+
+      const transDur = Math.max(0.25, Math.min(durActive * 0.45, curSlide.transitionDuration ?? 1.2));
+      const holdDur = Math.max(0.5, durActive - transDur);
+      const elapsedInSlide = Math.max(0, modTime - startActive);
+
+      if (elapsedInSlide >= holdDur) {
+        // Transition Phase: curSlide holds its finished Ken Burns pose (1.0), nextSlide waits at 0.0 until transition finishes!
+        const p = Math.min(1, Math.max(0, (elapsedInSlide - holdDur) / transDur));
+        return {
+          isTransitioning: true,
+          progress: p,
+          type: (curSlide.transitionType as any) || 'crossfade',
+          fromImageUrl: curSlide.url || baseBg.url,
+          toImageUrl: nextSlide.url || baseBg.url,
+          activeVis: baseVis,
+          kenBurns: curSlide.kenBurns ?? true,
+          toKenBurns: nextSlide.kenBurns ?? true,
+          fromHoldProgress: 1.0,
+          toHoldProgress: 0.0,
+          fromSlideIndex: activeIdx,
+          toSlideIndex: nextIdx,
+          fromSlide: curSlide,
+          toSlide: nextSlide,
+          fromElapsedInSlide: elapsedInSlide,
+          toElapsedInSlide: Math.max(0, elapsedInSlide - holdDur),
+          dt,
+        };
+      }
+
+      // Post-Transition Hold Phase: Ken Burns smoothly pans & zooms from 0.0 -> 1.0
+      const holdProgress = Math.min(1, Math.max(0, elapsedInSlide / holdDur));
+      return {
+        isTransitioning: false,
+        progress: 0,
+        type: (curSlide.transitionType as any) || 'crossfade',
+        fromImageUrl: curSlide.url || baseBg.url,
+        toImageUrl: curSlide.url || baseBg.url,
+        activeVis: baseVis,
+        kenBurns: curSlide.kenBurns ?? true,
+        toKenBurns: curSlide.kenBurns ?? true,
+        fromHoldProgress: holdProgress,
+        toHoldProgress: holdProgress,
+        fromSlideIndex: activeIdx,
+        toSlideIndex: activeIdx,
+        fromSlide: curSlide,
+        toSlide: curSlide,
+        fromElapsedInSlide: elapsedInSlide,
+        toElapsedInSlide: elapsedInSlide,
+        dt,
+      };
+    }
+
     if (!transitions || !transitions.enabled) {
       return {
         isTransitioning: false,
@@ -574,7 +924,156 @@ export class VisualizerRenderer {
   }
 
   /**
-   * Renders background with active transitions (Fade, Slide Left/Right/Up/Down, Zoom In/Out) and Ken Burns motion
+   * Helper to draw a slide item (supports Image slides, MP4 Video slides, and Solid / Linear / Radial / 3-Color Gradient slides)
+   */
+  private drawSlideItem(
+    ctx: CanvasContext2D,
+    slide: BackgroundSlideItem | undefined,
+    img: HTMLImageElement | null,
+    width: number,
+    height: number,
+    bg: BackgroundConfig,
+    scaleMod: number = 1.0,
+    panX: number = 0,
+    panY: number = 0,
+    elapsedInSlide: number = 0
+  ) {
+    const bleed = bg.blur * 2;
+    const baseW = width + bleed * 2;
+    const baseH = height + bleed * 2;
+    const destW = baseW * scaleMod;
+    const destH = baseH * scaleMod;
+    const destX = -bleed + panX - (destW - baseW) / 2;
+    const destY = -bleed + panY - (destH - baseH) / 2;
+
+    if (slide && (slide.type === 'gradient' || slide.type === 'solid')) {
+      if (slide.type === 'solid') {
+        ctx.fillStyle = slide.color1 || '#0f172a';
+      } else if (slide.gradientType === 'radial') {
+        const origin = slide.radialOrigin || 'center';
+        let ox = destX + destW * 0.5;
+        let oy = destY + destH * 0.5;
+        if (origin === 'top') oy = destY + destH * 0.15;
+        else if (origin === 'bottom') oy = destY + destH * 0.85;
+        else if (origin === 'left') ox = destX + destW * 0.15;
+        else if (origin === 'right') ox = destX + destW * 0.85;
+
+        const maxR = Math.hypot(destW, destH) * 0.65;
+        const grad = ctx.createRadialGradient(ox, oy, 0, ox, oy, maxR);
+        grad.addColorStop(0, slide.color1 || '#312e81');
+        if (slide.useThreeColors) {
+          grad.addColorStop(0.5, slide.color2 || '#0f172a');
+          grad.addColorStop(1, slide.color3 || '#7c3aed');
+        } else {
+          grad.addColorStop(1, slide.color2 || '#0f172a');
+        }
+        ctx.fillStyle = grad;
+      } else {
+        const angleRad = ((slide.gradientAngle ?? 135) - 90) * (Math.PI / 180);
+        const cx = destX + destW / 2;
+        const cy = destY + destH / 2;
+        const halfDiag = Math.hypot(destW, destH) / 2;
+        const grad = ctx.createLinearGradient(
+          cx - Math.cos(angleRad) * halfDiag,
+          cy - Math.sin(angleRad) * halfDiag,
+          cx + Math.cos(angleRad) * halfDiag,
+          cy + Math.sin(angleRad) * halfDiag
+        );
+        grad.addColorStop(0, slide.color1 || '#1e1b4b');
+        if (slide.useThreeColors) {
+          grad.addColorStop(0.5, slide.color2 || '#0f172a');
+          grad.addColorStop(1, slide.color3 || '#7c3aed');
+        } else {
+          grad.addColorStop(1, slide.color2 || '#0f172a');
+        }
+        ctx.fillStyle = grad;
+      }
+      ctx.fillRect(destX, destY, destW, destH);
+      return;
+    }
+
+    if (slide && slide.type === 'video') {
+      const vidUrl = slide.videoUrl || slide.url;
+      const vid = this.getOrCreateSlideVideo(vidUrl);
+      if (vid) {
+        const vidDur = vid.duration;
+        const slideDur = Math.max(2, slide.duration || 8);
+        const hasValidDur = Number.isFinite(vidDur) && vidDur > 0;
+
+        let targetTime = 0;
+        if (hasValidDur) {
+          if (slideDur > vidDur) {
+            // Video is shorter than slide -> repeat loop
+            targetTime = elapsedInSlide % vidDur;
+          } else {
+            // Video is longer than or equal to slide -> play forward up to slide duration then cut
+            targetTime = Math.min(vidDur, elapsedInSlide);
+          }
+        } else {
+          targetTime = elapsedInSlide;
+        }
+
+        if (this.isAudioPlaying) {
+          if (Math.abs(vid.currentTime - targetTime) > 0.45) {
+            vid.currentTime = targetTime;
+          }
+          if (vid.paused && vid.readyState >= 2) {
+            vid.play().catch(() => {});
+          }
+        } else {
+          if (!vid.paused) {
+            vid.pause();
+          }
+          if (Math.abs(vid.currentTime - targetTime) > 0.1) {
+            vid.currentTime = targetTime;
+          }
+        }
+
+        // Pause other slide videos in cache to prevent simultaneous decoding and eliminate lag
+        this.slideVideoCache.forEach((otherVid, otherUrl) => {
+          if (otherUrl !== vidUrl && !otherVid.paused) {
+            otherVid.pause();
+          }
+        });
+
+        if (vid.readyState >= 2 && vid.videoWidth > 0 && vid.videoHeight > 0) {
+          const vidAspect = vid.videoWidth / vid.videoHeight;
+          const canvasAspect = width / height;
+          let sx = 0,
+            sy = 0,
+            sw = vid.videoWidth,
+            sh = vid.videoHeight;
+
+          if (vidAspect > canvasAspect) {
+            sw = vid.videoHeight * canvasAspect;
+            sx = (vid.videoWidth - sw) / 2;
+          } else {
+            sh = vid.videoWidth / canvasAspect;
+            sy = (vid.videoHeight - sh) / 2;
+          }
+
+          ctx.drawImage(vid, sx, sy, sw, sh, destX, destY, destW, destH);
+          return;
+        }
+      }
+    }
+
+    if (img && img.complete && img.naturalWidth > 0) {
+      this.drawSingleImage(ctx, img, width, height, bg, scaleMod, panX, panY);
+      return;
+    }
+
+    // Fallback dark gradient while image/video loads
+    const grad = ctx.createLinearGradient(0, 0, width, height);
+    grad.addColorStop(0, '#090d16');
+    grad.addColorStop(1, '#1e1b4b');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  /**
+   * Renders background with active transitions (Fade, Slide Left/Right/Up/Down, Zoom In/Out)
+   * and silky-smooth post-transition Ken Burns motion
    */
   private renderTransitionBackground(
     ctx: CanvasContext2D,
@@ -587,157 +1086,193 @@ export class VisualizerRenderer {
     progress: number,
     type: SceneTransitionType,
     kenBurns: boolean,
-    currentTime: number
+    _currentTime: number,
+    transitionState?: {
+      toKenBurns?: boolean;
+      fromHoldProgress?: number;
+      toHoldProgress?: number;
+      fromSlideIndex?: number;
+      toSlideIndex?: number;
+      fromSlide?: BackgroundSlideItem;
+      toSlide?: BackgroundSlideItem;
+      fromElapsedInSlide?: number;
+      toElapsedInSlide?: number;
+      dt?: number;
+    }
   ) {
     const fromImg = this.getOrCreateSlideImage(fromImgUrl);
     const toImg = this.getOrCreateSlideImage(toImgUrl);
 
-    // Subtle Ken Burns organic pan & breathe
-    let kbScale = 1.0;
-    let kbPanX = 0;
-    let kbPanY = 0;
-    if (kenBurns) {
-      kbScale = 1.0 + Math.sin(currentTime * 0.18) * 0.035;
-      kbPanX = Math.cos(currentTime * 0.14) * 12;
-      kbPanY = Math.sin(currentTime * 0.16) * 8;
-    }
+    const dt = transitionState?.dt ?? 0.016;
+    const fromIdx = transitionState?.fromSlideIndex ?? 0;
+    const toIdx = transitionState?.toSlideIndex ?? (fromIdx + 1);
+    const fromKey = transitionState?.fromSlide?.id || `slide-${fromIdx}-${fromImgUrl}`;
+    const toKey = transitionState?.toSlide?.id || `slide-${toIdx}-${toImgUrl}`;
+
+    // Calculate damped post-transition Ken Burns poses:
+    // - Outgoing slide (fromKb) holds its end-of-hold pose (fromHoldProgress = 1.0 during transition)
+    // - Incoming slide (toKb) waits at its clean start pose (toHoldProgress = 0.0 during transition)
+    //   and only pans/zooms smoothly AFTER the transition finishes!
+    const fromKb = this.getSmoothKenBurnsPose(
+      fromKey,
+      fromIdx,
+      kenBurns,
+      transitionState?.fromHoldProgress ?? (isTransitioning ? 1.0 : 0.5),
+      width,
+      height,
+      dt,
+      transitionState?.fromSlide
+    );
+
+    const toKb = this.getSmoothKenBurnsPose(
+      toKey,
+      toIdx,
+      transitionState?.toKenBurns ?? kenBurns,
+      transitionState?.toHoldProgress ?? 0.0,
+      width,
+      height,
+      dt,
+      transitionState?.toSlide
+    );
 
     ctx.save();
-    ctx.filter = `blur(${bg.blur}px) brightness(${bg.brightness}%) contrast(${bg.contrast}%)`;
+    const needBlur = bg.blur > 0;
+    const needBri = bg.brightness !== undefined && bg.brightness !== 100;
+    const needCon = bg.contrast !== undefined && bg.contrast !== 100;
+    if (needBlur || needBri || needCon) {
+      const safeBlur = this.highPerformanceMode ? Math.min(bg.blur, 10) : bg.blur;
+      ctx.filter = `blur(${safeBlur}px) brightness(${bg.brightness ?? 100}%) contrast(${bg.contrast ?? 100}%)`;
+    }
 
-    if (!isTransitioning || !toImg || fromImgUrl === toImgUrl) {
-      if (fromImg && fromImg.complete && fromImg.naturalWidth > 0) {
-        this.drawSingleImage(ctx, fromImg, width, height, bg, kbScale, kbPanX, kbPanY);
-      } else {
-        const grad = ctx.createLinearGradient(0, 0, width, height);
-        grad.addColorStop(0, '#090d16');
-        grad.addColorStop(1, '#1e1b4b');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, width, height);
-      }
+    const fromSlide = transitionState?.fromSlide;
+    const toSlide = transitionState?.toSlide;
+    const fromElapsed = transitionState?.fromElapsedInSlide ?? 0;
+    const toElapsed = transitionState?.toElapsedInSlide ?? 0;
+
+    if (!isTransitioning) {
+      this.drawSlideItem(ctx, fromSlide, fromImg, width, height, bg, fromKb.scale, fromKb.panX, fromKb.panY, fromElapsed);
       ctx.filter = 'none';
       ctx.restore();
       return;
     }
 
-    // Active Transition Rendering
+    // Smooth ease-in-out curve for transition progress (0 -> 1)
+    const p = Math.max(0, Math.min(1, progress));
+    const ease = p * p * (3 - 2 * p);
+
     switch (type) {
+      case 'crossfade':
       case 'fade': {
-        if (fromImg && fromImg.complete && fromImg.naturalWidth > 0) {
+        ctx.save();
+        this.drawSlideItem(ctx, fromSlide, fromImg, width, height, bg, fromKb.scale, fromKb.panX, fromKb.panY, fromElapsed);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = ease;
+        this.drawSlideItem(ctx, toSlide, toImg, width, height, bg, toKb.scale, toKb.panX, toKb.panY, toElapsed);
+        ctx.restore();
+        break;
+      }
+
+      case 'fade-in-out': {
+        // Fill dark base so dip-to-black is seamless
+        ctx.fillStyle = '#05070d';
+        ctx.fillRect(0, 0, width, height);
+        if (p < 0.5) {
           ctx.save();
-          this.drawSingleImage(ctx, fromImg, width, height, bg, kbScale, kbPanX, kbPanY);
+          ctx.globalAlpha = Math.max(0, 1 - p * 2);
+          this.drawSlideItem(ctx, fromSlide, fromImg, width, height, bg, fromKb.scale, fromKb.panX, fromKb.panY, fromElapsed);
           ctx.restore();
-        }
-        if (toImg && toImg.complete && toImg.naturalWidth > 0) {
+        } else {
           ctx.save();
-          ctx.globalAlpha = Math.max(0, Math.min(1, progress));
-          this.drawSingleImage(ctx, toImg, width, height, bg, kbScale, -kbPanX, -kbPanY);
+          ctx.globalAlpha = Math.max(0, Math.min(1, (p - 0.5) * 2));
+          this.drawSlideItem(ctx, toSlide, toImg, width, height, bg, toKb.scale, toKb.panX, toKb.panY, toElapsed);
           ctx.restore();
         }
         break;
       }
 
       case 'slide-left': {
-        const ease = progress * progress * (3 - 2 * progress);
-        if (fromImg && fromImg.complete && fromImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.translate(-ease * width, 0);
-          this.drawSingleImage(ctx, fromImg, width, height, bg, kbScale, kbPanX, kbPanY);
-          ctx.restore();
-        }
-        if (toImg && toImg.complete && toImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.translate((1 - ease) * width, 0);
-          this.drawSingleImage(ctx, toImg, width, height, bg, kbScale, -kbPanX, -kbPanY);
-          ctx.restore();
-        }
+        ctx.save();
+        ctx.translate(-ease * width, 0);
+        this.drawSlideItem(ctx, fromSlide, fromImg, width, height, bg, fromKb.scale, fromKb.panX, fromKb.panY, fromElapsed);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate((1 - ease) * width, 0);
+        this.drawSlideItem(ctx, toSlide, toImg, width, height, bg, toKb.scale, toKb.panX, toKb.panY, toElapsed);
+        ctx.restore();
         break;
       }
 
       case 'slide-right': {
-        const ease = progress * progress * (3 - 2 * progress);
-        if (fromImg && fromImg.complete && fromImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.translate(ease * width, 0);
-          this.drawSingleImage(ctx, fromImg, width, height, bg, kbScale, kbPanX, kbPanY);
-          ctx.restore();
-        }
-        if (toImg && toImg.complete && toImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.translate(-(1 - ease) * width, 0);
-          this.drawSingleImage(ctx, toImg, width, height, bg, kbScale, -kbPanX, -kbPanY);
-          ctx.restore();
-        }
+        ctx.save();
+        ctx.translate(ease * width, 0);
+        this.drawSlideItem(ctx, fromSlide, fromImg, width, height, bg, fromKb.scale, fromKb.panX, fromKb.panY, fromElapsed);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(-(1 - ease) * width, 0);
+        this.drawSlideItem(ctx, toSlide, toImg, width, height, bg, toKb.scale, toKb.panX, toKb.panY, toElapsed);
+        ctx.restore();
         break;
       }
 
       case 'slide-up': {
-        const ease = progress * progress * (3 - 2 * progress);
-        if (fromImg && fromImg.complete && fromImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.translate(0, -ease * height);
-          this.drawSingleImage(ctx, fromImg, width, height, bg, kbScale, kbPanX, kbPanY);
-          ctx.restore();
-        }
-        if (toImg && toImg.complete && toImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.translate(0, (1 - ease) * height);
-          this.drawSingleImage(ctx, toImg, width, height, bg, kbScale, -kbPanX, -kbPanY);
-          ctx.restore();
-        }
+        ctx.save();
+        ctx.translate(0, -ease * height);
+        this.drawSlideItem(ctx, fromSlide, fromImg, width, height, bg, fromKb.scale, fromKb.panX, fromKb.panY, fromElapsed);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(0, (1 - ease) * height);
+        this.drawSlideItem(ctx, toSlide, toImg, width, height, bg, toKb.scale, toKb.panX, toKb.panY, toElapsed);
+        ctx.restore();
         break;
       }
 
       case 'slide-down': {
-        const ease = progress * progress * (3 - 2 * progress);
-        if (fromImg && fromImg.complete && fromImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.translate(0, ease * height);
-          this.drawSingleImage(ctx, fromImg, width, height, bg, kbScale, kbPanX, kbPanY);
-          ctx.restore();
-        }
-        if (toImg && toImg.complete && toImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.translate(0, -(1 - ease) * height);
-          this.drawSingleImage(ctx, toImg, width, height, bg, kbScale, -kbPanX, -kbPanY);
-          ctx.restore();
-        }
+        ctx.save();
+        ctx.translate(0, ease * height);
+        this.drawSlideItem(ctx, fromSlide, fromImg, width, height, bg, fromKb.scale, fromKb.panX, fromKb.panY, fromElapsed);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(0, -(1 - ease) * height);
+        this.drawSlideItem(ctx, toSlide, toImg, width, height, bg, toKb.scale, toKb.panX, toKb.panY, toElapsed);
+        ctx.restore();
         break;
       }
 
       case 'zoom-in': {
-        if (fromImg && fromImg.complete && fromImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, 1 - progress);
-          const outScale = kbScale * (1.0 + progress * 0.22);
-          this.drawSingleImage(ctx, fromImg, width, height, bg, outScale, kbPanX, kbPanY);
-          ctx.restore();
-        }
-        if (toImg && toImg.complete && toImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, Math.min(1, progress));
-          const inScale = kbScale * (0.86 + progress * 0.14);
-          this.drawSingleImage(ctx, toImg, width, height, bg, inScale, -kbPanX, -kbPanY);
-          ctx.restore();
-        }
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - ease);
+        const outScale = fromKb.scale * (1.0 + ease * 0.18);
+        this.drawSlideItem(ctx, fromSlide, fromImg, width, height, bg, outScale, fromKb.panX, fromKb.panY, fromElapsed);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = ease;
+        // Lands cleanly on toKb.scale at ease = 1.0 so post-transition Ken Burns starts with zero snap!
+        const inScale = toKb.scale * (0.86 + ease * 0.14);
+        this.drawSlideItem(ctx, toSlide, toImg, width, height, bg, inScale, toKb.panX, toKb.panY, toElapsed);
+        ctx.restore();
         break;
       }
 
       case 'zoom-out': {
-        if (fromImg && fromImg.complete && fromImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, 1 - progress);
-          const outScale = kbScale * (1.0 - progress * 0.18);
-          this.drawSingleImage(ctx, fromImg, width, height, bg, outScale, kbPanX, kbPanY);
-          ctx.restore();
-        }
-        if (toImg && toImg.complete && toImg.naturalWidth > 0) {
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, Math.min(1, progress));
-          const inScale = kbScale * (1.20 - progress * 0.20);
-          this.drawSingleImage(ctx, toImg, width, height, bg, inScale, -kbPanX, -kbPanY);
-          ctx.restore();
-        }
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - ease);
+        const outScale = fromKb.scale * (1.0 - ease * 0.15);
+        this.drawSlideItem(ctx, fromSlide, fromImg, width, height, bg, outScale, fromKb.panX, fromKb.panY, fromElapsed);
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = ease;
+        // Lands cleanly on toKb.scale at ease = 1.0 so post-transition Ken Burns starts with zero snap!
+        const inScale = toKb.scale * (1.18 - ease * 0.18);
+        this.drawSlideItem(ctx, toSlide, toImg, width, height, bg, inScale, toKb.panX, toKb.panY, toElapsed);
+        ctx.restore();
         break;
       }
     }
@@ -750,19 +1285,21 @@ export class VisualizerRenderer {
     this.particles = [];
     for (let i = 0; i < count; i++) {
       const zInit = Math.random() * 1000 + 10;
+      const angleInit = Math.random() * Math.PI * 2;
+      const driftSpeed = Math.random() * 0.7 + 0.3;
       this.particles.push({
         x: Math.random() * 1920,
         y: Math.random() * 1920,
         z: zInit,
         pz: zInit,
-        vx: (Math.random() - 0.5) * 0.8,
-        vy: (Math.random() - 0.5) * 0.8 - 0.3,
+        vx: Math.cos(angleInit) * driftSpeed,
+        vy: Math.sin(angleInit) * driftSpeed,
         speed: Math.random() * 4 + 4,
         size: Math.random() * 3 + 1,
         alpha: Math.random() * 0.7 + 0.2,
         baseAlpha: Math.random() * 0.7 + 0.2,
         hue: Math.random() * 360,
-        angle: Math.random() * Math.PI * 2,
+        angle: angleInit,
         rotSpeed: (Math.random() - 0.5) * 0.08 + (Math.random() > 0.5 ? 0.035 : -0.035),
         length: Math.random() * 24 + 16,
         orbitRadius: Math.random() * 250 + 50,
@@ -816,7 +1353,7 @@ export class VisualizerRenderer {
     }
 
     // Calculate Scene Transitions & Multi-Image Slider State
-    const transState = this.getTransitionState(sceneTransitions, background, visualizer, currentTime);
+    const transState = this.getTransitionState(sceneTransitions, background, visualizer, currentTime, isPlaying);
 
     // Determine target context: if color grading is active, render scene into offscreen grading buffer first
     const isGradingActive = colorGrading && colorGrading.enabled;
@@ -1293,6 +1830,16 @@ export class VisualizerRenderer {
       fromImageUrl: string;
       toImageUrl: string;
       kenBurns: boolean;
+      toKenBurns?: boolean;
+      fromHoldProgress?: number;
+      toHoldProgress?: number;
+      fromSlideIndex?: number;
+      toSlideIndex?: number;
+      fromSlide?: BackgroundSlideItem;
+      toSlide?: BackgroundSlideItem;
+      fromElapsedInSlide?: number;
+      toElapsedInSlide?: number;
+      dt?: number;
     }
   ) {
     ctx.save();
@@ -1378,6 +1925,47 @@ export class VisualizerRenderer {
     ctx.translate(centerX, centerY);
     ctx.scale(zoom, zoom);
     ctx.translate(-centerX, -centerY);
+
+    // 0. Primary Multi-Image Slideshow mode check - renders immediately on mode change or slide cue!
+    if (bg.mode === 'slides' && transitionState) {
+      this.renderTransitionBackground(
+        ctx,
+        width,
+        height,
+        bg,
+        transitionState.fromImageUrl,
+        transitionState.toImageUrl,
+        transitionState.isTransitioning,
+        transitionState.progress,
+        transitionState.type,
+        transitionState.kenBurns,
+        currentTime,
+        transitionState
+      );
+      if (bg.vignette > 0) {
+        const maxDim = Math.max(width, height);
+        const vGrad = ctx.createRadialGradient(
+          centerX,
+          centerY,
+          maxDim * 0.25,
+          centerX,
+          centerY,
+          maxDim * 0.75
+        );
+        vGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vGrad.addColorStop(1, `rgba(0, 0, 0, ${bg.vignette / 100})`);
+        ctx.fillStyle = vGrad;
+        ctx.fillRect(0, 0, width, height);
+      }
+      if (bg.circleRipple) {
+        this.renderCircleRipple(ctx, width, height, bg, bassIntensity, beatIntensity, currentTime, track);
+      }
+      if (bg.glitchEffect) {
+        this.applyBackgroundGlitch(ctx, width, height, bg, bassIntensity, beatIntensity, isPlaying);
+      }
+      ctx.restore();
+      return;
+    }
 
     // A. Video Background
     if (bg.isVideo || bg.type === 'video') {
@@ -1501,7 +2089,8 @@ export class VisualizerRenderer {
           transitionState.progress,
           transitionState.type,
           transitionState.kenBurns,
-          currentTime
+          currentTime,
+          transitionState
         );
       } else if (this.bgImage && this.bgImage.complete && this.bgImage.naturalWidth > 0) {
         const needBlur = bg.blur > 0;
@@ -1866,27 +2455,6 @@ export class VisualizerRenderer {
   ) {
     if (config.type === 'none') return;
 
-    // WebGL Stereo 3D Rain Rendering & Water on Glass (threejs.org/examples/#webgl_effects_stereo)
-    if (config.type === 'rain' && (config.stereoRainEnabled || config.waterOnGlass)) {
-      const stereoCanvas = threeStereoRainEngine.render(
-        width,
-        height,
-        config,
-        bassIntensity,
-        trebleIntensity,
-        beatIntensity,
-        currentTime,
-        isPlaying
-      );
-      if (stereoCanvas) {
-        ctx.drawImage(stereoCanvas, 0, 0, width, height);
-        // If only waterOnGlass is active without stereo rain, let 2D particles render underneath if wanted, or return if stereo is on
-        if (config.stereoRainEnabled) {
-          return;
-        }
-      }
-    }
-
     if (this.particles.length !== config.count) {
       this.initParticles(config.count);
     }
@@ -1894,6 +2462,7 @@ export class VisualizerRenderer {
     ctx.save();
     const speedMult = isPlaying ? config.speed : 0.35 * config.speed;
     const beatKick = isPlaying && config.reactiveToBeat ? beatIntensity * 2.5 : 0;
+    const particleOpacity = Math.max(0.05, Math.min(1.0, config.opacity !== undefined ? config.opacity : 0.85));
     const centerX = width / 2;
     const centerY = height / 2;
     const isHighPerf = this.highPerformanceMode;
@@ -1978,9 +2547,40 @@ export class VisualizerRenderer {
           p.y = Math.random() * height;
         }
       } else if (config.type === 'stars') {
-        p.alpha = isHighPerf ? p.baseAlpha + beatKick * 0.2 : (p.baseAlpha + Math.sin(Date.now() * 0.003 + p.x) * 0.25 + beatKick * 0.3);
-        p.x += p.vx * speedMult;
-        p.y += p.vy * speedMult;
+        const isStatic = config.starStatic !== false;
+        if (isStatic) {
+          p.alpha = isHighPerf
+            ? Math.max(0.08, Math.min(1.0, (p.baseAlpha || 0.6) + Math.sin(Date.now() * 0.0035 + (p.randFactor || 0.5) * 20) * 0.35 + beatKick * 0.2))
+            : Math.max(0.05, Math.min(1.0, (p.baseAlpha || 0.6) + Math.sin(Date.now() * 0.004 + (p.randFactor || 0.5) * 35) * 0.45 + beatKick * 0.35));
+        } else {
+          p.alpha = isHighPerf ? p.baseAlpha + beatKick * 0.2 : (p.baseAlpha + Math.sin(Date.now() * 0.003 + p.x) * 0.25 + beatKick * 0.3);
+          p.x += p.vx * speedMult;
+          p.y += p.vy * speedMult;
+        }
+      } else if (config.type === 'fire-embers') {
+        // --- NHỮNG HẠT LỬA BAY LÊN TỎA NHIỀU HƯỚNG RỒI CHUYỂN XÁM ĐEN TẮT DẦN ---
+        const cooling = config.fireEmbersCooling !== undefined ? config.fireEmbersCooling : 1.0;
+        const spread = config.fireEmbersSpread !== undefined ? config.fireEmbersSpread : 1.2;
+        const riseSpeed = ((p.speed || 3.5) * 1.6 + 2.4) * speedMult + beatKick * 4.2;
+        p.y -= riseSpeed;
+        p.wobble = (p.wobble || 0) + (p.wobbleSpeed || 0.035);
+        p.x += (Math.sin(p.wobble) * 2.5 + ((p.randFactor || 0.5) - 0.5) * 3.8) * spread * speedMult;
+
+        const progress = Math.max(0, Math.min(1.0, 1.0 - p.y / height));
+        const fade = Math.pow(progress, cooling * 1.25);
+        p.alpha = Math.max(0, (1.0 - fade) * (p.baseAlpha || 0.95));
+
+        if (p.y < -40 || p.alpha <= 0.01) {
+          p.y = height + Math.random() * 40 + 10;
+          p.x = Math.random() * (width + 120) - 60;
+          p.speed = Math.random() * 4 + 2.5;
+          p.size = Math.random() * 3.5 + 1.5;
+          p.baseAlpha = Math.random() * 0.3 + 0.7;
+          p.alpha = p.baseAlpha;
+          p.wobble = Math.random() * Math.PI * 2;
+          p.wobbleSpeed = Math.random() * 0.05 + 0.02;
+          p.randFactor = Math.random();
+        }
       } else if (config.type === 'spinning-dashes') {
         const spinBoost = 1 + (config.reactiveToBeat ? beatKick * 2.2 : 0);
         p.angle = ((p.angle || 0) + (p.rotSpeed || 0.045) * spinBoost * speedMult);
@@ -1999,10 +2599,9 @@ export class VisualizerRenderer {
         }
       } else if (config.type === 'spaghetti' || config.type === 'silk-ribbon') {
         p.y += ((p.speed || 4) * 0.9 + 2.8) * speedMult + beatKick * 6.5;
-        if (!isHighPerf) {
-          p.wobble = (p.wobble || 0) + (p.wobbleSpeed || 0.035);
-          p.x += Math.sin(p.wobble) * 1.5;
-        }
+        p.wobble = (p.wobble || 0) + (p.wobbleSpeed || 0.035) * (config.ribbonWavy !== false ? 1.6 : 0.8);
+        const waveSway = Math.sin(p.wobble) * (config.ribbonWavy !== false ? 3.6 : 1.5);
+        p.x += waveSway * speedMult;
 
         const baseRibbonLen = config.ribbonLength !== undefined ? config.ribbonLength : 160;
         const maxResetLen = baseRibbonLen * 1.3 + 80;
@@ -2015,76 +2614,153 @@ export class VisualizerRenderer {
           p.baseAlpha = Math.random() * 0.3 + 0.7;
         }
       } else if (config.type === 'speed-lines') {
-        const isCenterMode = config.speedLineMode === 'converge-center';
+        const orientation = config.speedLineOrientation || (config.speedLineMode === 'converge-center' ? 'radial-center' : 'horizontal');
+        const isRadial = orientation === 'radial-center' || orientation === 'radial-top' || orientation === 'radial-bottom';
+        const isReverse = Boolean(config.speedLineReverse);
         const baseLen = config.speedLineLength || 140;
         const randRange = (config.speedLineRandomLength !== undefined ? config.speedLineRandomLength : 55) / 100;
         const lineLen = Math.max(25, baseLen * (1 + ((p.randFactor || 0.5) - 0.5) * 2 * randRange));
         const lineSpeedFactor = config.speedLineSpeed !== undefined ? config.speedLineSpeed : 1.0;
         const lineSpeed = (((p.speed || 8) * 4.2 + 18) * speedMult * lineSpeedFactor) + beatKick * (26 * Math.min(2.0, lineSpeedFactor));
 
-        if (isCenterMode) {
-          // 2. Theo chiều đứng về tâm (Anime Action Focus Lines với Vertical Center & Horizontal Center)
-          const vCenter = config.speedLineVerticalCenter || 'center';
-          let targetYRatio = 0.50;
-          if (config.speedLineCenterY !== undefined) {
-            targetYRatio = Math.max(0.1, Math.min(0.9, config.speedLineCenterY / 100));
-          } else if (vCenter === 'top') {
-            targetYRatio = 0.25;
-          } else if (vCenter === 'bottom') {
-            targetYRatio = 0.75;
-          } else {
-            targetYRatio = 0.50;
-          }
-
-          const hCenter = config.speedLineHorizontalCenter || 'center';
+        if (isRadial) {
           let targetXRatio = 0.50;
-          if (config.speedLineCenterX !== undefined) {
-            targetXRatio = Math.max(0.1, Math.min(0.9, config.speedLineCenterX / 100));
-          } else if (hCenter === 'left') {
-            targetXRatio = 0.25;
-          } else if (hCenter === 'right') {
-            targetXRatio = 0.75;
+          let targetYRatio = 0.50;
+          if (orientation === 'radial-top') {
+            targetYRatio = 0.15;
+          } else if (orientation === 'radial-bottom') {
+            targetYRatio = 0.85;
           } else {
-            targetXRatio = 0.50;
+            if (config.speedLineCenterY !== undefined) {
+              targetYRatio = Math.max(0.1, Math.min(0.9, config.speedLineCenterY / 100));
+            }
+            if (config.speedLineCenterX !== undefined) {
+              targetXRatio = Math.max(0.1, Math.min(0.9, config.speedLineCenterX / 100));
+            }
           }
 
           const targetX = width * targetXRatio;
           const targetY = height * targetYRatio;
-          const dx = targetX - p.x;
-          const dy = targetY - p.y;
-          const dist = Math.hypot(dx, dy);
-          const angle = Math.atan2(dy, dx);
-          p.speedLineAngle = angle;
 
-          p.x += Math.cos(angle) * lineSpeed;
-          p.y += Math.sin(angle) * lineSpeed;
+          if (isReverse) {
+            // Chiều Ngược (Reverse): Radiate OUTWARD from center focus toward screen edges
+            const dx = p.x - targetX;
+            const dy = p.y - targetY;
+            const dist = Math.hypot(dx, dy);
+            const angle = dist > 2 ? Math.atan2(dy, dx) : (p.speedLineAngle ?? Math.random() * Math.PI * 2);
+            p.speedLineAngle = angle;
 
-          if (dist < 35 || p.y > height + 160 || p.y < -160 || p.x < -160 || p.x > width + 160) {
-            const edge = Math.random();
-            if (edge < 0.35) {
-              // Top
-              p.y = -Math.random() * 140 - 20;
-              p.x = Math.random() * (width + 240) - 120;
-            } else if (edge < 0.70) {
-              // Bottom
-              p.y = height + Math.random() * 140 + 20;
-              p.x = Math.random() * (width + 240) - 120;
-            } else if (edge < 0.85) {
-              // Left
-              p.x = -Math.random() * 120 - 20;
-              p.y = Math.random() * (height + 240) - 120;
-            } else {
-              // Right
-              p.x = width + Math.random() * 120 + 20;
-              p.y = Math.random() * (height + 240) - 120;
+            p.x += Math.cos(angle) * lineSpeed;
+            p.y += Math.sin(angle) * lineSpeed;
+
+            if (p.y > height + 180 || p.y < -180 || p.x < -180 || p.x > width + 180) {
+              const spawnAngle = Math.random() * Math.PI * 2;
+              const spawnR = Math.random() * 45 + 8;
+              p.x = targetX + Math.cos(spawnAngle) * spawnR;
+              p.y = targetY + Math.sin(spawnAngle) * spawnR;
+              p.speedLineAngle = spawnAngle;
+              p.speed = Math.random() * 6 + 6;
+              p.randFactor = Math.random();
+              p.baseAlpha = Math.random() * 0.4 + 0.6;
             }
-            p.speed = Math.random() * 6 + 6;
-            p.randFactor = Math.random();
-            p.baseAlpha = Math.random() * 0.4 + 0.6;
+          } else {
+            // Chiều Xuôi (Forward): Converge INWARD from outer edges toward center focus
+            const dx = targetX - p.x;
+            const dy = targetY - p.y;
+            const dist = Math.hypot(dx, dy);
+            const angle = Math.atan2(dy, dx);
+            p.speedLineAngle = angle;
+
+            p.x += Math.cos(angle) * lineSpeed;
+            p.y += Math.sin(angle) * lineSpeed;
+
+            if (dist < 35 || p.y > height + 160 || p.y < -160 || p.x < -160 || p.x > width + 160) {
+              const edge = Math.random();
+              if (edge < 0.35) {
+                p.y = -Math.random() * 140 - 20;
+                p.x = Math.random() * (width + 240) - 120;
+              } else if (edge < 0.70) {
+                p.y = height + Math.random() * 140 + 20;
+                p.x = Math.random() * (width + 240) - 120;
+              } else if (edge < 0.85) {
+                p.x = -Math.random() * 120 - 20;
+                p.y = Math.random() * (height + 240) - 120;
+              } else {
+                p.x = width + Math.random() * 120 + 20;
+                p.y = Math.random() * (height + 240) - 120;
+              }
+              p.speed = Math.random() * 6 + 6;
+              p.randFactor = Math.random();
+              p.baseAlpha = Math.random() * 0.4 + 0.6;
+            }
+          }
+        } else if (orientation === 'vertical') {
+          if (isReverse) {
+            p.y -= lineSpeed;
+            if (p.y + lineLen < -120) {
+              p.y = height + lineLen + Math.random() * 150 + 20;
+              p.x = Math.random() * width;
+              p.speed = Math.random() * 6 + 6;
+              p.randFactor = Math.random();
+              p.baseAlpha = Math.random() * 0.4 + 0.6;
+            }
+          } else {
+            p.y += lineSpeed;
+            if (p.y > height + 120) {
+              p.y = -lineLen - Math.random() * 150 - 20;
+              p.x = Math.random() * width;
+              p.speed = Math.random() * 6 + 6;
+              p.randFactor = Math.random();
+              p.baseAlpha = Math.random() * 0.4 + 0.6;
+            }
+          }
+        } else if (orientation === 'diagonal-45') {
+          if (isReverse) {
+            p.x -= lineSpeed * 0.707;
+            p.y -= lineSpeed * 0.707;
+            if (p.x < -120 || p.y < -120) {
+              p.x = Math.random() * (width + 200);
+              p.y = height + lineLen + Math.random() * 150;
+              p.speed = Math.random() * 6 + 6;
+              p.randFactor = Math.random();
+              p.baseAlpha = Math.random() * 0.4 + 0.6;
+            }
+          } else {
+            p.x += lineSpeed * 0.707;
+            p.y += lineSpeed * 0.707;
+            if (p.x > width + 120 || p.y > height + 120) {
+              p.x = Math.random() * (width + 200) - 200;
+              p.y = -lineLen - Math.random() * 150;
+              p.speed = Math.random() * 6 + 6;
+              p.randFactor = Math.random();
+              p.baseAlpha = Math.random() * 0.4 + 0.6;
+            }
+          }
+        } else if (orientation === 'diagonal-135') {
+          if (isReverse) {
+            p.x += lineSpeed * 0.707;
+            p.y -= lineSpeed * 0.707;
+            if (p.x > width + 120 || p.y < -120) {
+              p.x = Math.random() * (width + 200) - 200;
+              p.y = height + lineLen + Math.random() * 150;
+              p.speed = Math.random() * 6 + 6;
+              p.randFactor = Math.random();
+              p.baseAlpha = Math.random() * 0.4 + 0.6;
+            }
+          } else {
+            p.x -= lineSpeed * 0.707;
+            p.y += lineSpeed * 0.707;
+            if (p.x < -120 || p.y > height + 120) {
+              p.x = Math.random() * (width + 200);
+              p.y = -lineLen - Math.random() * 150;
+              p.speed = Math.random() * 6 + 6;
+              p.randFactor = Math.random();
+              p.baseAlpha = Math.random() * 0.4 + 0.6;
+            }
           }
         } else {
-          // 1. Chạy song song chiều ngang ảnh (có hỗ trợ độ nghiêng Tilt Angle -45 -> 45 độ)
-          const isLeftToRight = config.speedLineDirection === 'left-to-right';
+          // 'horizontal'
+          const isLeftToRight = isReverse || config.speedLineDirection === 'left-to-right';
           const tiltDeg = Math.max(-45, Math.min(45, config.speedLineTilt || 0));
           const tiltRad = (tiltDeg * Math.PI) / 180;
           const cosTilt = Math.cos(tiltRad);
@@ -2114,7 +2790,7 @@ export class VisualizerRenderer {
             }
           }
         }
-      } else if (config.type === 'rainbow-bubbles' || config.type === 'bubbles') {
+      } else if (config.type === 'rainbow-bubbles') {
         p.y -= (p.speed * 0.4 + 1.2) * speedMult + beatKick * 1.8;
         p.x += isHighPerf ? p.vx * speedMult * 0.5 : (Math.sin(p.wobble || 0) * 1.2 + p.vx * speedMult * 0.5);
         if (!isHighPerf) p.wobble = (p.wobble || 0) + (p.wobbleSpeed || 0.03);
@@ -2187,6 +2863,16 @@ export class VisualizerRenderer {
           p.y = (Math.random() - 0.5) * height * 1.8;
           p.hue = Math.random() * 360;
         }
+      } else if (config.type === 'dust') {
+        // --- LOFI TRÔI: DRIFT IN RANDOM MULTIPLE DIRECTIONS (360° ĐA HƯỚNG NGẪU NHIÊN) ---
+        p.wobble = (p.wobble || 0) + (p.wobbleSpeed || 0.016) * Math.max(0.1, speedMult);
+        const curl = Math.sin(p.wobble) * 0.02;
+        p.angle = ((p.angle || 0) + curl) % (Math.PI * 2);
+
+        const driftSpeed = ((p.speed || 3) * 0.25 + 0.45) * speedMult;
+        const beatDrift = config.reactiveToBeat ? (1 + beatKick * 0.6) : 1;
+        p.x += (Math.cos(p.angle) * driftSpeed + (p.vx || 0) * 0.45 * speedMult) * beatDrift;
+        p.y += (Math.sin(p.angle) * driftSpeed + (p.vy || 0) * 0.45 * speedMult) * beatDrift;
       } else {
         p.x += p.vx * speedMult + (config.reactiveToBeat ? (Math.random() - 0.5) * beatKick : 0);
         p.y += p.vy * speedMult - beatKick * 0.5;
@@ -2194,8 +2880,8 @@ export class VisualizerRenderer {
 
       if (
         config.type !== 'hyperspace' &&
+        config.type !== 'fire-embers' &&
         config.type !== 'rainbow-bubbles' &&
-        config.type !== 'bubbles' &&
         config.type !== 'spaghetti' &&
         config.type !== 'silk-ribbon' &&
         config.type !== 'speed-lines' &&
@@ -2203,10 +2889,11 @@ export class VisualizerRenderer {
         config.type !== 'snow' &&
         config.type !== 'rain'
       ) {
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
-        if (p.y < 0) p.y = height;
-        if (p.y > height) p.y = 0;
+        const margin = 20;
+        if (p.x < -margin) p.x = width + margin;
+        if (p.x > width + margin) p.x = -margin;
+        if (p.y < -margin) p.y = height + margin;
+        if (p.y > height + margin) p.y = -margin;
       }
 
       // --- RENDERING PARTICLE STYLES ---
@@ -2258,16 +2945,20 @@ export class VisualizerRenderer {
         const currentDropType = p.rainDropType || (config.rainDropType === 'mixed' || !config.rainDropType ? 'streaks' : config.rainDropType);
 
         ctx.save();
-        ctx.globalAlpha = dynamicAlpha;
+        ctx.globalAlpha = dynamicAlpha * particleOpacity;
 
         if (isHighPerf) {
           // Ultra-fast clean direct line stroke without allocating gradients in the loop and zero shadowBlur
           const dropL = Math.max(12, (p.length || 24) * 0.9 * rainLenScale);
           const dx = rainSin * dropL;
           const dy = rainCos * dropL;
+          const rawDropW = Math.max(1, p.size * 0.75 * sizeScale);
+          const dropW = config.randomSize
+            ? Math.max(1, 1 + (p.randFactor !== undefined ? p.randFactor : 0.5) * (rawDropW - 1))
+            : rawDropW;
           ctx.beginPath();
           ctx.strokeStyle = rainColor;
-          ctx.lineWidth = Math.max(1, p.size * 0.75 * sizeScale);
+          ctx.lineWidth = dropW;
           ctx.lineCap = 'round';
           ctx.moveTo(p.x - dx, p.y - dy);
           ctx.lineTo(p.x, p.y);
@@ -2276,8 +2967,8 @@ export class VisualizerRenderer {
           continue;
         }
 
-        const baseGlow = config.glowIntensity !== undefined ? config.glowIntensity : 8;
-        const glowBlur = (currentDropType === 'neon-glow' ? baseGlow + 8 : baseGlow) + (isBassFlash ? beatKick * flashBoost * 12 : beatKick * 5);
+        const baseGlow = config.rainGlow !== false ? (config.glowIntensity !== undefined ? config.glowIntensity : 10) : 0;
+        const glowBlur = config.rainGlow !== false ? (currentDropType === 'neon-glow' ? baseGlow + 8 : baseGlow) + (isBassFlash ? beatKick * flashBoost * 12 : beatKick * 5) : 0;
         if (glowBlur > 0) {
           ctx.shadowBlur = glowBlur;
           ctx.shadowColor = glowColor;
@@ -2286,7 +2977,10 @@ export class VisualizerRenderer {
         // Draw according to raindrop type
         if (currentDropType === 'drizzle') {
           // Delicate fine mist / micro droplet bead with short tail
-          const dropR = Math.max(1.2, p.size * 0.8 * sizeScale);
+          const rawDropR = Math.max(1.2, p.size * 0.8 * sizeScale);
+          const dropR = config.randomSize
+            ? Math.max(1.0, 1.0 + (p.randFactor !== undefined ? p.randFactor : 0.5) * (rawDropR - 1.0))
+            : rawDropR;
           const dropL = Math.max(8, (p.length || 18) * 0.45 * lengthScale);
           const dx = Math.sin(windRad) * dropL;
           const dy = Math.cos(windRad) * dropL;
@@ -2312,7 +3006,10 @@ export class VisualizerRenderer {
         } else if (currentDropType === 'heavy') {
           // Torrential dense rain downpour stream with thick water ribbons
           const dropL = Math.max(28, (p.length || 42) * 1.5 * lengthScale * (1 + (config.reactiveToBeat ? beatKick * 0.35 : 0)));
-          const dropW = Math.max(2.2, p.size * 1.4 * sizeScale);
+          const rawDropW = Math.max(2.2, p.size * 1.4 * sizeScale);
+          const dropW = config.randomSize
+            ? Math.max(1.2, 1.2 + (p.randFactor !== undefined ? p.randFactor : 0.5) * (rawDropW - 1.2))
+            : rawDropW;
           const dx = Math.sin(windRad) * dropL;
           const dy = Math.cos(windRad) * dropL;
 
@@ -2341,7 +3038,10 @@ export class VisualizerRenderer {
         } else if (currentDropType === 'neon-glow') {
           // Cyberpunk neon laser rain beam
           const dropL = Math.max(22, (p.length || 32) * 1.25 * lengthScale * (1 + (config.reactiveToBeat ? beatKick * 0.4 : 0)));
-          const dropW = Math.max(2.0, (p.size * 0.9 + 1.2) * sizeScale);
+          const rawDropW = Math.max(2.0, (p.size * 0.9 + 1.2) * sizeScale);
+          const dropW = config.randomSize
+            ? Math.max(1.0, 1.0 + (p.randFactor !== undefined ? p.randFactor : 0.5) * (rawDropW - 1.0))
+            : rawDropW;
           const dx = Math.sin(windRad) * dropL;
           const dy = Math.cos(windRad) * dropL;
 
@@ -2364,7 +3064,10 @@ export class VisualizerRenderer {
         } else {
           // 'streaks' & Standard: Cinematic angled glass streaks with glowing water droplet
           const dropL = Math.max(18, (p.length || 28) * lengthScale * (1 + (config.reactiveToBeat ? beatKick * 0.3 : 0)));
-          const dropW = Math.max(1.4, (p.size * 0.8 + 0.8) * sizeScale);
+          const rawDropW = Math.max(1.4, (p.size * 0.8 + 0.8) * sizeScale);
+          const dropW = config.randomSize
+            ? Math.max(1.0, 1.0 + (p.randFactor !== undefined ? p.randFactor : 0.5) * (rawDropW - 1.0))
+            : rawDropW;
           const dx = Math.sin(windRad) * dropL;
           const dy = Math.cos(windRad) * dropL;
 
@@ -2396,7 +3099,7 @@ export class VisualizerRenderer {
           const splashAlpha = (1 - splashProgress) * 0.65;
 
           ctx.save();
-          ctx.globalAlpha = splashAlpha;
+          ctx.globalAlpha = splashAlpha * particleOpacity;
           ctx.strokeStyle = rainColor;
           ctx.lineWidth = 1.2;
           ctx.beginPath();
@@ -2414,12 +3117,16 @@ export class VisualizerRenderer {
         }
 
         ctx.restore();
-      } else if (config.type === 'rainbow-bubbles' || config.type === 'bubbles') {
+      } else if (config.type === 'rainbow-bubbles') {
         // --- 1. RAINBOW SOAP BUBBLES ---
-        const bubbleRadius = Math.max(10, (p.size * 7 + 12) * (1 + (config.reactiveToBeat ? beatKick * 0.22 : 0)));
+        const rawBubbleRadius = Math.max(10, (p.size * 7 + 12) * (1 + (config.reactiveToBeat ? beatKick * 0.22 : 0)));
+        const bubbleRadius = config.randomSize
+          ? Math.max(2.5, 2.5 + (p.randFactor !== undefined ? p.randFactor : 0.5) * (rawBubbleRadius - 2.5))
+          : rawBubbleRadius;
         const currentHue = p.hue;
 
         ctx.save();
+        ctx.globalAlpha = (p.alpha || 0.8) * particleOpacity;
         ctx.translate(p.x, p.y);
 
         if (isHighPerf) {
@@ -2495,14 +3202,16 @@ export class VisualizerRenderer {
         ctx.restore();
       } else if (config.type === 'hyperspace') {
         // --- 2. HYPERSPACE SPEED LINES & STAR WARP ---
+        const warpLenMult = (config.hyperspaceLength !== undefined ? config.hyperspaceLength : 20) / 20;
         const focalLength = 480;
         const z = p.z || 500;
         const pz = p.pz || z;
 
         const screenX = centerX + (p.x / z) * focalLength;
         const screenY = centerY + (p.y / z) * focalLength;
-        const prevScreenX = centerX + (p.x / pz) * focalLength;
-        const prevScreenY = centerY + (p.y / pz) * focalLength;
+        const deltaZ = Math.max(2, (pz - z) * warpLenMult * 1.6);
+        const prevScreenX = centerX + (p.x / (z + deltaZ)) * focalLength;
+        const prevScreenY = centerY + (p.y / (z + deltaZ)) * focalLength;
 
         // Reset if offscreen
         if (screenX < -100 || screenX > width + 100 || screenY < -100 || screenY > height + 100) {
@@ -2515,7 +3224,7 @@ export class VisualizerRenderer {
 
         const depthRatio = Math.max(0, Math.min(1, 1 - z / 1000));
         const trailWidth = Math.max(0.75, depthRatio * 3.8);
-        const trailAlpha = Math.min(1, Math.max(0.15, depthRatio * 1.1 + beatKick * 0.25));
+        const trailAlpha = Math.min(1, Math.max(0.15, depthRatio * 1.1 + beatKick * 0.25)) * particleOpacity;
 
         // Color selection for futuristic warp streaks (Cyan / Neon Purple / Pure White)
         const streakColor = p.hue > 240 
@@ -2530,8 +3239,11 @@ export class VisualizerRenderer {
         ctx.lineWidth = trailWidth;
         ctx.lineCap = 'round';
         if (!isHighPerf) {
-          ctx.shadowColor = streakColor;
-          ctx.shadowBlur = Math.min(15, depthRatio * 12 + beatKick * 8);
+          const userGlow = config.hyperspaceGlow !== undefined ? config.hyperspaceGlow : 15;
+          if (userGlow > 0) {
+            ctx.shadowColor = streakColor;
+            ctx.shadowBlur = Math.min(45, (userGlow / 15) * (depthRatio * 14 + beatKick * 10));
+          }
         }
         ctx.stroke();
         if (!isHighPerf) {
@@ -2540,16 +3252,22 @@ export class VisualizerRenderer {
 
         // Glowing Star Point Head
         ctx.beginPath();
-        const headRadius = Math.max(0.8, depthRatio * 2.6);
+        const rawHeadRadius = Math.max(0.8, depthRatio * 2.6);
+        const headRadius = config.randomSize
+          ? Math.max(0.4, 0.4 + (p.randFactor !== undefined ? p.randFactor : 0.5) * (rawHeadRadius - 0.4))
+          : rawHeadRadius;
         ctx.arc(screenX, screenY, headRadius, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = `rgba(255, 255, 255, ${particleOpacity})`;
         ctx.fill();
 
       } else if (config.type === 'spaghetti' || config.type === 'silk-ribbon') {
         // --- 3.5 MƯA MẢNH RUY BĂNG LỤA (SILK RIBBON RAIN - UPGRADED FROM SPAGHETTI) ---
         const baseRibbonLen = config.ribbonLength !== undefined ? config.ribbonLength : 160;
         const ribbonLength = Math.max(25, (baseRibbonLen * (0.8 + (p.randFactor || 0.5) * 0.4) + p.size * 10) * (config.sizeScale || 1.0) * (1 + (config.reactiveToBeat ? beatKick * 0.25 : 0)));
-        const thickness = Math.max(3, (config.ribbonThickness || 8) * (config.sizeScale || 1.0));
+        const baseThickness = Math.max(3, (config.ribbonThickness || 8) * (config.sizeScale || 1.0));
+        const thickness = config.randomSize
+          ? Math.max(1.5, 1.5 + (p.randFactor !== undefined ? p.randFactor : 0.5) * (baseThickness - 1.5))
+          : baseThickness;
         const twistMult = config.ribbonTwist !== undefined ? config.ribbonTwist : 1.8;
         const phase = p.wobble || 0;
         const colorMode = config.colorMode || 'custom';
@@ -2577,6 +3295,7 @@ export class VisualizerRenderer {
 
         if (isHighPerf) {
           ctx.save();
+          ctx.globalAlpha = (p.baseAlpha || 0.8) * particleOpacity;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
           ctx.beginPath();
@@ -2590,6 +3309,7 @@ export class VisualizerRenderer {
         }
 
         ctx.save();
+        ctx.globalAlpha = (p.baseAlpha || 0.8) * particleOpacity;
         const glowAmount = (config.ribbonGlow !== undefined ? config.ribbonGlow : (config.glowIntensity !== undefined ? config.glowIntensity : 15)) + beatKick * 12;
         if (glowAmount > 0) {
           ctx.shadowColor = glowColor;
@@ -2660,7 +3380,10 @@ export class VisualizerRenderer {
         const baseLen = config.speedLineLength || 140;
         const randRange = (config.speedLineRandomLength !== undefined ? config.speedLineRandomLength : 55) / 100;
         const lineLen = Math.max(25, baseLen * (1 + ((p.randFactor || 0.5) - 0.5) * 2 * randRange));
-        const lineWidth = Math.max(1, (config.speedLineWidth || 2.5) * (config.sizeScale || 1.0));
+        const baseLineWidth = Math.max(1, (config.speedLineWidth || 2.5) * (config.sizeScale || 1.0));
+        const lineWidth = config.randomSize
+          ? Math.max(1, 1 + (p.randFactor !== undefined ? p.randFactor : 0.5) * (baseLineWidth - 1))
+          : baseLineWidth;
         const blurAmount = config.speedLineBlur !== undefined ? config.speedLineBlur : 5;
         const colorMode = config.colorMode || 'custom';
 
@@ -2682,6 +3405,7 @@ export class VisualizerRenderer {
         }
 
         ctx.save();
+        ctx.globalAlpha = (p.baseAlpha || 0.7) * particleOpacity;
         ctx.lineCap = 'round';
 
         if (!isHighPerf && blurAmount > 0) {
@@ -2689,75 +3413,72 @@ export class VisualizerRenderer {
           ctx.shadowBlur = blurAmount + beatKick * 6;
         }
 
-        if (isCenterMode) {
-          // 2. Chạy theo chiều đứng về tâm (Anime Action Focus Lines)
+        const orientation = config.speedLineOrientation || (config.speedLineMode === 'converge-center' ? 'radial-center' : 'horizontal');
+        const isRadial = orientation === 'radial-center' || orientation === 'radial-top' || orientation === 'radial-bottom';
+        const isReverse = Boolean(config.speedLineReverse);
+
+        let headX = p.x;
+        let headY = p.y;
+        let tailX = p.x;
+        let tailY = p.y;
+
+        if (isRadial) {
           const angle = p.speedLineAngle !== undefined ? p.speedLineAngle : Math.PI / 2;
-          const headX = p.x;
-          const headY = p.y;
-          const tailX = p.x - Math.cos(angle) * lineLen;
-          const tailY = p.y - Math.sin(angle) * lineLen;
-
-          const grad = ctx.createLinearGradient(tailX, tailY, headX, headY);
-          grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-          grad.addColorStop(0.4, glowColor);
-          grad.addColorStop(1, lineColor);
-
-          ctx.beginPath();
-          ctx.moveTo(tailX, tailY);
-          ctx.lineTo(headX, headY);
-          ctx.strokeStyle = grad;
-          ctx.lineWidth = lineWidth;
-          ctx.stroke();
-
-          // Bright laser head dot
-          if (!isHighPerf && lineWidth > 2) {
-            ctx.shadowBlur = 0;
-            ctx.beginPath();
-            ctx.arc(headX, headY, lineWidth * 0.6, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
-          }
+          tailX = p.x - Math.cos(angle) * lineLen;
+          tailY = p.y - Math.sin(angle) * lineLen;
+        } else if (orientation === 'vertical') {
+          tailX = p.x;
+          tailY = isReverse ? p.y + lineLen : p.y - lineLen;
+        } else if (orientation === 'diagonal-45') {
+          tailX = isReverse ? p.x + lineLen * 0.707 : p.x - lineLen * 0.707;
+          tailY = isReverse ? p.y + lineLen * 0.707 : p.y - lineLen * 0.707;
+        } else if (orientation === 'diagonal-135') {
+          tailX = isReverse ? p.x - lineLen * 0.707 : p.x + lineLen * 0.707;
+          tailY = isReverse ? p.y + lineLen * 0.707 : p.y - lineLen * 0.707;
         } else {
-          // 1. Chạy song song chiều ngang ảnh (Horizontal Parallel Lines có hỗ trợ góc nghiêng Tilt Angle -45 -> 45 độ)
-          const isLeftToRight = config.speedLineDirection === 'left-to-right';
+          // 'horizontal'
+          const isLeftToRight = isReverse || config.speedLineDirection === 'left-to-right';
           const tiltDeg = Math.max(-45, Math.min(45, config.speedLineTilt || 0));
           const tiltRad = (tiltDeg * Math.PI) / 180;
           const cosTilt = Math.cos(tiltRad);
           const sinTilt = Math.sin(tiltRad);
+          tailX = isLeftToRight ? p.x - cosTilt * lineLen : p.x + cosTilt * lineLen;
+          tailY = p.y - sinTilt * lineLen;
+        }
 
-          const headX = p.x;
-          const headY = p.y;
-          const tailX = isLeftToRight ? p.x - cosTilt * lineLen : p.x + cosTilt * lineLen;
-          const tailY = p.y - sinTilt * lineLen;
+        const grad = ctx.createLinearGradient(tailX, tailY, headX, headY);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        grad.addColorStop(0.35, glowColor);
+        grad.addColorStop(1, lineColor);
 
-          const grad = ctx.createLinearGradient(tailX, tailY, headX, headY);
-          grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-          grad.addColorStop(0.35, glowColor);
-          grad.addColorStop(1, lineColor);
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(headX, headY);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
 
+        // High-speed leading streak highlight
+        if (!isHighPerf && lineWidth > 2) {
+          ctx.shadowBlur = 0;
           ctx.beginPath();
-          ctx.moveTo(tailX, tailY);
-          ctx.lineTo(headX, headY);
-          ctx.strokeStyle = grad;
-          ctx.lineWidth = lineWidth;
-          ctx.stroke();
-
-          // High-speed leading streak highlight
-          if (!isHighPerf && lineWidth > 2) {
-            ctx.shadowBlur = 0;
-            ctx.beginPath();
-            ctx.arc(headX, headY, lineWidth * 0.55, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
-          }
+          ctx.arc(headX, headY, lineWidth * 0.55, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
         }
 
         ctx.restore();
       } else if (config.type === 'spinning-dashes') {
         // --- 3.6 ROTATING DASHES / SHORT STREAKS FALLING & SPINNING 360° ---
         const sizeScale = config.sizeScale !== undefined ? config.sizeScale : 1.0;
-        const dashLen = Math.max(12, ((p.length || 24) * sizeScale + 4) * (1 + (config.reactiveToBeat ? beatKick * 0.35 : 0)));
-        const thickness = Math.max(2.0, (p.size * 0.85 + 1.8) * sizeScale);
+        const rawDashLen = Math.max(12, ((p.length || 24) * sizeScale + 4) * (1 + (config.reactiveToBeat ? beatKick * 0.35 : 0)));
+        const dashLen = config.randomSize
+          ? Math.max(4, 4 + (p.randFactor !== undefined ? p.randFactor : 0.5) * (rawDashLen - 4))
+          : rawDashLen;
+        const rawThickness = Math.max(2.0, (p.size * 0.85 + 1.8) * sizeScale);
+        const thickness = config.randomSize
+          ? Math.max(1.0, 1.0 + (p.randFactor !== undefined ? p.randFactor : 0.5) * (rawThickness - 1.0))
+          : rawThickness;
         const colorMode = config.colorMode || 'custom';
 
         let dashColor = config.color || '#38bdf8';
@@ -2806,7 +3527,7 @@ export class VisualizerRenderer {
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.angle || 0);
-        ctx.globalAlpha = dynamicAlpha;
+        ctx.globalAlpha = dynamicAlpha * particleOpacity;
 
         if (!isHighPerf) {
           const baseGlow = config.glowIntensity !== undefined ? config.glowIntensity : 14;
@@ -2839,9 +3560,13 @@ export class VisualizerRenderer {
 
         ctx.restore();
       } else if (config.type === 'snow') {
-        // --- 3.7 REALISTIC CRYSTALLINE, FLURRY & GLITTER WINTER SNOWFALL ---
-        const sizeScale = config.sizeScale !== undefined ? config.sizeScale : 1.0;
-        const flakeR = Math.max(3.5, (p.size * 2.2 + 2.5) * sizeScale * (1 + (config.reactiveToBeat ? beatKick * 0.25 : 0)));
+        // --- 3.7 2D WINTER SNOWFALL (Crisp 2D shapes, pixel sizing) ---
+        const targetSizePx = resolveParticleSizePx(config);
+        const rawFlakeR = Math.max(1, targetSizePx * 0.5 * (1 + (config.reactiveToBeat ? beatKick * 0.25 : 0)));
+        const flakeR = config.randomSize
+          ? Math.max(0.5, 0.5 + (p.randFactor !== undefined ? p.randFactor : 0.5) * Math.max(0, rawFlakeR - 0.5))
+          : rawFlakeR;
+        const sizeScale = Math.max(0.4, flakeR / 4);
         const colorMode = config.colorMode || 'custom';
 
         let flakeColor = config.color || '#ffffff';
@@ -2884,48 +3609,15 @@ export class VisualizerRenderer {
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.angle || 0);
-        ctx.globalAlpha = dynamicAlpha;
+        ctx.globalAlpha = dynamicAlpha * particleOpacity;
+        ctx.shadowBlur = 0;
 
-        if (isHighPerf) {
-          // Fast snow rendering: simple soft circle or 4-point crosslet without multi-branching fractals or radial gradients
-          const currentFlakeType = p.flakeType || (config.snowFlakeType === 'mixed' || !config.snowFlakeType ? 'crystal' : config.snowFlakeType);
-          if (currentFlakeType === 'crystal' || currentFlakeType === 'glitter') {
-            const crossR = Math.max(2.5, flakeR * 0.85);
-            ctx.strokeStyle = flakeColor;
-            ctx.lineWidth = Math.max(1, 1.4 * sizeScale);
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(-crossR, 0);
-            ctx.lineTo(crossR, 0);
-            ctx.moveTo(0, -crossR);
-            ctx.lineTo(0, crossR);
-            ctx.stroke();
-            // Tiny center bead
-            ctx.beginPath();
-            ctx.arc(0, 0, Math.max(1, crossR * 0.25), 0, Math.PI * 2);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
-          } else {
-            // Soft flurry disc
-            ctx.beginPath();
-            ctx.arc(0, 0, Math.max(2, flakeR * 0.85), 0, Math.PI * 2);
-            ctx.fillStyle = flakeColor;
-            ctx.fill();
-          }
-          ctx.restore();
-          continue;
-        }
+        const flakeShapePool = ['snowflake', 'crystal', 'star', 'circle', 'flurry'];
+        const currentFlakeType = config.snowRandomShape
+          ? flakeShapePool[Math.floor((p.randFactor || 0.5) * flakeShapePool.length) % flakeShapePool.length]
+          : (config.snowShape || (config.snowFlakeType === 'crystal' ? 'crystal' : (config.snowFlakeType === 'glitter' ? 'crystal' : 'snowflake')));
 
-        const baseGlow = config.glowIntensity !== undefined ? config.glowIntensity : 10;
-        const glowBlur = baseGlow + (isBassFlash ? beatKick * flashBoost * 14 : beatKick * 6);
-        if (glowBlur > 0) {
-          ctx.shadowBlur = glowBlur;
-          ctx.shadowColor = glowColor;
-        }
-
-        const currentFlakeType = p.flakeType || (config.snowFlakeType === 'mixed' || !config.snowFlakeType ? 'crystal' : config.snowFlakeType);
-
-        if (currentFlakeType === 'crystal' && flakeR >= 4.5) {
+        if (currentFlakeType === 'snowflake' || (currentFlakeType === 'crystal' && flakeR >= 4.5)) {
           // Six-armed branching snowflake crystal
           ctx.strokeStyle = flakeColor;
           ctx.lineWidth = Math.max(1.2, 1.6 * sizeScale);
@@ -2962,7 +3654,7 @@ export class VisualizerRenderer {
           ctx.arc(0, 0, Math.max(1.2, flakeR * 0.2), 0, Math.PI * 2);
           ctx.fillStyle = '#ffffff';
           ctx.fill();
-        } else if (currentFlakeType === 'glitter') {
+        } else if (currentFlakeType === 'crystal') {
           // 4-Point Shimmering Ice Diamond Cross
           const glint = Math.abs(Math.sin((p.angle || 0) * 3)) * 0.4 + 0.8;
           ctx.fillStyle = flakeColor;
@@ -2986,6 +3678,38 @@ export class VisualizerRenderer {
           ctx.beginPath();
           ctx.arc(0, 0, flakeR * 0.25, 0, Math.PI * 2);
           ctx.fill();
+        } else if (currentFlakeType === 'star') {
+          // 5-Point Cute Snowflake Star
+          const spikes = 5;
+          const outerR = flakeR * 1.1;
+          const innerR = flakeR * 0.45;
+          let rot = (Math.PI / 2) * 3;
+          const step = Math.PI / spikes;
+          ctx.beginPath();
+          ctx.moveTo(0, -outerR);
+          for (let i = 0; i < spikes; i++) {
+            let x = Math.cos(rot) * outerR;
+            let y = Math.sin(rot) * outerR;
+            ctx.lineTo(x, y);
+            rot += step;
+            x = Math.cos(rot) * innerR;
+            y = Math.sin(rot) * innerR;
+            ctx.lineTo(x, y);
+            rot += step;
+          }
+          ctx.closePath();
+          ctx.fillStyle = flakeColor;
+          ctx.fill();
+        } else if (currentFlakeType === 'circle') {
+          // Soft circular snow pellet
+          ctx.beginPath();
+          ctx.arc(0, 0, Math.max(1.5, flakeR * 0.75), 0, Math.PI * 2);
+          ctx.fillStyle = flakeColor;
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(0, 0, Math.max(0.8, flakeR * 0.3), 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
         } else {
           // Soft glowing snowfall flurry bokeh disc
           const radGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, flakeR);
@@ -3000,18 +3724,120 @@ export class VisualizerRenderer {
         }
 
         ctx.restore();
-      } else {
-        // --- 4. CUSTOM SHAPED PARTICLES (Circle, Square, Star, Heart, Diamond, Ring) ---
+      } else if (config.type === 'fire-embers') {
+        // --- 3.8 NHỮNG HẠT LỬA & TÀN TRO BAY LÊN (FIRE EMBERS & COOLING ASH) ---
         ctx.save();
         ctx.translate(p.x, p.y);
 
-        const sizeScale = config.sizeScale !== undefined ? config.sizeScale : 1.0;
-        const radius = Math.max(1.5, p.size * sizeScale * (1 + (config.reactiveToBeat ? beatKick * 0.45 : 0)));
-        const defaultShape: ParticleShape = config.type === 'dust' ? 'silk-fluff' : (config.type === 'stars' ? 'star' : 'circle');
-        const shape: ParticleShape = config.shape || defaultShape;
-        const colorMode = config.colorMode || 'custom';
+        const targetSizePx = resolveParticleSizePx(config);
+        const rawDiameter = Math.max(1.0, targetSizePx * (1 + (config.reactiveToBeat ? beatKick * 0.35 : 0)));
+        const emberSize = config.randomSize
+          ? Math.max(1.0, 1.0 + (p.randFactor !== undefined ? p.randFactor : 0.5) * Math.max(0, rawDiameter - 1.0))
+          : rawDiameter;
 
-        // Compute particle dynamic color based on colorMode and bass intensity
+        const progress = Math.max(0, Math.min(1.0, 1.0 - p.y / height));
+        const cooling = config.fireEmbersCooling !== undefined ? config.fireEmbersCooling : 1.0;
+        const cooledProgress = Math.min(1.0, progress * cooling);
+
+        // Color cooling sequence: Hot white/yellow -> Orange flame -> Deep red -> Ash gray -> Burnt black
+        let emberColor: string;
+        if (cooledProgress < 0.28) {
+          emberColor = '#fef08a';
+        } else if (cooledProgress < 0.55) {
+          emberColor = '#f97316';
+        } else if (cooledProgress < 0.72) {
+          emberColor = '#dc2626';
+        } else if (cooledProgress < 0.88) {
+          emberColor = '#6b7280';
+        } else {
+          emberColor = '#1f2937';
+        }
+
+        ctx.globalAlpha = Math.max(0, (p.alpha || 0.8) * particleOpacity);
+        ctx.shadowBlur = 0;
+
+        // Shape selection: Tròn (circle), Vuông (square), Hình thoi (diamond), hoặc Ngẫu nhiên (random)
+        const emberShapeSetting = config.fireEmbersShape || 'random';
+        const emberShapes = ['circle', 'square', 'diamond'] as const;
+        const resolvedEmberShape = emberShapeSetting === 'random'
+          ? emberShapes[Math.floor((p.randFactor || 0.5) * emberShapes.length) % emberShapes.length]
+          : emberShapeSetting;
+
+        ctx.fillStyle = emberColor;
+        if (resolvedEmberShape === 'circle') {
+          ctx.beginPath();
+          ctx.arc(0, 0, Math.max(0.6, emberSize * 0.5), 0, Math.PI * 2);
+          ctx.fill();
+        } else if (resolvedEmberShape === 'diamond') {
+          ctx.beginPath();
+          ctx.moveTo(0, -emberSize * 1.2);
+          ctx.lineTo(emberSize * 0.8, 0);
+          ctx.lineTo(0, emberSize * 1.2);
+          ctx.lineTo(-emberSize * 0.8, 0);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          // square
+          ctx.fillRect(-emberSize * 0.5, -emberSize * 0.5, emberSize, emberSize);
+        }
+
+        // Center white spark sparkler for young hot embers
+        if (!isHighPerf && cooledProgress < 0.35 && emberSize > 1.8) {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = '#ffffff';
+          if (resolvedEmberShape === 'circle') {
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.max(0.4, emberSize * 0.2), 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(-emberSize * 0.2, -emberSize * 0.2, emberSize * 0.4, emberSize * 0.4);
+          }
+        }
+
+        ctx.restore();
+      } else {
+        // --- 4. CUSTOM SHAPED PARTICLES 2D FALLBACK (No blurry borders, exact pixel sizing from 1px) ---
+        ctx.save();
+        ctx.translate(p.x, p.y);
+
+        const targetSizePx = resolveParticleSizePx(config);
+        const minPx = config.type === 'dust' ? Math.max(1, config.dustMinSize ?? 1) : 1;
+        const maxPx = Math.max(minPx, targetSizePx * (1 + (config.reactiveToBeat ? beatKick * 0.3 : 0)));
+        const diameterPx = config.randomSize
+          ? minPx + (p.randFactor !== undefined ? p.randFactor : 0.5) * Math.max(0, maxPx - minPx)
+          : maxPx;
+        const radius = Math.max(0.5, diameterPx * 0.5);
+
+        // Shape calculation (no blurry silk-fluff border)
+        let shape: ParticleShape = 'circle';
+        if (config.type === 'dust') {
+          const dustShapeSetting = config.dustShape || (config.dustRandomShape ? 'random' : 'circle');
+          if (dustShapeSetting === 'random' || config.dustRandomShape) {
+            const dustPool: ParticleShape[] = ['circle', 'square', 'star'];
+            shape = dustPool[Math.floor((p.randFactor || 0.5) * dustPool.length) % dustPool.length];
+          } else if (dustShapeSetting === 'square') {
+            shape = 'square';
+          } else if (dustShapeSetting === 'star') {
+            shape = 'star';
+          } else {
+            shape = 'circle';
+          }
+        } else if (config.type === 'stars') {
+          const starOption = config.starShape || '4-point';
+          if (starOption === 'circle') {
+            shape = 'circle';
+          } else if (starOption === '5-point') {
+            shape = 'star';
+          } else if (starOption === 'random') {
+            shape = (p.randFactor || 0.5) > 0.66 ? 'diamond' : ((p.randFactor || 0.5) > 0.33 ? 'star' : 'circle');
+          } else {
+            shape = 'diamond';
+          }
+        } else {
+          shape = config.shape && config.shape !== 'silk-fluff' ? config.shape : 'circle';
+        }
+
+        const colorMode = config.colorMode || 'custom';
         let particleColor = config.color || '#ffffff';
         const isBassFlash = config.bassReactiveColor && beatKick > 0.15;
         const flashBoost = config.bassFlashBoost || 1.5;
@@ -3032,7 +3858,6 @@ export class VisualizerRenderer {
           const lightness = isBassFlash ? Math.min(95, 65 + beatKick * 25) : 60;
           particleColor = `hsl(${reactiveHue}, 95%, ${lightness}%)`;
         } else {
-          // Custom color
           if (isBassFlash && config.secondaryColor) {
             particleColor = config.secondaryColor;
           } else {
@@ -3040,81 +3865,207 @@ export class VisualizerRenderer {
           }
         }
 
-        // Particle alpha calculation
-        const baseAlpha = p.alpha || p.baseAlpha || 0.6;
+        const baseAlpha = p.alpha || p.baseAlpha || 0.75;
         const dynamicAlpha = Math.min(
           1.0,
           Math.max(
-            0.15,
+            0.2,
             baseAlpha + (config.bassReactiveColor ? beatKick * flashBoost * 0.45 : (config.reactiveToBeat ? beatKick * 0.3 : 0))
           )
         );
 
-        ctx.globalAlpha = dynamicAlpha;
+        ctx.globalAlpha = dynamicAlpha * particleOpacity;
+        // Zero blurry border
+        ctx.shadowBlur = 0;
 
-        // Glow effect & Fluffy Silk Ball halo
-        const isFluffExplicitlyDisabled = config.silkFluffGlow === false;
-        const isFluff = !isFluffExplicitlyDisabled && (
-          Boolean(config.silkFluffGlow) ||
-          shape === 'silk-fluff' ||
-          ((config.type === 'dust' || (config.type === 'stars' && shape === 'circle')) && shape === 'circle')
-        );
-
-        const baseGlow = isFluffExplicitlyDisabled
-          ? 0
-          : (config.particleGlowRadius !== undefined ? config.particleGlowRadius : (config.glowIntensity !== undefined ? config.glowIntensity : 18));
-        const glowBlur = (isFluff ? baseGlow * 1.5 : baseGlow) + (isBassFlash ? beatKick * flashBoost * 22 : 0);
-
-        if (!isHighPerf && glowBlur > 0 && !isFluffExplicitlyDisabled) {
-          ctx.shadowBlur = glowBlur;
-          ctx.shadowColor = particleColor;
-        } else {
-          ctx.shadowBlur = 0;
-        }
-
-        // Render Fluffy Silk Ball or Standard Geometric Particle Shape
-        if (isFluff && !isFluffExplicitlyDisabled && (shape === 'silk-fluff' || shape === 'circle')) {
-          // --- FLUFFY SILK BALL (QUẢ BÓNG TƠ PHÁT SÁNG MỜ VIỀN MỀM MẠI) ---
-          const fluffRadius = Math.max(radius * 1.4, radius + baseGlow * 0.75);
-          const fluffGrad = ctx.createRadialGradient(0, 0, radius * 0.1, 0, 0, fluffRadius);
-          fluffGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-          fluffGrad.addColorStop(0.25, particleColor);
-          fluffGrad.addColorStop(0.6, particleColor);
-          fluffGrad.addColorStop(0.85, 'rgba(255, 255, 255, 0.22)');
-          fluffGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-          ctx.fillStyle = fluffGrad;
+        if (config.type === 'stars' && (config.starShape || '4-point') === '4-point') {
+          // Crisp 2D 4-Point Sparkle Star
+          const outerR = radius * 1.45;
+          const innerR = radius * 0.32;
           ctx.beginPath();
-          ctx.arc(0, 0, fluffRadius, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Delicate fine silk fuzz wisps for realistic wool/silk pompom appearance
-          if (!isHighPerf && baseGlow >= 6) {
-            ctx.shadowBlur = 0;
-            const strands = 7;
-            const wobbleAng = (p.wobble || 0) * 0.4;
-            ctx.lineWidth = 0.75;
-            for (let si = 0; si < strands; si++) {
-              const ang = (si * Math.PI * 2) / strands + wobbleAng;
-              ctx.beginPath();
-              ctx.moveTo(Math.cos(ang) * radius * 0.35, Math.sin(ang) * radius * 0.35);
-              const cpX = Math.cos(ang + 0.4) * (radius * 1.25);
-              const cpY = Math.sin(ang + 0.4) * (radius * 1.25);
-              const endX = Math.cos(ang + 0.15) * (fluffRadius * 0.9);
-              const endY = Math.sin(ang + 0.15) * (fluffRadius * 0.9);
-              ctx.quadraticCurveTo(cpX, cpY, endX, endY);
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-              ctx.stroke();
-            }
+          for (let i = 0; i < 8; i++) {
+            const r = i % 2 === 0 ? outerR : innerR;
+            const a = (i * Math.PI) / 4;
+            const sx = Math.cos(a) * r;
+            const sy = Math.sin(a) * r;
+            if (i === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
           }
+          ctx.closePath();
+          ctx.fillStyle = particleColor;
+          ctx.fill();
         } else {
-          // Draw the selected geometric shape cleanly without fluffy aura
           this.drawParticleShape(ctx, radius, shape, particleColor);
         }
 
-        ctx.shadowBlur = 0;
+        // Ngẫu nhiên lóe sáng tia 4 góc (Random 4-corner flare burst) cho Sao lấp lánh
+        if (config.type === 'stars' && config.starRandomFlare !== false) {
+          const flarePhase = Math.sin(currentTime * 4.2 + (p.randFactor || 0.5) * 37);
+          if (flarePhase > 0.52) {
+            const flarePeak = (flarePhase - 0.52) / 0.48; // 0 to 1
+            const flareIntensity = config.starFlareIntensity !== undefined ? config.starFlareIntensity : 1.0;
+            const flareLen = radius * (2.8 + flarePeak * 5.2) * flareIntensity;
+            const flareW = Math.max(1, radius * 0.28);
+
+            ctx.save();
+            ctx.globalAlpha = Math.min(1.0, flarePeak * 1.6) * dynamicAlpha * particleOpacity;
+            ctx.strokeStyle = particleColor;
+            ctx.lineWidth = flareW;
+            ctx.beginPath();
+            ctx.moveTo(-flareLen, 0);
+            ctx.lineTo(flareLen, 0);
+            ctx.moveTo(0, -flareLen);
+            ctx.lineTo(0, flareLen);
+            ctx.stroke();
+
+            // Diamond diagonal glint if strong flare peak
+            if (flarePeak > 0.58) {
+              const diagLen = flareLen * 0.48;
+              ctx.lineWidth = Math.max(1, flareW * 0.7);
+              ctx.beginPath();
+              ctx.moveTo(-diagLen, -diagLen);
+              ctx.lineTo(diagLen, diagLen);
+              ctx.moveTo(-diagLen, diagLen);
+              ctx.lineTo(diagLen, -diagLen);
+              ctx.stroke();
+            }
+
+            // White center core spark
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.max(0.8, radius * 0.38), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+
         ctx.restore();
       }
+    }
+
+    // Render 2D surface raindrops that trickle and automatically vanish after a random lifetime
+    if (config.type === 'rain' && config.waterOnGlass) {
+      this.renderSurfaceWaterDrops(ctx, width, height, config, particleOpacity, speedMult);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders 2D raindrops on the glass surface that trickle slightly and automatically disappear after a random lifetime
+   */
+  private renderSurfaceWaterDrops(
+    ctx: CanvasContext2D,
+    width: number,
+    height: number,
+    config: ParticleConfig,
+    particleOpacity: number,
+    speedMult: number
+  ) {
+    const now = performance.now();
+    const dt = this.lastSurfaceDropWallTime > 0
+      ? Math.min(0.05, Math.max(0.005, (now - this.lastSurfaceDropWallTime) / 1000))
+      : 0.016;
+    this.lastSurfaceDropWallTime = now;
+
+    const targetDropCount = Math.min(36, Math.max(14, Math.round((config.count || 45) * 0.55)));
+    while (this.surfaceDrops.length < targetDropCount) {
+      this.surfaceDrops.push({
+        x: Math.random() * width,
+        y: Math.random() * (height * 0.88) + height * 0.04,
+        radius: Math.random() * 3.2 + 2.2,
+        age: 0,
+        // Random lifetime between 1.2s and 4.5s before disappearing
+        maxLife: 1.2 + Math.random() * 3.3,
+        delay: Math.random() * 1.8,
+        wigglePhase: Math.random() * Math.PI * 2,
+        trickleSpeed: (12 + Math.random() * 28) * (Math.random() > 0.25 ? 1 : 0.15),
+        trailLen: 0,
+      });
+    }
+    if (this.surfaceDrops.length > targetDropCount) {
+      this.surfaceDrops.length = targetDropCount;
+    }
+
+    const baseColor = config.color || '#bae6fd';
+    const sizeFactor = Math.max(0.6, resolveParticleSizePx(config) / 6);
+
+    ctx.save();
+    ctx.shadowBlur = 0;
+
+    for (let i = 0; i < this.surfaceDrops.length; i++) {
+      const d = this.surfaceDrops[i];
+      if (d.delay > 0) {
+        d.delay -= dt;
+        continue;
+      }
+
+      d.age += dt;
+      // When droplet exceeds its random lifetime (or falls off screen), respawn at a new random location with a new random duration
+      if (d.age >= d.maxLife || d.y > height + 20) {
+        d.x = Math.random() * width;
+        d.y = Math.random() * (height * 0.85) + height * 0.03;
+        d.radius = Math.random() * 3.2 + 2.2;
+        d.age = 0;
+        d.maxLife = 1.2 + Math.random() * 3.3;
+        d.delay = 0.15 + Math.random() * 1.1;
+        d.wigglePhase = Math.random() * Math.PI * 2;
+        d.trickleSpeed = (12 + Math.random() * 28) * (Math.random() > 0.25 ? 1 : 0.15);
+        d.trailLen = 0;
+        continue;
+      }
+
+      const lifeRatio = d.age / d.maxLife;
+      // Smooth pop-in during first 15%, steady hold, then smooth fade-out & evaporation over last 38% of random lifetime
+      let lifeAlpha = 1.0;
+      let scale = 1.0;
+      if (lifeRatio < 0.15) {
+        lifeAlpha = lifeRatio / 0.15;
+        scale = 0.6 + 0.4 * lifeAlpha;
+      } else if (lifeRatio > 0.62) {
+        const fadeOut = 1 - (lifeRatio - 0.62) / 0.38;
+        lifeAlpha = Math.max(0, fadeOut * fadeOut);
+        scale = 0.65 + 0.35 * fadeOut;
+      }
+
+      const stepY = d.trickleSpeed * dt * Math.max(0.3, speedMult);
+      d.wigglePhase += dt * 3.2;
+      const stepX = Math.sin(d.wigglePhase) * 0.35;
+      d.x += stepX;
+      d.y += stepY;
+      d.trailLen = Math.min(d.radius * 5.5, d.trailLen + stepY * 0.65);
+
+      const r = Math.max(1.5, d.radius * sizeFactor * scale);
+      const alpha = lifeAlpha * 0.72 * particleOpacity;
+      if (alpha <= 0.01) continue;
+
+      ctx.globalAlpha = alpha;
+
+      // Subtle trickle trail behind moving droplet
+      if (d.trailLen > 2) {
+        const grad = ctx.createLinearGradient(d.x, d.y - d.trailLen, d.x, d.y);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        grad.addColorStop(1, baseColor);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = Math.max(1, r * 0.42);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(d.x, d.y - d.trailLen);
+        ctx.lineTo(d.x, d.y);
+        ctx.stroke();
+      }
+
+      // 2D Water droplet body (slightly elongated teardrop)
+      ctx.beginPath();
+      ctx.ellipse(d.x, d.y, r * 0.88, r * 1.08, 0, 0, Math.PI * 2);
+      ctx.fillStyle = baseColor;
+      ctx.fill();
+
+      // Crisp specular highlight dot inside droplet
+      ctx.beginPath();
+      ctx.arc(d.x - r * 0.28, d.y - r * 0.3, Math.max(0.7, r * 0.28), 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
     }
 
     ctx.restore();
@@ -3229,7 +4180,13 @@ export class VisualizerRenderer {
     const centerY = (height * posYPercent) / 100;
 
     if (isPlaying && track.rotateVinyl) {
-      this.vinylRotation += 0.02 + bassIntensity * 0.015;
+      const vSpeed = track.vinylSpeed !== undefined ? track.vinylSpeed : 1.0;
+      this.vinylRotation += (0.02 + bassIntensity * 0.015) * vSpeed;
+    }
+
+    if (isPlaying) {
+      const bSpeed = track.rotatingBadgeSpeed !== undefined ? track.rotatingBadgeSpeed : 1.0;
+      this.badgeRotation += (0.02 + bassIntensity * 0.015) * bSpeed;
     }
 
     // Beat Reaction / Beat Jump calculations for Badge & Card
@@ -3503,8 +4460,8 @@ export class VisualizerRenderer {
       const badgeBorderCol = track.badgeBorderColor || track.accentColor || '#ec4899';
       const badgeBorderW = Math.max(2, (track.badgeBorderWidth !== undefined ? track.badgeBorderWidth : 3.5) * userScale);
 
-      // Smooth continuous spin angle driven by vinyl rotation
-      const spinAngle = this.vinylRotation;
+      // Smooth continuous spin angle driven by dedicated badge rotation
+      const spinAngle = this.badgeRotation;
 
       // 1. Ambient Glow behind the badge (reacts to beat if badgeBeatGlow)
       ctx.save();
@@ -3663,11 +4620,12 @@ export class VisualizerRenderer {
 
         const logoAnim = track.logoAnimation || 'none';
         const logoSpeed = track.logoAnimationSpeed !== undefined ? track.logoAnimationSpeed : 1.0;
+        const logoDir = track.logoAnimationDirection === 'counter-clockwise' ? -1 : 1;
         if (logoAnim === 'circular-spin') {
-          const angle = (performance.now() / 1000) * logoSpeed * 1.5;
+          const angle = (performance.now() / 1000) * logoSpeed * 1.5 * logoDir;
           ctx.rotate(angle);
         } else if (logoAnim === 'vertical-spin-3d') {
-          const angle = (performance.now() / 1000) * logoSpeed * 2.0;
+          const angle = (performance.now() / 1000) * logoSpeed * 2.0 * logoDir;
           ctx.scale(Math.cos(angle), 1);
         }
 
@@ -4297,6 +5255,7 @@ export class VisualizerRenderer {
 
     const logoAnim = track.logoAnimation || 'none';
     const logoSpeed = track.logoAnimationSpeed !== undefined ? track.logoAnimationSpeed : 1.0;
+    const logoDir = track.logoAnimationDirection === 'counter-clockwise' ? -1 : 1;
     const centerX = x + logoW / 2;
     const centerY = y + logoH / 2;
 
@@ -4304,11 +5263,11 @@ export class VisualizerRenderer {
 
     if (logoAnim === 'circular-spin') {
       // 2D 360 degree circular rotation around center
-      const angle = (performance.now() / 1000) * logoSpeed * 1.5;
+      const angle = (performance.now() / 1000) * logoSpeed * 1.5 * logoDir;
       ctx.rotate(angle);
     } else if (logoAnim === 'vertical-spin-3d') {
       // 360 degree vertical axis spin (3D flip effect)
-      const angle = (performance.now() / 1000) * logoSpeed * 2.0;
+      const angle = (performance.now() / 1000) * logoSpeed * 2.0 * logoDir;
       const scaleX = Math.cos(angle);
       ctx.scale(scaleX, 1);
     }
@@ -4803,6 +5762,22 @@ export class VisualizerRenderer {
     const posY = (height * v.positionY) / 100;
     const posXPercent = v.positionX !== undefined ? v.positionX : 50;
     const centerX = (width * posXPercent) / 100;
+
+    // 2D Visualizer Rotation & Auto-Rotate (Góc Xoay Visualizer 2D & Tự động xoay quanh tâm)
+    const is3D = v.type.startsWith('3d-');
+    if (!is3D) {
+      let totalRotationDeg = v.rotationAngle || 0;
+      if (v.autoRotate) {
+        const speed = v.autoRotateSpeed !== undefined ? v.autoRotateSpeed : 1.0;
+        totalRotationDeg += currentTime * 45 * speed;
+      }
+      const hasRotation = Math.abs(totalRotationDeg % 360) > 0.001;
+      if (hasRotation) {
+        ctx.translate(centerX, posY);
+        ctx.rotate((totalRotationDeg * Math.PI) / 180);
+        ctx.translate(-centerX, -posY);
+      }
+    }
 
     // Gradient Setup
     let strokeOrFillStyle: string | CanvasGradient = v.primaryColor;

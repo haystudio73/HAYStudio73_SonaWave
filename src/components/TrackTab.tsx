@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { TrackMetadata, CardStyle, LogoPosition, BadgeBeatJumpStyle, TrackLayerOrder, TrackFontEffect, LogoAnimation, TrackFontWeight } from '../types';
+import { TrackMetadata, CardStyle, LogoPosition, BadgeBeatJumpStyle, TrackLayerOrder, TrackFontEffect, LogoAnimation, LogoAnimationDirection, TrackFontWeight } from '../types';
 import { AVAILABLE_FONTS, DEFAULT_TRACK } from '../utils/presets';
 import { 
   Disc, 
@@ -24,7 +24,9 @@ import {
   ArrowDown,
   MoveVertical,
   Sliders,
-  Palette
+  Palette,
+  RotateCw,
+  RotateCcw
 } from 'lucide-react';
 
 import { Language, TRANSLATIONS } from '../utils/i18n';
@@ -40,8 +42,6 @@ const CARD_STYLES: { id: CardStyle; nameVi: string; nameEn: string; descVi: stri
   { id: 'vinyl', nameVi: 'Đĩa Than Vinyl Xoay 360°', nameEn: '360° Spinning Vinyl', descVi: 'Đĩa vinyl chân thực với vân bóng và ảnh bìa xoay 360°', descEn: 'Photorealistic vinyl grooves with spinning center label artwork', icon: Disc },
   { id: 'rotating-badge', nameVi: 'Huy Hiệu Tròn Xoay (Rotating Badge)', nameEn: 'Rotating Vinyl Badge 360°', descVi: 'Huy hiệu tròn xoay 360° với viền chữ uốn cong xoay tròn và tâm ảnh đĩa', descEn: 'Rotating circular badge with continuous circular curved text ribbon and center album artwork', icon: Disc },
   { id: 'glass-card', nameVi: 'Thẻ Kính Mờ (Glass Card)', nameEn: 'Frosted Glass Badge', descVi: 'Thẻ bo góc phủ kính hiện đại kèm ảnh bìa & tên ca sĩ', descEn: 'Translucent frosted glass card with artwork, title and singer', icon: CreditCard },
-  { id: 'logo-badge', nameVi: 'Huy Hiệu PNG (PNG Badge)', nameEn: 'PNG Badge', descVi: 'Hình ảnh PNG trong suốt / sticker làm tâm điểm không có nền tròn, nhảy theo nhạc', descEn: 'Clean transparent PNG badge or sticker as the center point with no circle background, reacts to beats', icon: ShieldCheck },
-  { id: 'circular-badge', nameVi: 'Huy Hiệu Tròn Phát Sáng', nameEn: 'Circular Avatar Badge', descVi: 'Vòng tròn ảnh đại diện kèm viền phát sáng', descEn: 'Glowing circular avatar frame with metadata tag', icon: Sparkles },
   { id: 'minimal-tag', nameVi: 'Chữ Tối Giản Không Khung', nameEn: 'Minimalist Typography', descVi: 'Chỉ hiển thị tên bài hát & ca sĩ không có khung bao quanh', descEn: 'Floating text only without container boundaries', icon: Music },
   { id: 'hidden', nameVi: 'Ẩn Thẻ Bìa', nameEn: 'Hidden / Off', descVi: 'Không hiển thị thẻ thông tin bài hát trên video', descEn: 'Hide track card info from the video render', icon: EyeOff },
 ];
@@ -97,7 +97,6 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
   const track = rawTrack || DEFAULT_TRACK;
   const [selectedDetailTab, setSelectedDetailTab] = useState<'subtitle' | 'title' | 'artist'>('subtitle');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const badgePngInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const t = TRANSLATIONS[language] || TRANSLATIONS['vi'];
 
@@ -110,13 +109,6 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
     if (!file) return;
     const url = URL.createObjectURL(file);
     update({ coverUrl: url });
-  };
-
-  const handleBadgePngUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    update({ badgePngUrl: url });
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -299,8 +291,8 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
         </div>
       </div>
 
-      {/* 4. Dedicated Settings for Badge Styles (Huy Hiệu: logo-badge, circular-badge, rotating-badge, horizontal-rounded-card) */}
-      {(track.cardStyle === 'logo-badge' || track.cardStyle === 'circular-badge' || track.cardStyle === 'rotating-badge' || track.cardStyle === 'horizontal-rounded-card') && (
+      {/* 4. Dedicated Settings for Badge Styles (Huy Hiệu: rotating-badge, horizontal-rounded-card) */}
+      {(track.cardStyle === 'rotating-badge' || track.cardStyle === 'horizontal-rounded-card') && (
         <div className="space-y-3.5 pt-2 border-t border-neutral-800/80 bg-gradient-to-br from-amber-500/10 via-neutral-900/60 to-neutral-900/80 p-3.5 rounded-2xl border border-amber-500/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -324,66 +316,6 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
               </div>
             </div>
           </div>
-
-          {/* Dedicated PNG Upload when cardStyle === 'logo-badge' */}
-          {track.cardStyle === 'logo-badge' && (
-            <div className="space-y-2.5 bg-neutral-950/60 p-3 rounded-xl border border-neutral-800/80">
-              <label className="text-xs font-bold text-neutral-200 block">
-                {language === 'vi' ? 'Ảnh Huy Hiệu PNG (PNG Badge Image)' : 'Dedicated PNG Badge Image'}
-              </label>
-              <input
-                ref={badgePngInputRef}
-                type="file"
-                accept="image/png,image/webp,image/svg+xml,image/*"
-                className="hidden"
-                onChange={handleBadgePngUpload}
-              />
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl border border-neutral-700/80 shrink-0 bg-neutral-900/80 flex items-center justify-center overflow-hidden p-1">
-                  {track.badgePngUrl ? (
-                    <img
-                      src={track.badgePngUrl}
-                      alt="PNG Badge preview"
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  ) : track?.coverUrl ? (
-                    <img
-                      src={track?.coverUrl}
-                      alt="Badge fallback preview"
-                      className="max-w-full max-h-full object-contain opacity-70"
-                    />
-                  ) : (
-                    <ImageIcon className="w-5 h-5 text-neutral-600" />
-                  )}
-                </div>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => badgePngInputRef.current?.click()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 text-xs font-semibold transition-all cursor-pointer"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{track.badgePngUrl ? (language === 'vi' ? 'Đổi Ảnh PNG' : 'Change PNG') : (language === 'vi' ? 'Tải Lên Ảnh PNG' : 'Upload PNG')}</span>
-                    </button>
-                    {track.badgePngUrl && (
-                      <button
-                        onClick={() => update({ badgePngUrl: undefined })}
-                        className="p-1.5 rounded-xl bg-neutral-800 hover:bg-red-500/20 border border-neutral-700 text-neutral-400 hover:text-red-400 transition-all cursor-pointer"
-                        title={language === 'vi' ? 'Xóa ảnh PNG riêng' : 'Remove PNG'}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-[10px] text-neutral-400">
-                    {track.badgePngUrl 
-                      ? (language === 'vi' ? 'Đang dùng ảnh PNG tùy chỉnh riêng' : 'Using dedicated transparent PNG') 
-                      : (language === 'vi' ? 'Chưa tải ảnh riêng (dùng tạm ảnh bìa cover)' : 'Using album cover art as fallback')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Badge Scale & Opacity (Dedicated for Badge) */}
           <div className="grid grid-cols-2 gap-3 pt-1">
@@ -541,6 +473,44 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                     className="rounded text-amber-500 focus:ring-amber-500 bg-neutral-800 border-neutral-700 ml-2 cursor-pointer"
                   />
                 </label>
+              </div>
+            </div>
+          )}
+
+          {/* Dedicated Rotation Speed for Rotating Badge */}
+          {track.cardStyle === 'rotating-badge' && (
+            <div className="pt-2 border-t border-neutral-800/80 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-neutral-300 font-semibold flex items-center gap-1.5">
+                  <RotateCw className="w-3.5 h-3.5 text-amber-400" />
+                  {language === 'vi' ? 'Tốc độ xoay Huy hiệu' : 'Badge Rotation Speed'}
+                </span>
+                <span className="text-amber-400 font-mono font-bold">{(track.rotatingBadgeSpeed ?? 1.0).toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min={0.1}
+                max={3.0}
+                step={0.1}
+                value={track.rotatingBadgeSpeed ?? 1.0}
+                onChange={(e) => update({ rotatingBadgeSpeed: parseFloat(e.target.value) })}
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              />
+              <div className="flex items-center gap-1.5">
+                {[0.2, 0.5, 1.0, 1.5, 2.0].map((spd) => (
+                  <button
+                    key={spd}
+                    type="button"
+                    onClick={() => update({ rotatingBadgeSpeed: spd })}
+                    className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
+                      (track.rotatingBadgeSpeed ?? 1.0) === spd
+                        ? 'bg-amber-500 text-neutral-950 font-bold'
+                        : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    {spd.toFixed(1)}x
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -1005,22 +975,58 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
               </div>
 
               {track.logoAnimation && track.logoAnimation !== 'none' && (
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-neutral-400">
-                      {language === 'vi' ? 'Tốc độ xoay / chuyển động' : 'Animation Speed'}
+                <div className="space-y-2.5 pt-1">
+                  {/* Direction buttons: Clockwise or Counter-Clockwise */}
+                  <div>
+                    <span className="text-xs text-neutral-400 block mb-1.5">
+                      {language === 'vi' ? 'Hướng xoay Logo (Direction)' : 'Logo Rotation Direction'}
                     </span>
-                    <span className="text-cyan-400 font-mono">{(track.logoAnimationSpeed ?? 1.0).toFixed(1)}x</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => update({ logoAnimationDirection: 'clockwise' })}
+                        className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                          (track.logoAnimationDirection || 'clockwise') === 'clockwise'
+                            ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 ring-1 ring-cyan-500/30'
+                            : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+                        }`}
+                      >
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>{language === 'vi' ? 'Theo chiều kim đồng hồ' : 'Clockwise'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => update({ logoAnimationDirection: 'counter-clockwise' })}
+                        className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                          track.logoAnimationDirection === 'counter-clockwise'
+                            ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 ring-1 ring-cyan-500/30'
+                            : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
+                        }`}
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>{language === 'vi' ? 'Ngược chiều kim đồng hồ' : 'Counter-Clockwise'}</span>
+                      </button>
+                    </div>
                   </div>
-                  <input
-                    type="range"
-                    min={0.2}
-                    max={3.0}
-                    step={0.1}
-                    value={track.logoAnimationSpeed ?? 1.0}
-                    onChange={(e) => update({ logoAnimationSpeed: parseFloat(e.target.value) })}
-                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                  />
+
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-neutral-400">
+                        {language === 'vi' ? 'Tốc độ xoay / chuyển động' : 'Animation Speed'}
+                      </span>
+                      <span className="text-cyan-400 font-mono">{(track.logoAnimationSpeed ?? 1.0).toFixed(1)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.2}
+                      max={3.0}
+                      step={0.1}
+                      value={track.logoAnimationSpeed ?? 1.0}
+                      onChange={(e) => update({ logoAnimationSpeed: parseFloat(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -1680,24 +1686,63 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
             )}
           </div>
 
-          {/* Rotate vinyl toggle */}
+          {/* Rotate vinyl toggle & speed */}
           {track.cardStyle === 'vinyl' && (
-            <label className="flex items-center gap-2.5 p-3 rounded-xl bg-neutral-900/60 border border-neutral-800 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={track.rotateVinyl}
-                onChange={(e) => update({ rotateVinyl: e.target.checked })}
-                className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
-              />
-              <div>
-                <span className="text-xs font-semibold text-neutral-200 block">
-                  Xoay đĩa than 360° khi phát nhạc
-                </span>
-                <span className="text-[10px] text-neutral-400">
-                  Tự động tăng tốc độ quay theo cường độ âm Bass
-                </span>
-              </div>
-            </label>
+            <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-2.5">
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={track.rotateVinyl}
+                  onChange={(e) => update({ rotateVinyl: e.target.checked })}
+                  className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
+                />
+                <div>
+                  <span className="text-xs font-semibold text-neutral-200 block">
+                    {language === 'vi' ? 'Xoay đĩa than 360° khi phát nhạc' : 'Rotate Vinyl 360° During Playback'}
+                  </span>
+                  <span className="text-[10px] text-neutral-400">
+                    {language === 'vi' ? 'Tự động tăng tốc độ quay theo cường độ âm Bass' : 'Spin rate pulses dynamically with bass beats'}
+                  </span>
+                </div>
+              </label>
+
+              {track.rotateVinyl && (
+                <div className="pt-2 border-t border-neutral-800/80 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-neutral-300 font-semibold flex items-center gap-1.5">
+                      <RotateCw className="w-3.5 h-3.5 text-rose-400" />
+                      {language === 'vi' ? 'Tốc độ xoay đĩa than' : 'Vinyl Rotation Speed'}
+                    </span>
+                    <span className="text-rose-400 font-mono font-bold">{(track.vinylSpeed ?? 1.0).toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={3.0}
+                    step={0.1}
+                    value={track.vinylSpeed ?? 1.0}
+                    onChange={(e) => update({ vinylSpeed: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    {[0.2, 0.5, 1.0, 1.5, 2.0].map((spd) => (
+                      <button
+                        key={spd}
+                        type="button"
+                        onClick={() => update({ vinylSpeed: spd })}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
+                          (track.vinylSpeed ?? 1.0) === spd
+                            ? 'bg-rose-500 text-white font-bold'
+                            : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        {spd.toFixed(1)}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
