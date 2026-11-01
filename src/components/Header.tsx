@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AspectRatio, MasterEQConfig } from '../types';
 import { DEFAULT_MASTER_EQ } from '../utils/presets';
 import { Language, getTranslation, setSavedLanguage, SUPPORTED_LANGUAGES } from '../utils/i18n';
@@ -56,6 +56,18 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const t = getTranslation(language);
   const isMasterEqActive = Boolean(masterEqConfig?.enabled);
+  const [demoDropdownOpen, setDemoDropdownOpen] = useState(false);
+  const demoMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (demoMenuRef.current && !demoMenuRef.current.contains(e.target as Node)) {
+        setDemoDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const currentLangMeta = SUPPORTED_LANGUAGES.find(l => l.code === language) || SUPPORTED_LANGUAGES[0];
 
@@ -144,49 +156,74 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
 
-        {/* Demo Tracks Dropdown / Selector */}
-        <div className="relative group">
+        {/* Demo Tracks Dropdown / Selector (Seamless bridge without physical gap) */}
+        <div ref={demoMenuRef} className="relative group">
           <button
+            type="button"
             disabled={isLoadingAudio}
+            onClick={() => setDemoDropdownOpen((prev) => !prev)}
             title={t.selectDemo}
-            className="flex items-center justify-center gap-1.5 p-2 sm:px-2.5 md:px-3 sm:py-1.5 rounded-xl bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-700/60 text-xs font-medium text-neutral-200 transition-all cursor-pointer"
+            className={`flex items-center justify-center gap-1.5 p-2 sm:px-2.5 md:px-3 sm:py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+              demoDropdownOpen
+                ? 'bg-neutral-800 border-rose-500/70 text-white shadow-sm ring-1 ring-rose-500/30'
+                : 'bg-neutral-900/80 hover:bg-neutral-800 border-neutral-700/60 text-neutral-200'
+            }`}
           >
             <Music className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-rose-400" />
             <span className="hidden xl:inline">{t.demoMusic}</span>
           </button>
           
-          <div className="absolute top-full right-0 mt-1.5 w-48 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl shadow-black/60 py-1.5 hidden group-hover:block z-50">
-            <div className="px-3 py-1 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">
-              {t.selectDemo}
+          {/* Dropdown container anchored with pt-1.5 to maintain seamless hover bridge */}
+          <div className={`absolute top-full right-0 pt-1 w-52 z-50 ${demoDropdownOpen ? 'block' : 'hidden group-hover:block'}`}>
+            <div className="bg-neutral-900 border border-neutral-800/90 rounded-xl shadow-2xl shadow-black/90 py-1.5 overflow-hidden backdrop-blur-md">
+              <div className="px-3 py-1.5 text-[10px] font-bold text-neutral-400 uppercase tracking-wider border-b border-neutral-800/60 mb-0.5">
+                {t.selectDemo}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onLoadDemoTrack('synthwave');
+                  setDemoDropdownOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-neutral-200 hover:bg-rose-500/15 hover:text-rose-200 flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="font-medium">⚡ Neon Synthwave</span>
+                <span className="text-[10px] text-neutral-400 font-mono">120 BPM</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onLoadDemoTrack('lofi');
+                  setDemoDropdownOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-neutral-200 hover:bg-rose-500/15 hover:text-rose-200 flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="font-medium">☕ Lofi Sunset Chill</span>
+                <span className="text-[10px] text-neutral-400 font-mono">85 BPM</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onLoadDemoTrack('acoustic');
+                  setDemoDropdownOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-neutral-200 hover:bg-rose-500/15 hover:text-rose-200 flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="font-medium">🎸 Acoustic Romance</span>
+                <span className="text-[10px] text-neutral-400 font-mono">95 BPM</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onLoadDemoTrack('edm');
+                  setDemoDropdownOpen(false);
+                }}
+                className="w-full text-left px-3 py-2 text-xs text-neutral-200 hover:bg-rose-500/15 hover:text-rose-200 flex items-center justify-between cursor-pointer transition-colors"
+              >
+                <span className="font-medium">🌌 Deep Space EDM</span>
+                <span className="text-[10px] text-neutral-400 font-mono">128 BPM</span>
+              </button>
             </div>
-            <button
-              onClick={() => onLoadDemoTrack('synthwave')}
-              className="w-full text-left px-3 py-1.5 text-xs text-neutral-200 hover:bg-neutral-800 flex items-center justify-between"
-            >
-              <span>⚡ Neon Synthwave</span>
-              <span className="text-[10px] text-neutral-500">120 BPM</span>
-            </button>
-            <button
-              onClick={() => onLoadDemoTrack('lofi')}
-              className="w-full text-left px-3 py-1.5 text-xs text-neutral-200 hover:bg-neutral-800 flex items-center justify-between"
-            >
-              <span>☕ Lofi Sunset Chill</span>
-              <span className="text-[10px] text-neutral-500">85 BPM</span>
-            </button>
-            <button
-              onClick={() => onLoadDemoTrack('acoustic')}
-              className="w-full text-left px-3 py-1.5 text-xs text-neutral-200 hover:bg-neutral-800 flex items-center justify-between"
-            >
-              <span>🎸 Acoustic Romance</span>
-              <span className="text-[10px] text-neutral-500">95 BPM</span>
-            </button>
-            <button
-              onClick={() => onLoadDemoTrack('edm')}
-              className="w-full text-left px-3 py-1.5 text-xs text-neutral-200 hover:bg-neutral-800 flex items-center justify-between"
-            >
-              <span>🌌 Deep Space EDM</span>
-              <span className="text-[10px] text-neutral-500">128 BPM</span>
-            </button>
           </div>
         </div>
 

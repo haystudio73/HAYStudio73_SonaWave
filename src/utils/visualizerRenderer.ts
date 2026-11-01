@@ -4813,7 +4813,7 @@ export class VisualizerRenderer {
           : (track.cardStyle === 'vinyl' 
               ? Math.min(width, height) * 0.18 * cardScale + 30 * userScale 
               : (track.cardStyle === 'rotating-badge'
-                  ? Math.min(width, height) * 0.16 * cardScale * bScale + 28 * userScale
+                  ? Math.min(width, height) * 0.16 * cardScale * bScale + (track.vinylTextSpacing !== undefined ? track.vinylTextSpacing : 28) * userScale
                   : (track.cardStyle === 'logo-badge'
                       ? Math.min(width, height) * 0.14 * cardScale * bScale + 30 * userScale
                       : Math.min(width, height) * 0.14 * cardScale * bScale + 26 * userScale)));

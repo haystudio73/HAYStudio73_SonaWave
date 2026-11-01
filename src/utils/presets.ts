@@ -1332,6 +1332,7 @@ export const DEFAULT_TRACK: TrackMetadata = {
   badgeBorderWidth: 6,
   badgeBorderRadius: 26,
   badgeTextGap: 24,
+  vinylTextSpacing: 28,
   rotateVinyl: true,
   vinylSpeed: 1.0,
   rotatingBadgeSpeed: 1.0,
@@ -1402,7 +1403,7 @@ export const PRESET_THEMES: PresetTheme[] = [
       title: 'Neon Pulse Highway',
       artist: 'Retro Synthwave Vol. 2',
       coverUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=400&q=80',
-      cardStyle: 'vinyl',
+      cardStyle: 'rotating-badge',
       positionY: 24,
     },
     sampleAudio: {
@@ -1631,7 +1632,7 @@ export const PRESET_THEMES: PresetTheme[] = [
       title: 'Starry Night Dreamer',
       artist: 'Cyber Dreamland',
       coverUrl: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=400&q=80',
-      cardStyle: 'vinyl',
+      cardStyle: 'rotating-badge',
       positionY: 40,
     },
     sampleAudio: {

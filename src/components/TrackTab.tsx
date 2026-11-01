@@ -39,7 +39,6 @@ interface TrackTabProps {
 
 const CARD_STYLES: { id: CardStyle; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'horizontal-rounded-card', nameVi: 'Thẻ Ngang Bo Tròn (Badge Mới)', nameEn: 'Horizontal Rounded Card Badge', descVi: 'Khung ảnh bo tròn viền dày nổi bật bên trái + 3 dòng phụ đề, tên bài và ca sĩ bên phải', descEn: 'Modern horizontal card with thick rounded cover frame on left and 3-tier track details on right', icon: CreditCard },
-  { id: 'vinyl', nameVi: 'Đĩa Than Vinyl Xoay 360°', nameEn: '360° Spinning Vinyl', descVi: 'Đĩa vinyl chân thực với vân bóng và ảnh bìa xoay 360°', descEn: 'Photorealistic vinyl grooves with spinning center label artwork', icon: Disc },
   { id: 'rotating-badge', nameVi: 'Huy Hiệu Tròn Xoay (Rotating Badge)', nameEn: 'Rotating Vinyl Badge 360°', descVi: 'Huy hiệu tròn xoay 360° với viền chữ uốn cong xoay tròn và tâm ảnh đĩa', descEn: 'Rotating circular badge with continuous circular curved text ribbon and center album artwork', icon: Disc },
   { id: 'glass-card', nameVi: 'Thẻ Kính Mờ (Glass Card)', nameEn: 'Frosted Glass Badge', descVi: 'Thẻ bo góc phủ kính hiện đại kèm ảnh bìa & tên ca sĩ', descEn: 'Translucent frosted glass card with artwork, title and singer', icon: CreditCard },
   { id: 'minimal-tag', nameVi: 'Chữ Tối Giản Không Khung', nameEn: 'Minimalist Typography', descVi: 'Chỉ hiển thị tên bài hát & ca sĩ không có khung bao quanh', descEn: 'Floating text only without container boundaries', icon: Music },
@@ -511,6 +510,44 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                     {spd.toFixed(1)}x
                   </button>
                 ))}
+              </div>
+
+              {/* Spacing between Vinyl Badge and Track Details (subtitle, title, artist) */}
+              <div className="pt-2.5 border-t border-neutral-800/80 space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-neutral-300 font-semibold flex items-center gap-1.5">
+                    <MoveVertical className="w-3.5 h-3.5 text-amber-400" />
+                    {language === 'vi' 
+                      ? 'Khoảng cách giữa Đĩa Vinyl và Chi tiết bài hát' 
+                      : 'Spacing between Vinyl Badge & Track Info'}
+                  </span>
+                  <span className="text-amber-400 font-mono font-bold">{track.vinylTextSpacing ?? 28}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={120}
+                  step={2}
+                  value={track.vinylTextSpacing ?? 28}
+                  onChange={(e) => update({ vinylTextSpacing: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                />
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[0, 12, 20, 28, 40, 56, 80].map((spacingVal) => (
+                    <button
+                      key={spacingVal}
+                      type="button"
+                      onClick={() => update({ vinylTextSpacing: spacingVal })}
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
+                        (track.vinylTextSpacing ?? 28) === spacingVal
+                          ? 'bg-amber-500 text-neutral-950 font-bold'
+                          : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {spacingVal}px
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

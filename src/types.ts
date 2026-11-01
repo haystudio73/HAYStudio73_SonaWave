@@ -679,6 +679,7 @@ export interface TrackMetadata {
   // Spacing gaps between titles
   subtitleTitleGap?: number; // Khoảng cách giữa Subtitle và Main Title (px, default 6)
   titleArtistGap?: number;    // Khoảng cách giữa Main Title và Artist (px, default 8)
+  vinylTextSpacing?: number;  // Khoảng cách giữa Đĩa Vinyl / Huy hiệu và Chi tiết bài hát (px, default 28)
 
   // Font sizes for each element
   subtitleFontSize?: number;  // px (default 13)

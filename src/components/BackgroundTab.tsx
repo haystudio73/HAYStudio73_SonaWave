@@ -35,7 +35,10 @@ import {
   Play,
   Pause,
   Scissors,
-  Music
+  Music,
+  X,
+  Search,
+  Grid
 } from 'lucide-react';
 
 interface BackgroundTabProps {
@@ -55,6 +58,7 @@ const CATEGORIES = [
   { id: 'cyberpunk', nameVi: 'Cyberpunk', nameEn: 'Cyberpunk' },
   { id: 'lofi', nameVi: 'Lofi & Chill', nameEn: 'Lofi & Chill' },
   { id: 'space', nameVi: 'Vũ Trụ', nameEn: 'Deep Space' },
+  { id: 'dark', nameVi: 'Sân Khấu DJ', nameEn: 'DJ & Stage' },
   { id: 'nature', nameVi: 'Thiên Nhiên', nameEn: 'Nature' },
   { id: 'abstract', nameVi: 'Nghệ Thuật', nameEn: 'Abstract Art' },
 ];
@@ -101,6 +105,9 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
   const [activeSlidePickerId, setActiveSlidePickerId] = useState<string | null>(null);
   const [activeSlideVideoPickerId, setActiveSlideVideoPickerId] = useState<string | null>(null);
   const [playingSlideVideoId, setPlayingSlideVideoId] = useState<string | null>(null);
+  const [activeSlidePresetModalId, setActiveSlidePresetModalId] = useState<string | null>(null);
+  const [slidePresetCategoryMap, setSlidePresetCategoryMap] = useState<Record<string, string>>({});
+  const [slidePresetSearch, setSlidePresetSearch] = useState<string>('');
 
   // Batch Auto Settings Controls State
   const [batchTransition, setBatchTransition] = useState<SlideTransitionType>('crossfade');
@@ -1113,26 +1120,99 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                         </button>
                       </div>
 
-                      {/* Quick Preset Strip when slide.type === 'preset' */}
-                      {slide.type === 'preset' && (
-                        <div className="flex gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none">
-                          {BACKGROUND_PRESETS.map((pr) => (
-                            <button
-                              key={pr.id}
-                              type="button"
-                              onClick={() => handleUpdateSlide(slide.id, { type: 'preset', isVideo: false, url: pr.url })}
-                              className={`relative w-12 h-8 rounded-lg overflow-hidden shrink-0 border transition-all cursor-pointer ${
-                                slide.url === pr.url
-                                  ? 'border-indigo-400 ring-1 ring-indigo-400 scale-105'
-                                  : 'border-neutral-800 opacity-70 hover:opacity-100'
-                              }`}
-                              title={isVi ? pr.nameVi : pr.name}
-                            >
-                              <img src={pr.thumbnail} alt={pr.name} className="w-full h-full object-cover" />
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      {/* Curated Preset Library Picker for this slide */}
+                      {slide.type === 'preset' && (() => {
+                        const curCat = slidePresetCategoryMap[slide.id] || 'all';
+                        const currentPresetItem = BACKGROUND_PRESETS.find((p) => p.url === slide.url);
+                        const filteredSlidePresets = curCat === 'all'
+                          ? BACKGROUND_PRESETS
+                          : BACKGROUND_PRESETS.filter((p) => p.category === curCat);
+
+                        return (
+                          <div className="p-2.5 rounded-xl bg-neutral-950/80 border border-neutral-800/90 space-y-2.5">
+                            {/* Header: Current Selection + Open Full Modal Button */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-9 h-6 rounded-md overflow-hidden border border-neutral-700 shrink-0 bg-neutral-900">
+                                  {currentPresetItem ? (
+                                    <img src={currentPresetItem.thumbnail} alt={currentPresetItem.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-[9px] text-neutral-500">Img</div>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-[11px] font-semibold text-neutral-200 truncate">
+                                    {currentPresetItem ? (isVi ? currentPresetItem.nameVi : currentPresetItem.name) : (slide.name || 'Ảnh Mẫu')}
+                                  </div>
+                                  <div className="text-[9px] text-neutral-500 uppercase tracking-wider font-mono">
+                                    {currentPresetItem?.category || 'Preset'} • {BACKGROUND_PRESETS.length} {isVi ? 'ảnh có sẵn' : 'available'}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setActiveSlidePresetModalId(slide.id)}
+                                className="px-2.5 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/50 text-indigo-200 text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-sm"
+                                title={isVi ? 'Mở cửa sổ duyệt toàn bộ ảnh mẫu' : 'Open full presets library'}
+                              >
+                                <Grid className="w-3.5 h-3.5 text-indigo-400" />
+                                <span>{isVi ? `Xem Thư Viện (${BACKGROUND_PRESETS.length})` : `Full Library (${BACKGROUND_PRESETS.length})`}</span>
+                              </button>
+                            </div>
+
+                            {/* Category Filter Tabs */}
+                            <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
+                              {CATEGORIES.map((cat) => (
+                                <button
+                                  key={cat.id}
+                                  type="button"
+                                  onClick={() => setSlidePresetCategoryMap((prev) => ({ ...prev, [slide.id]: cat.id }))}
+                                  className={`px-2 py-0.5 rounded-md text-[10px] whitespace-nowrap transition-all cursor-pointer font-medium ${
+                                    curCat === cat.id
+                                      ? 'bg-indigo-500 text-white font-bold shadow-xs'
+                                      : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                                  }`}
+                                >
+                                  {isVi ? cat.nameVi : cat.nameEn}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Responsive Preset Grid for fast in-panel selection */}
+                            <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-44 overflow-y-auto p-1 bg-neutral-900/40 rounded-lg border border-neutral-800/60 scrollbar-thin">
+                              {filteredSlidePresets.map((pr) => {
+                                const isSelected = slide.url === pr.url;
+                                return (
+                                  <button
+                                    key={pr.id}
+                                    type="button"
+                                    onClick={() => handleUpdateSlide(slide.id, { type: 'preset', isVideo: false, url: pr.url })}
+                                    className={`group relative aspect-video rounded-lg overflow-hidden border transition-all cursor-pointer ${
+                                      isSelected
+                                        ? 'border-indigo-400 ring-2 ring-indigo-400/80 scale-[1.03] z-10 shadow-md shadow-indigo-950/60'
+                                        : 'border-neutral-800/80 hover:border-neutral-600 opacity-80 hover:opacity-100 hover:scale-[1.02]'
+                                    }`}
+                                    title={isVi ? pr.nameVi : pr.name}
+                                  >
+                                    <img src={pr.thumbnail} alt={pr.name} className="w-full h-full object-cover" loading="lazy" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1">
+                                      <span className="text-[9px] text-white truncate drop-shadow-sm font-medium">
+                                        {isVi ? pr.nameVi : pr.name}
+                                      </span>
+                                    </div>
+                                    {isSelected && (
+                                      <div className="absolute top-1 right-1 w-3.5 h-3.5 bg-indigo-500 rounded-full flex items-center justify-center shadow-xs">
+                                        <Check className="w-2.5 h-2.5 text-white stroke-[3]" />
+                                      </div>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* MP4 Video Upload Panel when slide.type === 'video' */}
                       {slide.type === 'video' && (
@@ -1725,6 +1805,165 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
           </div>
         </div>
       )}
+
+      {/* Full Presets Library Modal for Slides */}
+      {activeSlidePresetModalId && (() => {
+        const targetSlide = slides.find((s) => s.id === activeSlidePresetModalId);
+        const modalCategory = slidePresetCategoryMap[activeSlidePresetModalId] || 'all';
+        const filteredModalPresets = BACKGROUND_PRESETS.filter((pr) => {
+          const matchCat = modalCategory === 'all' || pr.category === modalCategory;
+          const searchLower = slidePresetSearch.trim().toLowerCase();
+          const matchSearch = !searchLower || (
+            pr.name.toLowerCase().includes(searchLower) ||
+            pr.nameVi.toLowerCase().includes(searchLower) ||
+            pr.category.toLowerCase().includes(searchLower)
+          );
+          return matchCat && matchSearch;
+        });
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md">
+            <div className="relative w-full max-w-4xl max-h-[85vh] bg-neutral-950 border border-neutral-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+              {/* Modal Header */}
+              <div className="px-4 py-3.5 border-b border-neutral-800/80 flex items-center justify-between bg-neutral-900/60">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center">
+                    <ImageIcon className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <span>{isVi ? 'Thư Viện Ảnh Mẫu Đầy Đủ' : 'Full Curated Presets Library'}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                        {BACKGROUND_PRESETS.length} {isVi ? 'Ảnh' : 'Photos'}
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-neutral-400">
+                      {isVi ? `Đang chọn ảnh cho ${targetSlide?.name || 'Slide'}` : `Selecting background photo for ${targetSlide?.name || 'Slide'}`}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveSlidePresetModalId(null)}
+                  className="p-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Search & Categories Bar */}
+              <div className="p-3 border-b border-neutral-800/80 bg-neutral-900/30 space-y-2.5">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={slidePresetSearch}
+                    onChange={(e) => setSlidePresetSearch(e.target.value)}
+                    placeholder={isVi ? 'Tìm kiếm ảnh theo tên hoặc thể loại (Cyberpunk, Lofi, Vũ trụ, Sân khấu...)' : 'Search presets by keyword...'}
+                    className="w-full pl-9 pr-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-indigo-500"
+                  />
+                  {slidePresetSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setSlidePresetSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Categories */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSlidePresetCategoryMap((prev) => ({ ...prev, [activeSlidePresetModalId]: cat.id }))}
+                      className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                        modalCategory === cat.id
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {isVi ? cat.nameVi : cat.nameEn}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Presets Grid */}
+              <div className="flex-1 overflow-y-auto p-4 max-h-[55vh]">
+                {filteredModalPresets.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-neutral-500">
+                    {isVi ? 'Không tìm thấy ảnh mẫu phù hợp' : 'No presets found matching search query'}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {filteredModalPresets.map((pr) => {
+                      const isSelected = targetSlide?.url === pr.url;
+                      return (
+                        <button
+                          key={pr.id}
+                          type="button"
+                          onClick={() => {
+                            handleUpdateSlide(activeSlidePresetModalId, {
+                              type: 'preset',
+                              isVideo: false,
+                              url: pr.url,
+                            });
+                            setActiveSlidePresetModalId(null);
+                          }}
+                          className={`group relative rounded-xl overflow-hidden aspect-video border text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-indigo-400 ring-2 ring-indigo-500/80 scale-[1.02] shadow-lg shadow-indigo-950/80'
+                              : 'border-neutral-800 hover:border-neutral-600 hover:scale-[1.01]'
+                          }`}
+                        >
+                          <img
+                            src={pr.thumbnail}
+                            alt={pr.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-2.5">
+                            <span className="text-xs font-bold text-white truncate drop-shadow-sm">
+                              {isVi ? pr.nameVi : pr.name}
+                            </span>
+                            <span className="text-[10px] text-indigo-300/80 uppercase font-mono tracking-wider">
+                              {pr.category}
+                            </span>
+                          </div>
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center shadow-md">
+                              <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-4 py-3 border-t border-neutral-800/80 bg-neutral-900/50 flex items-center justify-between">
+                <span className="text-xs text-neutral-400">
+                  {filteredModalPresets.length} / {BACKGROUND_PRESETS.length} {isVi ? 'ảnh hiển thị' : 'photos shown'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveSlidePresetModalId(null)}
+                  className="px-4 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold text-neutral-200 transition-colors cursor-pointer"
+                >
+                  {isVi ? 'Đóng' : 'Close'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
