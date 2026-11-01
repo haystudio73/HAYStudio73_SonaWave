@@ -21,12 +21,10 @@ Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">
 - **Professional Video Export**: High-quality MP4 output (9:16, 1:1, 16:9, 4:5) up to 60FPS optimized for TikTok, YouTube Shorts, and Instagram Reels.
 
 ### New & Enhanced Features
-- **Slide Preset Library Full Viewer & Categories** — Mở rộng thư viện ảnh mẫu cho từng Slide: duyệt toàn bộ ảnh mẫu với bộ lọc danh mục (Tất cả, Cyberpunk, Lofi & Chill, Vũ Trụ, Sân Khấu DJ, Thiên Nhiên, Nghệ Thuật) và cửa sổ Modal xem/chọn ảnh nhanh chóng, hiển thị đầy đủ 100% kho ảnh.
-- **Seamless Demo Music Menu** — Loại bỏ hoàn toàn khoảng hở vật lý giữa nút Demo Music và menu thả xuống, tích hợp cầu nối hover liền mạch và hỗ trợ nhấn chuột để mở menu chọn nhạc demo ổn định, không bị tắt khi di chuyển chuột.
-- **Track Info: Rotating Vinyl Badge Spacing** — Xóa bỏ mẫu thẻ trùng lặp "360° Spinning Vinyl", bổ sung thanh trượt tùy chỉnh khoảng cách (`vinylTextSpacing`) giữa Huy hiệu đĩa Vinyl tròn xoay 360° và khối thông tin bài hát (Subtitle, Title, Artist) từ 0px đến 120px.
-- **Ken Burns Organic Motion per Slide** — Cài đặt chuyển động Pan & Zoom hữu cơ độc lập cho từng Slide (9 hướng chuyển động, Zoom Scale 1.05x–1.35x, Pan Speed 0.3x–2.5x, cosine smoothstep chống giật hở viền).
-- **2D Visualizer Rotation & Auto-Rotate** — Xoay góc tự do cho sóng âm 2D (0°, 90°, 180°, 270°, thanh trượt 0°–360°) và tính năng Tự động xoay quanh tâm (Auto-Rotate 360°) với tốc độ xoay đa chiều.
-- **2D Floating Particle Upgrades** — Bụi Lofi trôi 2D sắc nét từ 1px với bộ chọn hình dáng (Tròn, Vuông, Sao, Ngẫu Nhiên); Sao lấp lánh lóe sáng tia 4 góc (4-Corner Flare Bursts); Những hạt lửa bay nguội dần sang tàn tro (Tròn, Vuông, Thoi, Ngẫu Nhiên); Giọt nước mưa chảy trên bề mặt kính tự tan biến; Vệt tốc độ Speed Lines hỗ trợ chiều xuôi/ngược.
+- **Slide Preset Library Full Viewer & Categories**
+- **Ken Burns Organic Motion per Slide** — Cài đặt chuyển động Pan & Zoom hữu cơ độc lập cho từng Slide.
+- **2D Visualizer Rotation & Auto-Rotate** — Xoay góc tự do cho sóng âm 2D và tính năng Tự động xoay quanh tâm (Auto-Rotate 360°) với tốc độ xoay đa chiều.
+- **2D Floating Particle Upgrades** — Bụi Lofi trôi 2D sắc nét chọn hình dáng (Tròn, Vuông, Sao, Ngẫu Nhiên); Sao lấp lánh lóe sáng tia 4 góc (4-Corner Flare Bursts); Những hạt lửa bay nguội dần sang tàn tro (Tròn, Vuông, Thoi, Ngẫu Nhiên); Giọt nước mưa chảy trên bề mặt kính tự tan biến; Vệt tốc độ Speed Lines hỗ trợ chiều xuôi/ngược.
 - **Multi-Format Slide Studio & Video MP4** — Mỗi slide hỗ trợ đầy đủ 4 định dạng (Ảnh mẫu, Upload ảnh, Video MP4, Màu sắc/Gradient 2-3 màu/Radial); Nút điều khiển Play/Pause preview MP4 độc lập, không autoplay gây lag; Tự động cắt/loop video khớp thời lượng slide.
 - **3D WebGL Particle & Mesh Visualizers** — 8 ultra-realistic 3D soundscapes powered by Three.js with hardware-accelerated Post-Processing Bloom.
 - **Independent 2D & 3D Positioning** — 2D position controls strictly affect 2D waveforms, leaving 3D spatial camera coordinates completely clean and centered.
