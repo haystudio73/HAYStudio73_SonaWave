@@ -330,6 +330,8 @@ export type LyricsOutEffect =
   | 'fade'              // Mờ dần ra (Fade Out)
   | 'slide-up'          // Trượt bay lên trên
   | 'slide-down'        // Trượt rơi xuống dưới
+  | 'slide-left'        // Trượt sang trái tan biến
+  | 'slide-right'       // Trượt sang phải tan biến
   | 'zoom-out'          // Thu nhỏ biến mất
   | 'dissolve';         // Hòa tan nhòe mờ biến mất
 

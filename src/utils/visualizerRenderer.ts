@@ -7746,7 +7746,8 @@ export class VisualizerRenderer {
     maxWidth: number,
     lyrics: LyricsConfig,
     isActive: boolean,
-    beatIntensity: number
+    beatIntensity: number,
+    skipUnderline: boolean = false
   ) {
     const effect = lyrics.fontEffect || 'none';
     const effectColor = lyrics.fontEffectColor || lyrics.glowColor || '#ec4899';
@@ -7885,7 +7886,7 @@ export class VisualizerRenderer {
     }
 
     // Underline option
-    if (lyrics.textDecoration === 'underline') {
+    if (!skipUnderline && lyrics.textDecoration === 'underline') {
       const textMetrics = ctx.measureText(text);
       const lineW = Math.min(maxWidth, textMetrics.width);
       const lineY = y + (lyrics.fontSize || 24) * 0.55;
@@ -8053,19 +8054,39 @@ export class VisualizerRenderer {
     endTime: number,
     inEffect: LyricsInEffect = 'fade',
     outEffect: LyricsOutEffect = 'fade',
-    duration: number = 0.35
-  ): { alpha: number; scale: number; offsetX: number; offsetY: number; blur: number } {
+    duration: number = 0.35,
+    fontSize: number = 24,
+    canvasWidth: number = 720
+  ): {
+    alpha: number;
+    scale: number;
+    offsetX: number;
+    offsetY: number;
+    inP: number;
+    outP: number;
+    isPerCharIn: boolean;
+    isPerCharOut: boolean;
+  } {
     let alpha = 1.0;
     let scale = 1.0;
     let offsetX = 0;
     let offsetY = 0;
-    let blur = 0;
 
-    const animDur = Math.max(0.08, duration);
+    const lineSpan = Number.isFinite(endTime) ? Math.max(0.16, endTime - startTime) : 10;
+    const animDur = Math.min(Math.max(0.08, duration), lineSpan * 0.48);
+
+    const slideDistY = Math.max(46, fontSize * 2.0);
+    const slideDistX = Math.max(90, Math.min(canvasWidth * 0.22, 180));
+
+    let inP = 1.0;
+    let outP = 1.0;
+    let isPerCharIn = false;
+    let isPerCharOut = false;
 
     // In Transition
     if (currentTime < startTime + animDur && inEffect !== 'none') {
       const p = Math.max(0, Math.min(1, (currentTime - startTime) / animDur));
+      inP = p;
       const ease = p * p * (3 - 2 * p); // smoothstep
 
       switch (inEffect) {
@@ -8073,43 +8094,46 @@ export class VisualizerRenderer {
           alpha *= ease;
           break;
         case 'slide-up':
-          alpha *= ease;
-          offsetY += (1 - ease) * 28;
+          alpha *= Math.min(1, p * 1.4);
+          offsetY += (1 - ease) * slideDistY;
           break;
         case 'slide-down':
-          alpha *= ease;
-          offsetY -= (1 - ease) * 28;
+          alpha *= Math.min(1, p * 1.4);
+          offsetY -= (1 - ease) * slideDistY;
           break;
         case 'slide-left':
-          alpha *= ease;
-          offsetX += (1 - ease) * 36;
+          alpha *= Math.min(1, p * 1.4);
+          offsetX += (1 - ease) * slideDistX;
           break;
         case 'slide-right':
-          alpha *= ease;
-          offsetX -= (1 - ease) * 36;
+          alpha *= Math.min(1, p * 1.4);
+          offsetX -= (1 - ease) * slideDistX;
           break;
         case 'zoom-in':
           alpha *= ease;
-          scale *= (0.65 + ease * 0.35);
+          scale *= (0.55 + ease * 0.45);
           break;
         case 'char-drop':
-          alpha *= ease;
-          offsetY -= (1 - ease) * 35;
+          // Handled per-character in renderAnimatedLyricLine
+          isPerCharIn = p < 1;
+          if (p <= 0) alpha = 0;
           break;
         case 'dissolve':
-          alpha *= ease;
-          blur += (1 - ease) * 8;
+          // Handled per-character in renderAnimatedLyricLine
+          isPerCharIn = p < 1;
+          if (p <= 0) alpha = 0;
           break;
         case 'bounce':
           alpha *= Math.min(1, p * 2.5);
-          scale *= p < 0.7 ? 0.65 + p * 0.65 : 1.1 - (1 - p) * 0.33;
+          scale *= p < 0.7 ? 0.55 + p * 0.85 : 1.14 - (1 - p) * 0.46;
           break;
       }
     }
 
     // Out Transition
-    if (currentTime > endTime - animDur && outEffect !== 'none') {
+    if (Number.isFinite(endTime) && currentTime > endTime - animDur && outEffect !== 'none') {
       const p = Math.max(0, Math.min(1, (endTime - currentTime) / animDur));
+      outP = p;
       const ease = p * p * (3 - 2 * p); // smoothstep (1 -> 0)
 
       switch (outEffect) {
@@ -8117,25 +8141,180 @@ export class VisualizerRenderer {
           alpha *= ease;
           break;
         case 'slide-up':
-          alpha *= ease;
-          offsetY -= (1 - ease) * 28;
+          alpha *= Math.min(1, p * 1.35);
+          offsetY -= (1 - ease) * slideDistY;
           break;
         case 'slide-down':
-          alpha *= ease;
-          offsetY += (1 - ease) * 28;
+          alpha *= Math.min(1, p * 1.35);
+          offsetY += (1 - ease) * slideDistY;
+          break;
+        case 'slide-left':
+          alpha *= Math.min(1, p * 1.35);
+          offsetX -= (1 - ease) * slideDistX;
+          break;
+        case 'slide-right':
+          alpha *= Math.min(1, p * 1.35);
+          offsetX += (1 - ease) * slideDistX;
           break;
         case 'zoom-out':
           alpha *= ease;
-          scale *= (0.65 + ease * 0.35);
+          scale *= (0.55 + ease * 0.45);
           break;
         case 'dissolve':
-          alpha *= ease;
-          blur += (1 - ease) * 8;
+          // Handled per-character in renderAnimatedLyricLine
+          isPerCharOut = p < 1;
+          if (p <= 0) alpha = 0;
           break;
       }
     }
 
-    return { alpha, scale, offsetX, offsetY, blur };
+    return { alpha, scale, offsetX, offsetY, inP, outP, isPerCharIn, isPerCharOut };
+  }
+
+  /**
+   * Grapheme-safe string splitter so Vietnamese accents/diacritics stay intact per character
+   */
+  private splitGraphemes(text: string): string[] {
+    const normalized = text.normalize('NFC');
+    if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+      const SegmenterCtor = (Intl as any).Segmenter;
+      const seg = new SegmenterCtor(undefined, { granularity: 'grapheme' });
+      return Array.from(seg.segment(normalized), (s: any) => s.segment);
+    }
+    return Array.from(normalized);
+  }
+
+  /**
+   * Render a lyric text line with per-character animation support (Char Drop & Dissolve)
+   */
+  private renderAnimatedLyricLine(
+    ctx: CanvasContext2D,
+    text: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    lyrics: LyricsConfig,
+    isActive: boolean,
+    beatIntensity: number,
+    fontSize: number,
+    trans: ReturnType<VisualizerRenderer['computeLyricTransitionTransform']>
+  ) {
+    const useCharDrop = trans.isPerCharIn && lyrics.inEffect === 'char-drop';
+    const useDissolveIn = trans.isPerCharIn && lyrics.inEffect === 'dissolve';
+    const useDissolveOut = trans.isPerCharOut && lyrics.outEffect === 'dissolve';
+
+    if (!useCharDrop && !useDissolveIn && !useDissolveOut) {
+      this.renderLyricTextWithEffect(ctx, text, x, y, maxWidth, lyrics, isActive, beatIntensity);
+      return;
+    }
+
+    const chars = this.splitGraphemes(text);
+    if (chars.length === 0) return;
+
+    const totalW = ctx.measureText(text).width;
+    const fitScale = totalW > maxWidth && totalW > 0 ? maxWidth / totalW : 1;
+    const renderedW = totalW * fitScale;
+
+    let leftX = x - renderedW / 2;
+    if (ctx.textAlign === 'left' || ctx.textAlign === 'start') {
+      leftX = x;
+    } else if (ctx.textAlign === 'right' || ctx.textAlign === 'end') {
+      leftX = x - renderedW;
+    }
+
+    const baseGlobalAlpha = ctx.globalAlpha;
+    const prevAlign = ctx.textAlign;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+
+    let prefix = '';
+    for (let i = 0; i < chars.length; i++) {
+      const ch = chars[i];
+      const prevW = ctx.measureText(prefix).width;
+      const charW = ctx.measureText(ch).width;
+      prefix += ch;
+
+      if (ch.trim().length === 0) continue;
+
+      const cx = leftX + (prevW + charW * 0.5) * fitScale;
+      let cAlpha = 1.0;
+      let cOffsetX = 0;
+      let cOffsetY = 0;
+      let cScale = fitScale;
+      let cBlur = 0;
+
+      if (useCharDrop) {
+        const stagger = chars.length > 1 ? (i / (chars.length - 1)) * 0.55 : 0;
+        const cp = Math.max(0, Math.min(1, (trans.inP - stagger) / 0.45));
+        const overshoot = 1.6;
+        const backEase = 1 + (overshoot + 1) * Math.pow(cp - 1, 3) + overshoot * Math.pow(cp - 1, 2);
+        const dropDist = Math.max(44, fontSize * 1.9);
+        cOffsetY += -(1 - backEase) * dropDist;
+        cAlpha *= Math.min(1, cp * 2.4);
+        cScale *= 0.65 + 0.35 * cp;
+      }
+
+      if (useDissolveIn || useDissolveOut) {
+        const dp = useDissolveOut && useDissolveIn
+          ? Math.min(trans.inP, trans.outP)
+          : (useDissolveOut ? trans.outP : trans.inP);
+
+        const rand1 = ((Math.sin(i * 127.1 + 311.7) * 43758.5453) % 1 + 1) % 1;
+        const rand2 = ((Math.sin(i * 269.5 + 183.3) * 43758.5453) % 1 + 1) % 1;
+        const rand3 = ((Math.sin(i * 419.2 + 371.9) * 43758.5453) % 1 + 1) % 1;
+
+        const charThreshold = rand1 * 0.6;
+        const cp = Math.max(0, Math.min(1, (dp - charThreshold) / 0.4));
+        const smooth = cp * cp * (3 - 2 * cp);
+
+        cAlpha *= smooth;
+        cOffsetX += (rand2 - 0.5) * fontSize * 1.35 * (1 - smooth);
+        cOffsetY += (rand3 - 0.5) * fontSize * 1.05 * (1 - smooth);
+        cScale *= 1 + (1 - smooth) * 0.45;
+        cBlur = (1 - smooth) * Math.max(4, fontSize * 0.25);
+      }
+
+      if (cAlpha <= 0.01) continue;
+
+      ctx.save();
+      ctx.globalAlpha = baseGlobalAlpha * cAlpha;
+      const drawAtX = cx + cOffsetX;
+      const drawAtY = y + cOffsetY;
+      if (Math.abs(cScale - 1) > 0.002) {
+        ctx.translate(drawAtX, drawAtY);
+        ctx.scale(cScale, cScale);
+        ctx.translate(-drawAtX, -drawAtY);
+      }
+      if (cBlur > 0.5 && !this.highPerformanceMode) {
+        ctx.filter = `blur(${cBlur.toFixed(1)}px)`;
+      }
+
+      this.renderLyricTextWithEffect(ctx, ch, drawAtX, drawAtY, maxWidth, lyrics, isActive, beatIntensity, true);
+      ctx.restore();
+    }
+
+    ctx.textAlign = prevAlign;
+
+    // Draw line underline cleanly as one continuous stroke
+    if (lyrics.textDecoration === 'underline') {
+      const overallP = Math.min(useCharDrop || useDissolveIn ? trans.inP : 1, useDissolveOut ? trans.outP : 1);
+      if (overallP > 0.05) {
+        ctx.save();
+        ctx.globalAlpha = baseGlobalAlpha * overallP;
+        const lineY = y + (lyrics.fontSize || 24) * 0.55;
+        const baseColor = isActive ? (lyrics.activeColor || '#ffffff') : (lyrics.color || '#FFFFFF');
+        ctx.beginPath();
+        ctx.moveTo(leftX, lineY);
+        ctx.lineTo(leftX + renderedW * overallP, lineY);
+        ctx.strokeStyle = isActive ? (lyrics.glowColor || baseColor) : baseColor;
+        ctx.lineWidth = Math.max(2, (lyrics.fontSize || 24) * 0.08);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    ctx.restore();
   }
 
   /**
@@ -8219,13 +8398,25 @@ export class VisualizerRenderer {
           textLeft = anchorX - textW / 2;
         }
 
+        // Compute true Duo-mode on-screen appear & disappear window
+        const idx = state.lineIndex;
+        let appearTime = 0;
+        if (idx >= 2 && lyricsData[idx - 2]) {
+          const prevSlotLine = lyricsData[idx - 2];
+          appearTime = prevSlotLine.karaokeEndTime !== undefined ? prevSlotLine.karaokeEndTime : prevSlotLine.endTime;
+        }
+        const kEnd = state.line.karaokeEndTime !== undefined ? state.line.karaokeEndTime : state.line.endTime;
+        const disappearTime = idx >= 0 && idx + 2 < lyricsData.length ? kEnd : Infinity;
+
         const trans = this.computeLyricTransitionTransform(
           currentTime,
-          state.line.startTime,
-          state.line.endTime,
+          appearTime,
+          disappearTime,
           lyrics.inEffect,
           lyrics.outEffect,
-          lyrics.inOutDuration ?? 0.35
+          lyrics.inOutDuration ?? 0.35,
+          lineFontSize,
+          width
         );
 
         ctx.save();
@@ -8234,11 +8425,7 @@ export class VisualizerRenderer {
         const popScale = trans.scale * (1 + (state.isSinging ? beatIntensity * 0.04 : 0));
         ctx.translate(drawX + trans.offsetX, anchorY + trans.offsetY);
         ctx.scale(popScale, popScale);
-        ctx.translate(-(drawX + trans.offsetX), -(anchorY + trans.offsetY));
-
-        if (trans.blur > 0) {
-          ctx.filter = `blur(${trans.blur}px)`;
-        }
+        ctx.translate(-drawX, -anchorY);
 
         // Frosted Pill Background
         if (lyrics.showBackgroundPill) {
@@ -8260,7 +8447,7 @@ export class VisualizerRenderer {
         ctx.textBaseline = 'middle';
 
         // 1. Base text (Inactive / Waiting singing color)
-        this.renderLyricTextWithEffect(
+        this.renderAnimatedLyricLine(
           ctx,
           fullText,
           drawX,
@@ -8268,7 +8455,9 @@ export class VisualizerRenderer {
           width * 0.88,
           lyrics,
           false,
-          beatIntensity
+          beatIntensity,
+          lineFontSize,
+          trans
         );
 
         // 2. Active Karaoke Sweeping Highlight
@@ -8276,10 +8465,10 @@ export class VisualizerRenderer {
           const fillWidth = textW * state.progress;
           ctx.save();
           ctx.beginPath();
-          ctx.rect(textLeft - 4, anchorY - lineFontSize * 1.6, fillWidth + 4, lineFontSize * 3.2);
+          ctx.rect(textLeft - 8, anchorY - lineFontSize * 4, fillWidth + 12, lineFontSize * 8);
           ctx.clip();
 
-          this.renderLyricTextWithEffect(
+          this.renderAnimatedLyricLine(
             ctx,
             fullText,
             drawX,
@@ -8287,7 +8476,9 @@ export class VisualizerRenderer {
             width * 0.88,
             lyrics,
             true,
-            beatIntensity
+            beatIntensity,
+            lineFontSize,
+            trans
           );
           ctx.restore();
 
@@ -8377,7 +8568,9 @@ export class VisualizerRenderer {
           targetLine.endTime,
           lyrics.inEffect,
           lyrics.outEffect,
-          lyrics.inOutDuration ?? 0.35
+          lyrics.inOutDuration ?? 0.35,
+          lineFontSize,
+          width
         );
 
         const popScale = trans.scale * (1 + (info.activeLine ? beatIntensity * 0.06 : 0));
@@ -8391,11 +8584,7 @@ export class VisualizerRenderer {
         ctx.globalAlpha = trans.alpha;
         ctx.translate(drawX + trans.offsetX, posY + trans.offsetY);
         ctx.scale(popScale, popScale);
-        ctx.translate(-(drawX + trans.offsetX), -(posY + trans.offsetY));
-
-        if (trans.blur > 0) {
-          ctx.filter = `blur(${trans.blur}px)`;
-        }
+        ctx.translate(-drawX, -posY);
 
         // Frosted Container Pill
         if (lyrics.showBackgroundPill) {
@@ -8417,7 +8606,7 @@ export class VisualizerRenderer {
         ctx.textBaseline = 'middle';
 
         // Dimmed Base Text Layer
-        this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, false, beatIntensity);
+        this.renderAnimatedLyricLine(ctx, fullText, drawX, posY, width * 0.88, lyrics, false, beatIntensity, lineFontSize, trans);
 
         // Sweeping Highlight Fill
         const fillWidth = textW * progress;
@@ -8425,10 +8614,10 @@ export class VisualizerRenderer {
         if (fillWidth > 0.5 && info.activeLine) {
           ctx.save();
           ctx.beginPath();
-          ctx.rect(textLeft - 4, posY - lineFontSize * 1.6, fillWidth + 4, lineFontSize * 3.2);
+          ctx.rect(textLeft - 8, posY - lineFontSize * 4, fillWidth + 12, lineFontSize * 8);
           ctx.clip();
 
-          this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, true, beatIntensity);
+          this.renderAnimatedLyricLine(ctx, fullText, drawX, posY, width * 0.88, lyrics, true, beatIntensity, lineFontSize, trans);
           ctx.restore();
 
           // Animated Karaoke Flying Indicator / Ball / Star
@@ -8467,19 +8656,33 @@ export class VisualizerRenderer {
         ctx.restore();
       }
 
-      // Line 2: Active Karaoke line (prominent center)
+      // Line 2: Active Karaoke line (prominent center) with In/Out transition
       if (info.activeLine) {
         const fullText = formatText(info.activeLine.text);
         const progress = Math.max(0, Math.min(1, info.lineProgress || 0));
-        const popScale = 1 + (beatIntensity * 0.05);
+        const activeFontSize = baseFontSize * 1.05;
 
-        ctx.font = `${fontStyle}${fontWeight} ${baseFontSize * 1.05}px '${fontFam}', sans-serif`;
+        const trans = this.computeLyricTransitionTransform(
+          currentTime,
+          info.activeLine.startTime,
+          info.activeLine.endTime,
+          lyrics.inEffect,
+          lyrics.outEffect,
+          lyrics.inOutDuration ?? 0.35,
+          activeFontSize,
+          width
+        );
+
+        const popScale = trans.scale * (1 + (beatIntensity * 0.05));
+
+        ctx.font = `${fontStyle}${fontWeight} ${activeFontSize}px '${fontFam}', sans-serif`;
         const textMetrics = ctx.measureText(fullText);
         const textW = textMetrics.width;
         const { drawX, textLeft } = computeLyricCoords(textW);
 
         ctx.save();
-        ctx.translate(drawX, posY);
+        ctx.globalAlpha = trans.alpha;
+        ctx.translate(drawX + trans.offsetX, posY + trans.offsetY);
         ctx.scale(popScale, popScale);
         ctx.translate(-drawX, -posY);
 
@@ -8498,16 +8701,16 @@ export class VisualizerRenderer {
         ctx.textBaseline = 'middle';
 
         // Base Layer
-        this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, false, beatIntensity);
+        this.renderAnimatedLyricLine(ctx, fullText, drawX, posY, width * 0.88, lyrics, false, beatIntensity, activeFontSize, trans);
 
         // Highlight Layer
         const fillWidth = textW * progress;
         if (fillWidth > 0.5) {
           ctx.save();
           ctx.beginPath();
-          ctx.rect(textLeft - 4, posY - baseFontSize * 1.5, fillWidth + 4, baseFontSize * 3);
+          ctx.rect(textLeft - 8, posY - activeFontSize * 4, fillWidth + 12, activeFontSize * 8);
           ctx.clip();
-          this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, true, beatIntensity);
+          this.renderAnimatedLyricLine(ctx, fullText, drawX, posY, width * 0.88, lyrics, true, beatIntensity, activeFontSize, trans);
           ctx.restore();
 
           // Animated Karaoke Indicator
@@ -8557,8 +8760,6 @@ export class VisualizerRenderer {
 
     // --- 3. KARAOKE 3 DÒNG (Standard) ---
     } else if (lyrics.style === 'karaoke') {
-      const popScale = 1 + (beatIntensity * 0.05);
-
       // Previous Line
       if (info.prevLine) {
         const text = formatText(info.prevLine.text);
@@ -8572,10 +8773,23 @@ export class VisualizerRenderer {
         ctx.restore();
       }
 
-      // Active Line
+      // Active Line with In/Out transition
       if (info.activeLine) {
         const fullText = formatText(info.activeLine.text);
         const progress = Math.max(0, Math.min(1, info.lineProgress || 0));
+
+        const trans = this.computeLyricTransitionTransform(
+          currentTime,
+          info.activeLine.startTime,
+          info.activeLine.endTime,
+          lyrics.inEffect,
+          lyrics.outEffect,
+          lyrics.inOutDuration ?? 0.35,
+          baseFontSize,
+          width
+        );
+
+        const popScale = trans.scale * (1 + (beatIntensity * 0.05));
 
         ctx.font = `${fontStyle}${fontWeight} ${baseFontSize}px '${fontFam}', sans-serif`;
         const textMetrics = ctx.measureText(fullText);
@@ -8583,7 +8797,8 @@ export class VisualizerRenderer {
         const { drawX, textLeft } = computeLyricCoords(textW);
 
         ctx.save();
-        ctx.translate(drawX, posY);
+        ctx.globalAlpha = trans.alpha;
+        ctx.translate(drawX + trans.offsetX, posY + trans.offsetY);
         ctx.scale(popScale, popScale);
         ctx.translate(-drawX, -posY);
 
@@ -8606,16 +8821,16 @@ export class VisualizerRenderer {
         ctx.textBaseline = 'middle';
 
         // Base Layer
-        this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, false, beatIntensity);
+        this.renderAnimatedLyricLine(ctx, fullText, drawX, posY, width * 0.88, lyrics, false, beatIntensity, baseFontSize, trans);
 
         // Sweeping Highlight
         const fillWidth = textW * progress;
         if (fillWidth > 0.5) {
           ctx.save();
           ctx.beginPath();
-          ctx.rect(textLeft - 4, posY - baseFontSize * 1.5, fillWidth + 4, baseFontSize * 3);
+          ctx.rect(textLeft - 8, posY - baseFontSize * 4, fillWidth + 12, baseFontSize * 8);
           ctx.clip();
-          this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.88, lyrics, true, beatIntensity);
+          this.renderAnimatedLyricLine(ctx, fullText, drawX, posY, width * 0.88, lyrics, true, beatIntensity, baseFontSize, trans);
           ctx.restore();
 
           const cursorX = textLeft + fillWidth;
@@ -8653,6 +8868,17 @@ export class VisualizerRenderer {
     } else if (lyrics.style === 'subtitle-bar') {
       if (info.activeLine) {
         const text = formatText(info.activeLine.text);
+        const trans = this.computeLyricTransitionTransform(
+          currentTime,
+          info.activeLine.startTime,
+          info.activeLine.endTime,
+          lyrics.inEffect,
+          lyrics.outEffect,
+          lyrics.inOutDuration ?? 0.35,
+          baseFontSize,
+          width
+        );
+
         ctx.font = `${fontStyle}${fontWeight} ${baseFontSize}px '${fontFam}', sans-serif`;
         const textMetrics = ctx.measureText(text);
         const { drawX, textLeft } = computeLyricCoords(textMetrics.width);
@@ -8660,6 +8886,12 @@ export class VisualizerRenderer {
         const barH = baseFontSize * 2.2;
         const barX = textLeft - 24;
         const barY = posY - barH / 2;
+
+        ctx.save();
+        ctx.globalAlpha = trans.alpha;
+        ctx.translate(drawX + trans.offsetX, posY + trans.offsetY);
+        ctx.scale(trans.scale, trans.scale);
+        ctx.translate(-drawX, -posY);
 
         ctx.beginPath();
         ctx.roundRect(barX, barY, barW, barH, 16);
@@ -8673,7 +8905,8 @@ export class VisualizerRenderer {
 
         ctx.textAlign = lyrics.alignment;
         ctx.textBaseline = 'middle';
-        this.renderLyricTextWithEffect(ctx, text, drawX, posY, width * 0.84, lyrics, true, beatIntensity);
+        this.renderAnimatedLyricLine(ctx, text, drawX, posY, width * 0.84, lyrics, true, beatIntensity, baseFontSize, trans);
+        ctx.restore();
       }
 
     // --- 5. MINIMAL GLOW / DEFAULT ---
@@ -8686,18 +8919,17 @@ export class VisualizerRenderer {
           info.activeLine.endTime,
           lyrics.inEffect,
           lyrics.outEffect,
-          lyrics.inOutDuration ?? 0.35
+          lyrics.inOutDuration ?? 0.35,
+          baseFontSize,
+          width
         );
 
         ctx.save();
-        if (trans.alpha < 1) ctx.globalAlpha = trans.alpha;
+        ctx.globalAlpha = trans.alpha;
         if (trans.scale !== 1 || trans.offsetX !== 0 || trans.offsetY !== 0) {
           ctx.translate(basePosX + trans.offsetX, posY + trans.offsetY);
           ctx.scale(trans.scale, trans.scale);
-          ctx.translate(-(basePosX + trans.offsetX), -(posY + trans.offsetY));
-        }
-        if (trans.blur > 0) {
-          ctx.filter = `blur(${trans.blur}px)`;
+          ctx.translate(-basePosX, -posY);
         }
 
         ctx.font = `${fontStyle}${fontWeight} ${baseFontSize}px '${fontFam}', sans-serif`;
@@ -8732,8 +8964,8 @@ export class VisualizerRenderer {
               ctx.stroke();
             }
 
-            this.renderLyricTextWithEffect(ctx, line1, coords1.drawX, y1, width * 0.9, lyrics, true, beatIntensity);
-            this.renderLyricTextWithEffect(ctx, line2, coords2.drawX, y2, width * 0.9, lyrics, true, beatIntensity);
+            this.renderAnimatedLyricLine(ctx, line1, coords1.drawX, y1, width * 0.9, lyrics, true, beatIntensity, baseFontSize, trans);
+            this.renderAnimatedLyricLine(ctx, line2, coords2.drawX, y2, width * 0.9, lyrics, true, beatIntensity, baseFontSize, trans);
           } else {
             const textMetrics = ctx.measureText(line1);
             const { drawX, textLeft } = computeLyricCoords(textMetrics.width);
@@ -8751,7 +8983,7 @@ export class VisualizerRenderer {
               ctx.lineWidth = 1;
               ctx.stroke();
             }
-            this.renderLyricTextWithEffect(ctx, line1, drawX, posY, width * 0.9, lyrics, true, beatIntensity);
+            this.renderAnimatedLyricLine(ctx, line1, drawX, posY, width * 0.9, lyrics, true, beatIntensity, baseFontSize, trans);
           }
         } else {
           const textMetrics = ctx.measureText(fullText);
@@ -8770,7 +9002,7 @@ export class VisualizerRenderer {
             ctx.lineWidth = 1;
             ctx.stroke();
           }
-          this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.9, lyrics, true, beatIntensity);
+          this.renderAnimatedLyricLine(ctx, fullText, drawX, posY, width * 0.9, lyrics, true, beatIntensity, baseFontSize, trans);
         }
 
         ctx.restore();

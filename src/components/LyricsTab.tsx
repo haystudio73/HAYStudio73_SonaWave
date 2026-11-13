@@ -156,8 +156,10 @@ const IN_EFFECTS: { id: LyricsInEffect; labelVi: string; labelEn: string }[] = [
 const OUT_EFFECTS: { id: LyricsOutEffect; labelVi: string; labelEn: string }[] = [
   { id: 'none', labelVi: 'Không (Tức thì)', labelEn: 'None (Instant)' },
   { id: 'fade', labelVi: 'Mờ dần (Fade Out)', labelEn: 'Fade Out' },
-  { id: 'slide-up', labelVi: 'Trượt lên trên tan biến', labelEn: 'Slide Up' },
-  { id: 'slide-down', labelVi: 'Trượt xuống dưới tan biến', labelEn: 'Slide Down' },
+  { id: 'slide-up', labelVi: 'Trượt lên trên (Slide Up)', labelEn: 'Slide Up' },
+  { id: 'slide-down', labelVi: 'Trượt xuống dưới (Slide Down)', labelEn: 'Slide Down' },
+  { id: 'slide-left', labelVi: 'Trượt sang trái (Slide Left)', labelEn: 'Slide Left' },
+  { id: 'slide-right', labelVi: 'Trượt sang phải (Slide Right)', labelEn: 'Slide Right' },
   { id: 'zoom-out', labelVi: 'Thu nhỏ dần (Zoom Out)', labelEn: 'Zoom Out' },
   { id: 'dissolve', labelVi: 'Hòa tan biến mất (Dissolve)', labelEn: 'Dissolve' },
 ];
