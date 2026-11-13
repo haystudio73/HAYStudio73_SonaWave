@@ -3,6 +3,7 @@ import {
   BackgroundConfig,
   LyricsConfig,
   ParticleConfig,
+  ParticleLayer,
   ParticleShape,
   TextBoxLayerOrder,
   TrackLayerOrder,
@@ -25,17 +26,20 @@ import {
   TimelineSceneItem,
   LottieItem,
   BackgroundSlideItem,
+  LyricsInEffect,
+  LyricsOutEffect,
 } from '../types';
-import { getActiveLyricInfo } from './lyricsParser';
+import { getActiveLyricInfo, getKaraokeDuoInfo, splitIntoTwoBalancedLines } from './lyricsParser';
+import { LYRICS_GRADIENT_THEMES } from './presets';
 import { threeDVisualizerEngine } from './threeDVisualizerEngine';
 import { lottieCanvasManager } from './lottieCanvasManager';
 
-function resolveParticleSizePx(config: ParticleConfig): number {
+function resolveParticleSizePx(config: ParticleConfig | ParticleLayer): number {
   if (config.sizePx !== undefined && config.sizePx >= 1) {
     return Math.max(1, config.sizePx);
   }
-  if (config.type === 'dust' && config.dustMinSize !== undefined && config.dustMinSize >= 1) {
-    return Math.max(1, config.dustMinSize);
+  if (config.type === 'dust' && (config as any).dustMinSize !== undefined && (config as any).dustMinSize >= 1) {
+    return Math.max(1, (config as any).dustMinSize);
   }
   const scale = config.sizeScale !== undefined ? config.sizeScale : 1.0;
   return Math.max(1, Math.round(scale * 6));
@@ -64,12 +68,18 @@ interface Particle {
   speedLineAngle?: number;
   speedLineSlope?: number;
   randFactor?: number;
+  flapPhase?: number;
+  flapSpeed?: number;
+  flutterX?: number;
+  flutterY?: number;
+  trail?: Array<{ x: number; y: number; alpha: number; size: number }>;
 }
 
 export type CanvasContext2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
 export class VisualizerRenderer {
   private particles: Particle[] = [];
+  private layerParticlesMap: Map<string, Particle[]> = new Map();
 
   private bgImage: HTMLImageElement | null = null;
   private bgImageSrc = '';
@@ -1339,7 +1349,8 @@ export class VisualizerRenderer {
     colorGrading?: ColorGradingConfig,
     sceneTransitions?: SceneTransitionsConfig,
     highPerformanceMode?: boolean,
-    lotties: LottieItem[] = []
+    lotties: LottieItem[] = [],
+    playlistTime?: number
   ) {
     if (highPerformanceMode !== undefined) {
       this.highPerformanceMode = highPerformanceMode;
@@ -1353,7 +1364,9 @@ export class VisualizerRenderer {
     }
 
     // Calculate Scene Transitions & Multi-Image Slider State
-    const transState = this.getTransitionState(sceneTransitions, background, visualizer, currentTime, isPlaying);
+    // When playing in a playlist, playlistTime provides continuous elapsed time across all tracks
+    const effectiveSlideTime = playlistTime !== undefined ? playlistTime : currentTime;
+    const transState = this.getTransitionState(sceneTransitions, background, visualizer, effectiveSlideTime, isPlaying);
 
     // Determine target context: if color grading is active, render scene into offscreen grading buffer first
     const isGradingActive = colorGrading && colorGrading.enabled;
@@ -1384,7 +1397,7 @@ export class VisualizerRenderer {
     };
 
     // 1. Render Background (Image / Video / Gradient / Scene Transitions)
-    this.renderBackground(sceneCtx, width, height, background, bassIntensity, beatIntensity, isPlaying, currentTime, track, transState);
+    this.renderBackground(sceneCtx, width, height, background, bassIntensity, beatIntensity, isPlaying, effectiveSlideTime, track, transState);
 
     // 1.2 Render Track Card if configured 'back-all'
     renderTrackCardIfSlot('back-all');
@@ -2440,7 +2453,128 @@ export class VisualizerRenderer {
   }
 
   /**
-   * Particles overlay
+   * Helper to normalize multi-layer particle system (up to 5 layers)
+   */
+  private getEffectiveParticleLayers(config: ParticleConfig): ParticleLayer[] {
+    if (config.layers && config.layers.length > 0) {
+      return config.layers;
+    }
+    return [
+      {
+        id: 'legacy-layer-1',
+        name: 'Lớp Hạt Mặc Định',
+        enabled: config.enabled !== false,
+        type: config.type,
+        count: config.count,
+        speed: config.speed,
+        color: config.color,
+        secondaryColor: config.secondaryColor,
+        shape: config.shape,
+        colorMode: config.colorMode,
+        glowIntensity: config.glowIntensity,
+        sizeScale: config.sizeScale,
+        sizePx: config.sizePx,
+        randomSize: config.randomSize,
+        opacity: config.opacity,
+        rainGlow: config.rainGlow,
+        rainWindAngle: config.rainWindAngle,
+        rainWindSpeed: config.rainWindSpeed,
+        rainTurbulence: config.rainTurbulence,
+        rainDropType: config.rainDropType,
+        rainLengthScale: config.rainLengthScale,
+        rainSplash: config.rainSplash,
+        rainRandomWind: config.rainRandomWind,
+        rainRandomWindSpeed: config.rainRandomWindSpeed,
+        waterOnGlass: config.waterOnGlass,
+        snowShape: config.snowShape,
+        snowRandomShape: config.snowRandomShape,
+        snowWindAngle: config.snowWindAngle,
+        snowWindSpeed: config.snowWindSpeed,
+        snowTurbulence: config.snowTurbulence,
+        snowFlakeType: config.snowFlakeType,
+        speedLineOrientation: config.speedLineOrientation,
+        speedLineReverse: config.speedLineReverse,
+        speedLineMode: config.speedLineMode,
+        speedLineLength: config.speedLineLength,
+        speedLineRandomLength: config.speedLineRandomLength,
+        speedLineWidth: config.speedLineWidth,
+        speedLineBlur: config.speedLineBlur,
+        speedLineDirection: config.speedLineDirection,
+        speedLineTilt: config.speedLineTilt,
+        speedLineVerticalCenter: config.speedLineVerticalCenter,
+        speedLineCenterY: config.speedLineCenterY,
+        speedLineHorizontalCenter: config.speedLineHorizontalCenter,
+        speedLineCenterX: config.speedLineCenterX,
+        speedLineSpeed: config.speedLineSpeed,
+        ribbonWavy: config.ribbonWavy,
+        ribbonLength: config.ribbonLength,
+        ribbonThickness: config.ribbonThickness,
+        ribbonTwist: config.ribbonTwist,
+        ribbonGlow: config.ribbonGlow,
+        dustShape: config.dustShape,
+        dustRandomShape: config.dustRandomShape,
+        dustMinSize: config.dustMinSize,
+        silkFluffGlow: config.silkFluffGlow,
+        particleGlowRadius: config.particleGlowRadius,
+        hyperspaceLength: config.hyperspaceLength,
+        hyperspaceGlow: config.hyperspaceGlow,
+        starStatic: config.starStatic,
+        starShape: config.starShape,
+        starRandomFlare: config.starRandomFlare,
+        starFlareIntensity: config.starFlareIntensity,
+        fireEmbersShape: config.fireEmbersShape,
+        fireEmbersSpread: config.fireEmbersSpread,
+        fireEmbersCooling: config.fireEmbersCooling,
+        butterflySize: config.butterflySize,
+        butterflyWingSpeed: config.butterflyWingSpeed,
+        butterflyColorVariant: config.butterflyColorVariant,
+        butterflyTrail: config.butterflyTrail,
+      }
+    ];
+  }
+
+  private getLayerParticles(layerId: string, count: number): Particle[] {
+    let pool = this.layerParticlesMap.get(layerId);
+    if (!pool || pool.length !== count) {
+      pool = [];
+      for (let i = 0; i < count; i++) {
+        const zInit = Math.random() * 1000 + 10;
+        const angleInit = Math.random() * Math.PI * 2;
+        const driftSpeed = Math.random() * 0.7 + 0.3;
+        pool.push({
+          x: Math.random() * 1920,
+          y: Math.random() * 1920,
+          z: zInit,
+          pz: zInit,
+          vx: Math.cos(angleInit) * driftSpeed,
+          vy: Math.sin(angleInit) * driftSpeed,
+          speed: Math.random() * 4 + 4,
+          size: Math.random() * 3 + 1,
+          alpha: Math.random() * 0.7 + 0.2,
+          baseAlpha: Math.random() * 0.7 + 0.2,
+          hue: Math.random() * 360,
+          angle: angleInit,
+          rotSpeed: (Math.random() - 0.5) * 0.08 + (Math.random() > 0.5 ? 0.035 : -0.035),
+          length: Math.random() * 24 + 16,
+          orbitRadius: Math.random() * 250 + 50,
+          wobble: Math.random() * Math.PI * 2,
+          wobbleSpeed: Math.random() * 0.04 + 0.02,
+          flakeType: Math.random() > 0.4 ? 'crystal' : 'flurry',
+          rainDropType: Math.random() > 0.5 ? 'streaks' : (Math.random() > 0.5 ? 'drizzle' : 'heavy'),
+          randFactor: Math.random(),
+          flapPhase: Math.random() * Math.PI * 2,
+          flapSpeed: Math.random() * 0.5 + 0.8,
+          flutterX: (Math.random() - 0.5) * 2,
+          flutterY: (Math.random() - 0.5) * 2,
+        });
+      }
+      this.layerParticlesMap.set(layerId, pool);
+    }
+    return pool;
+  }
+
+  /**
+   * Particles overlay with multi-layer support (Max 5 layers)
    */
   private renderParticles(
     ctx: CanvasContext2D,
@@ -2453,20 +2587,66 @@ export class VisualizerRenderer {
     currentTime: number,
     isPlaying: boolean
   ) {
-    if (config.type === 'none') return;
+    if (!config.enabled) return;
 
-    if (this.particles.length !== config.count) {
-      this.initParticles(config.count);
+    const layers = this.getEffectiveParticleLayers(config);
+    if (!layers || layers.length === 0) return;
+
+    // Accelerate on Beats and Flash Brighter on Bass Drop apply globally to all layers
+    const beatKick = isPlaying && config.reactiveToBeat ? beatIntensity * 2.5 : 0;
+    const bassFlash = isPlaying && config.bassReactiveColor ? Math.min(1.5, bassIntensity * (config.bassFlashBoost || 1.2)) : 0;
+
+    for (let lIdx = 0; lIdx < layers.length; lIdx++) {
+      const layer = layers[lIdx];
+      if (!layer.enabled || layer.type === 'none') continue;
+      this.renderSingleParticleLayer(
+        ctx,
+        width,
+        height,
+        layer,
+        config,
+        bassIntensity,
+        trebleIntensity,
+        beatIntensity,
+        beatKick,
+        bassFlash,
+        currentTime,
+        isPlaying
+      );
     }
+  }
+
+  private renderSingleParticleLayer(
+    ctx: CanvasContext2D,
+    width: number,
+    height: number,
+    layer: ParticleLayer,
+    globalConfig: ParticleConfig,
+    bassIntensity: number,
+    trebleIntensity: number,
+    beatIntensity: number,
+    beatKick: number,
+    bassFlash: number,
+    currentTime: number,
+    isPlaying: boolean
+  ) {
+    // Merge layer settings with global audio-reactive switches so existing math works seamlessly
+    const config = {
+      ...layer,
+      reactiveToBeat: globalConfig.reactiveToBeat,
+      bassReactiveColor: globalConfig.bassReactiveColor,
+      bassFlashBoost: globalConfig.bassFlashBoost,
+    };
+
+    const particles = this.getLayerParticles(layer.id, layer.count);
 
     ctx.save();
     const speedMult = isPlaying ? config.speed : 0.35 * config.speed;
-    const beatKick = isPlaying && config.reactiveToBeat ? beatIntensity * 2.5 : 0;
     const particleOpacity = Math.max(0.05, Math.min(1.0, config.opacity !== undefined ? config.opacity : 0.85));
     const centerX = width / 2;
     const centerY = height / 2;
     const isHighPerf = this.highPerformanceMode;
-    const particleLimit = isHighPerf ? Math.min(this.particles.length, 60) : this.particles.length;
+    const particleLimit = isHighPerf ? Math.min(particles.length, 60) : particles.length;
 
     // Special backdrop glow for Hyperspace (skipped in high-performance mode to reduce canvas fill load)
     if (config.type === 'hyperspace' && !isHighPerf) {
@@ -2501,7 +2681,7 @@ export class VisualizerRenderer {
     const snowTurbulence = (config.snowTurbulence !== undefined ? config.snowTurbulence : 40) / 100;
 
     for (let pi = 0; pi < particleLimit; pi++) {
-      const p = this.particles[pi];
+      const p = particles[pi];
       if (config.type === 'rain') {
         let baseFall: number;
         let baseDrift: number;
@@ -2556,6 +2736,28 @@ export class VisualizerRenderer {
           p.alpha = isHighPerf ? p.baseAlpha + beatKick * 0.2 : (p.baseAlpha + Math.sin(Date.now() * 0.003 + p.x) * 0.25 + beatKick * 0.3);
           p.x += p.vx * speedMult;
           p.y += p.vy * speedMult;
+        }
+      } else if (config.type === 'butterflies') {
+        // --- 11. ĐÀN BƯỚM PHÁT SÁNG (ORGANIC FLIGHT DYNAMICS) ---
+        const wingFreq = (config.butterflyWingSpeed !== undefined ? config.butterflyWingSpeed : 1.2) * (1 + beatKick * 0.4);
+        p.flapPhase = ((p.flapPhase || 0) + 0.16 * wingFreq) % (Math.PI * 2);
+
+        const flySpeed = (p.speed || 3.2) * speedMult * (1 + beatKick * 0.4);
+        const wanderT = currentTime * 0.85 + (p.randFactor || 0.5) * 20;
+        p.vx = Math.cos(wanderT) * 1.8 + (p.flutterX || 0) * 0.7;
+        p.vy = -Math.abs(Math.sin(wanderT * 1.25) * 1.7 + 0.4) - (p.flutterY || 0) * 0.4;
+
+        p.x += p.vx * flySpeed * 0.75;
+        p.y += p.vy * flySpeed * 0.75;
+
+        const bMargin = 70;
+        if (p.x < -bMargin) p.x = width + bMargin - 10;
+        else if (p.x > width + bMargin) p.x = -bMargin + 10;
+        if (p.y < -bMargin) {
+          p.y = height + bMargin - 10;
+          p.x = Math.random() * width;
+        } else if (p.y > height + bMargin) {
+          p.y = -bMargin + 10;
         }
       } else if (config.type === 'fire-embers') {
         // --- NHỮNG HẠT LỬA BAY LÊN TỎA NHIỀU HƯỚNG RỒI CHUYỂN XÁM ĐEN TẮT DẦN ---
@@ -3795,6 +3997,21 @@ export class VisualizerRenderer {
         }
 
         ctx.restore();
+      } else if (config.type === 'butterflies') {
+        // --- 11. ĐÀN BƯỚM PHÁT SÁNG (BUTTERFLIES 2D RENDER) ---
+        this.renderButterflies(
+          ctx,
+          p,
+          config,
+          beatKick,
+          bassFlash,
+          currentTime,
+          isHighPerf,
+          particleOpacity,
+          width,
+          height,
+          isPlaying
+        );
       } else {
         // --- 4. CUSTOM SHAPED PARTICLES 2D FALLBACK (No blurry borders, exact pixel sizing from 1px) ---
         ctx.save();
@@ -3952,13 +4169,203 @@ export class VisualizerRenderer {
   }
 
   /**
+   * 11. Organic 2D Glowing Butterflies with flapping wings and sparkle trail
+   */
+  private renderButterflies(
+    ctx: CanvasContext2D,
+    p: Particle,
+    layer: ParticleLayer | ParticleConfig,
+    beatKick: number,
+    bassFlash: number,
+    currentTime: number,
+    isHighPerf: boolean,
+    particleOpacity: number,
+    width: number,
+    height: number,
+    isPlaying: boolean
+  ) {
+    const baseSize = layer.butterflySize !== undefined ? layer.butterflySize : 24;
+    const size = Math.max(10, (p.size ? p.size * (baseSize / 6) : baseSize) * (1 + beatKick * 0.15));
+    const flapPhase = p.flapPhase || 0;
+    const flapCos = Math.cos(flapPhase);
+    const wingFold = Math.max(0.12, Math.abs(flapCos)); // 0.12 to 1.0 foreshortening
+
+    // Angle of flight
+    const tilt = Math.atan2(p.vy || -1, (p.vx || 0) * 1.4) + Math.PI / 2 + Math.sin(flapPhase * 0.5) * 0.12;
+
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(tilt);
+
+    const effectiveAlpha = Math.max(0.1, Math.min(1.0, (p.alpha || 0.85) * particleOpacity + bassFlash * 0.35));
+    ctx.globalAlpha = effectiveAlpha;
+
+    // Glow if configured or gentle luminescence
+    const glow = (layer.glowIntensity !== undefined ? layer.glowIntensity : 12) + bassFlash * 15;
+    if (glow > 0 && !isHighPerf) {
+      ctx.shadowBlur = Math.min(30, glow);
+    }
+
+    // Color variants
+    const variant = layer.butterflyColorVariant || 'neon-glow';
+    let primaryCol = '#00f5ff';
+    let secondaryCol = '#ec4899';
+    let accentCol = '#ffffff';
+
+    if (variant === 'monarch') {
+      primaryCol = '#ff7a00';
+      secondaryCol = '#ea580c';
+      accentCol = '#fef08a';
+    } else if (variant === 'emerald') {
+      primaryCol = '#34d399';
+      secondaryCol = '#059669';
+      accentCol = '#a7f3d0';
+    } else if (variant === 'golden') {
+      primaryCol = '#fbbf24';
+      secondaryCol = '#f59e0b';
+      accentCol = '#fffbeb';
+    } else if (variant === 'rainbow') {
+      const h = ((p.hue || 0) + currentTime * 35) % 360;
+      primaryCol = `hsl(${h}, 95%, 65%)`;
+      secondaryCol = `hsl(${(h + 60) % 360}, 95%, 60%)`;
+      accentCol = '#ffffff';
+    } else if (variant === 'custom') {
+      primaryCol = layer.color || '#38bdf8';
+      secondaryCol = layer.secondaryColor || '#a855f7';
+      accentCol = '#ffffff';
+    }
+
+    if (glow > 0 && !isHighPerf) {
+      ctx.shadowColor = primaryCol;
+    }
+
+    // Draw symmetrical wing pairs with horizontal perspective compression
+    const drawWingPair = (side: 1 | -1) => {
+      ctx.save();
+      ctx.scale(side * wingFold, 1);
+
+      // 1. Forewing (Upper large petal)
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 0.12);
+      ctx.bezierCurveTo(size * 0.6, -size * 0.85, size * 1.1, -size * 0.4, size * 0.85, size * 0.1);
+      ctx.bezierCurveTo(size * 0.5, size * 0.15, size * 0.2, 0, 0, 0);
+      ctx.closePath();
+
+      const foreGrad = ctx.createRadialGradient(0, 0, 2, size * 0.5, -size * 0.4, size);
+      foreGrad.addColorStop(0, accentCol);
+      foreGrad.addColorStop(0.35, primaryCol);
+      foreGrad.addColorStop(1, secondaryCol);
+      ctx.fillStyle = foreGrad;
+      ctx.fill();
+
+      ctx.strokeStyle = variant === 'monarch' ? '#18181b' : 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = Math.max(0.75, size * 0.04);
+      ctx.stroke();
+
+      // 2. Hindwing (Lower petal)
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(size * 0.4, size * 0.1, size * 0.7, size * 0.55, size * 0.35, size * 0.85);
+      ctx.bezierCurveTo(size * 0.1, size * 0.9, 0, size * 0.4, 0, size * 0.15);
+      ctx.closePath();
+
+      const hindGrad = ctx.createRadialGradient(0, size * 0.2, 1, size * 0.35, size * 0.5, size * 0.7);
+      hindGrad.addColorStop(0, primaryCol);
+      hindGrad.addColorStop(0.7, secondaryCol);
+      hindGrad.addColorStop(1, variant === 'monarch' ? '#18181b' : secondaryCol);
+      ctx.fillStyle = hindGrad;
+      ctx.fill();
+      ctx.stroke();
+
+      // Wing edge dots for monarch
+      if (variant === 'monarch' && size > 16) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(size * 0.8, -size * 0.2, size * 0.04, 0, Math.PI * 2);
+        ctx.arc(size * 0.65, 0, size * 0.035, 0, Math.PI * 2);
+        ctx.arc(size * 0.45, size * 0.6, size * 0.035, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    };
+
+    drawWingPair(1);
+    drawWingPair(-1);
+
+    // Slender Body
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = variant === 'monarch' ? '#18181b' : '#0f172a';
+    ctx.beginPath();
+    ctx.ellipse(0, size * 0.1, size * 0.08, size * 0.38, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Head
+    ctx.beginPath();
+    ctx.arc(0, -size * 0.28, size * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Antennae
+    ctx.strokeStyle = variant === 'monarch' ? '#27272a' : '#cbd5e1';
+    ctx.lineWidth = Math.max(0.6, size * 0.03);
+    ctx.beginPath();
+    ctx.moveTo(0, -size * 0.32);
+    ctx.quadraticCurveTo(size * 0.15, -size * 0.55, size * 0.25, -size * 0.6);
+    ctx.moveTo(0, -size * 0.32);
+    ctx.quadraticCurveTo(-size * 0.15, -size * 0.55, -size * 0.25, -size * 0.6);
+    ctx.stroke();
+
+    // Antennae tips
+    ctx.fillStyle = accentCol;
+    ctx.beginPath();
+    ctx.arc(size * 0.25, -size * 0.6, Math.max(0.8, size * 0.04), 0, Math.PI * 2);
+    ctx.arc(-size * 0.25, -size * 0.6, Math.max(0.8, size * 0.04), 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // Sparkle trail
+    if (layer.butterflyTrail !== false) {
+      if (!p.trail) p.trail = [];
+      if (Math.random() < 0.45) {
+        p.trail.push({
+          x: p.x + (Math.random() - 0.5) * (size * 0.4),
+          y: p.y + (Math.random() - 0.5) * (size * 0.4),
+          alpha: 0.85,
+          size: Math.random() * (size * 0.12) + 1.2,
+        });
+      }
+
+      for (let i = p.trail.length - 1; i >= 0; i--) {
+        const pt = p.trail[i];
+        pt.alpha -= 0.035;
+        if (pt.alpha <= 0.05) {
+          p.trail.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.globalAlpha = pt.alpha * effectiveAlpha;
+        ctx.fillStyle = accentCol;
+        if (!isHighPerf) {
+          ctx.shadowColor = primaryCol;
+          ctx.shadowBlur = 6;
+        }
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  /**
    * Renders 2D raindrops on the glass surface that trickle slightly and automatically disappear after a random lifetime
    */
   private renderSurfaceWaterDrops(
     ctx: CanvasContext2D,
     width: number,
     height: number,
-    config: ParticleConfig,
+    config: ParticleConfig | ParticleLayer,
     particleOpacity: number,
     speedMult: number
   ) {
@@ -4903,6 +5310,41 @@ export class VisualizerRenderer {
       }
     }
 
+    // Auto remove/hide track title if playlist has only 1 audio file or showTrackTitle is false
+    const isSingleAudioInPlaylist = track.playlistTracksCount !== undefined && track.playlistTracksCount <= 1;
+    const shouldDisplayTrackTitle = track.showTrackTitle !== false && !isSingleAudioInPlaylist;
+
+    // Independent Custom-Positioned Track Title (when trackTitleCustomPosition is true)
+    if (shouldDisplayTrackTitle && track.trackTitleCustomPosition) {
+      const displayTitle = track.currentPlayingTrackTitle || track.title || 'Neon Synthwave Dream';
+      ctx.save();
+      const customX = ((track.trackTitlePositionX !== undefined ? track.trackTitlePositionX : 50) / 100) * width;
+      const customY = ((track.trackTitlePositionY !== undefined ? track.trackTitlePositionY : 44) / 100) * height;
+      const fSize = (track.trackTitleFontSize || 18) * userScale;
+
+      this.renderTrackTextLine(
+        ctx,
+        displayTitle,
+        customX,
+        customY,
+        width * 0.9,
+        {
+          fontFamily: track.trackTitleFontFamily || track.fontFamily || 'Be Vietnam Pro',
+          fontStyle: track.trackTitleFontStyle || 'bold',
+          fontWeight: track.trackTitleFontWeight || 'bold',
+          isItalic: !!track.trackTitleItalic,
+          isUppercase: !!track.trackTitleUppercase,
+          fontSize: fSize,
+          fontEffect: track.trackTitleFontEffect || 'none',
+          color: track.trackTitleColor || '#ffffff',
+          accentColor: track.accentColor || '#f97316',
+          beatIntensity,
+          alignment: track.alignment || 'center',
+        }
+      );
+      ctx.restore();
+    }
+
     ctx.restore();
   }
 
@@ -4924,6 +5366,9 @@ export class VisualizerRenderer {
     }
     if (pair === 'title-artist' || pair === 'artist-title') {
       return titleArtGap;
+    }
+    if (pair.includes('track-title')) {
+      return (track.titleArtistGap !== undefined ? track.titleArtistGap : 8) * userScale;
     }
     return Math.max(subTitleGap, titleArtGap);
   }
@@ -4960,6 +5405,10 @@ export class VisualizerRenderer {
       color: string;
     }[] = [];
 
+    // Auto remove/hide track title if playlist has only 1 audio file or showTrackTitle is false
+    const isSingleAudioInPlaylist = track.playlistTracksCount !== undefined && track.playlistTracksCount <= 1;
+    const shouldDisplayTrackTitle = track.showTrackTitle !== false && !isSingleAudioInPlaylist;
+
     for (const key of order) {
       if (key === 'subtitle' && track.showSubtitle !== false && track.subtitle) {
         items.push({
@@ -4987,6 +5436,20 @@ export class VisualizerRenderer {
           fontEffect: track.titleFontEffect || 'none',
           color: track.textColor || '#ffffff',
         });
+      } else if (key === 'track-title' && shouldDisplayTrackTitle && !track.trackTitleCustomPosition) {
+        const displayTitle = track.currentPlayingTrackTitle || track.title || 'Neon Synthwave Dream';
+        items.push({
+          key: 'track-title',
+          text: displayTitle,
+          fontFamily: track.trackTitleFontFamily || track.fontFamily || 'Be Vietnam Pro',
+          fontStyle: track.trackTitleFontStyle || 'bold',
+          fontWeight: track.trackTitleFontWeight || 'bold',
+          isItalic: !!track.trackTitleItalic,
+          isUppercase: !!track.trackTitleUppercase,
+          fontSize: (track.trackTitleFontSize || 18) * userScale,
+          fontEffect: track.trackTitleFontEffect || 'none',
+          color: track.trackTitleColor || '#ffffff',
+        });
       } else if (key === 'artist' && track.showArtist !== false && track.artist) {
         items.push({
           key: 'artist',
@@ -5000,6 +5463,34 @@ export class VisualizerRenderer {
           fontEffect: track.artistFontEffect || 'none',
           color: track.artistColor || 'rgba(255, 255, 255, 0.8)',
         });
+      }
+    }
+
+    // Auto-insert track-title after artist (or title) if not explicitly ordered and not set to custom position
+    if (!order.includes('track-title') && shouldDisplayTrackTitle && !track.trackTitleCustomPosition) {
+      const displayTitle = track.currentPlayingTrackTitle || track.title || 'Neon Synthwave Dream';
+      const trackTitleItem = {
+        key: 'track-title' as const,
+        text: displayTitle,
+        fontFamily: track.trackTitleFontFamily || track.fontFamily || 'Be Vietnam Pro',
+        fontStyle: track.trackTitleFontStyle || 'bold',
+        fontWeight: track.trackTitleFontWeight || 'bold',
+        isItalic: !!track.trackTitleItalic,
+        isUppercase: !!track.trackTitleUppercase,
+        fontSize: (track.trackTitleFontSize || 18) * userScale,
+        fontEffect: track.trackTitleFontEffect || 'none',
+        color: track.trackTitleColor || '#ffffff',
+      };
+      const artistIdx = items.findIndex(it => it.key === 'artist');
+      if (artistIdx >= 0) {
+        items.splice(artistIdx + 1, 0, trackTitleItem);
+      } else {
+        const titleIdx = items.findIndex(it => it.key === 'title');
+        if (titleIdx >= 0) {
+          items.splice(titleIdx + 1, 0, trackTitleItem);
+        } else {
+          items.push(trackTitleItem);
+        }
       }
     }
 
@@ -5843,23 +6334,66 @@ export class VisualizerRenderer {
       this.peakVelocities = new Array(barCount).fill(0);
     }
 
+    // Shared frequency curve mapper for column visualizers (normal, reverse, center-peak, edges-peak)
+    const shapeCurve = v.barsShapeCurve || 'normal';
+    const getBarDataIndex = (i: number, total: number, exp: number = 1.3): number => {
+      const denom = Math.max(1, total - 1);
+      let ratio = 0;
+      if (shapeCurve === 'reverse') {
+        ratio = (total - 1 - i) / denom;
+      } else if (shapeCurve === 'center-peak') {
+        ratio = Math.abs(i - denom / 2) / Math.max(1, denom / 2);
+      } else if (shapeCurve === 'edges-peak') {
+        ratio = 1 - Math.abs(i - denom / 2) / Math.max(1, denom / 2);
+      } else {
+        ratio = i / denom;
+      }
+      return Math.min(dataLength - 1, Math.max(0, Math.floor(Math.pow(ratio, exp) * (dataLength * 0.75))));
+    };
+
+    const drawBarColumnGeometry = (
+      path: CanvasContext2D | Path2D,
+      x: number,
+      topY: number,
+      w: number,
+      h: number,
+      styleType: string,
+      roundR: number
+    ) => {
+      if (styleType === 'sharp') {
+        path.rect(x, topY, w, h);
+      } else if (styleType === 'pointed') {
+        const tipH = Math.min(h * 0.55, Math.max(3, w * 0.95));
+        const baseTop = topY + tipH;
+        path.moveTo(x, topY + h);
+        path.lineTo(x, baseTop);
+        path.lineTo(x + w / 2, topY);
+        path.lineTo(x + w, baseTop);
+        path.lineTo(x + w, topY + h);
+        path.closePath();
+      } else {
+        const r = Math.max(2, Math.min(w / 2, Math.max(roundR, 3.5)));
+        path.roundRect(x, topY, w, h, [r, r, 0, 0]);
+      }
+    };
+
     switch (v.type) {
       // 0. Simple Column Spectrum (Spectrum Cột Simple) - Clean minimalist vertical bars
       case 'spectrum-bars-simple': {
         const totalW = barCount * (barWidth + barGap) - barGap;
         const startX = centerX - totalW / 2;
+        const styleType = v.barsStyleType || 'rounded';
         ctx.fillStyle = strokeOrFillStyle;
         ctx.beginPath();
 
-        const roundRadius = Math.min(barRoundness, barWidth / 2);
         for (let i = 0; i < barCount; i++) {
-          const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.25) * (dataLength * 0.75)));
+          const dataIndex = getBarDataIndex(i, barCount, 1.25);
           const rawVal = freqData[dataIndex] || 0;
-          const barHeight = Math.max(3, (rawVal / 255) * 190 * amp * v.scale);
+          const barHeight = Math.max(4, (rawVal / 255) * 190 * amp * v.scale);
 
           const x = startX + i * (barWidth + barGap);
           const topY = posY - barHeight;
-          ctx.roundRect(x, topY, barWidth, barHeight, roundRadius);
+          drawBarColumnGeometry(ctx, x, topY, barWidth, barHeight, styleType, barRoundness);
         }
         ctx.fill();
         break;
@@ -5869,13 +6403,17 @@ export class VisualizerRenderer {
       case 'bars-peaks': {
         const totalW = barCount * (barWidth + barGap) - barGap;
         const startX = centerX - totalW / 2;
+        const styleType = v.barsStyleType || 'rounded';
+        const showPeaks = v.barsPeakGravity !== false;
+        const peakColor = v.barsPeakColor || v.secondaryColor || '#ffffff';
+
         ctx.fillStyle = strokeOrFillStyle;
         ctx.beginPath();
 
         for (let i = 0; i < barCount; i++) {
-          const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.35) * (dataLength * 0.75)));
+          const dataIndex = getBarDataIndex(i, barCount, 1.35);
           const rawVal = freqData[dataIndex] || 0;
-          const barHeight = Math.max(3, (rawVal / 255) * 180 * amp * v.scale);
+          const barHeight = Math.max(4, (rawVal / 255) * 180 * amp * v.scale);
 
           // Realistic gravity physics for peak dot
           if (barHeight >= this.peakBars[i]) {
@@ -5888,25 +6426,36 @@ export class VisualizerRenderer {
 
           const x = startX + i * (barWidth + barGap);
           const topY = posY - barHeight;
-          ctx.roundRect(x, topY, barWidth, barHeight, barRoundness);
+          drawBarColumnGeometry(ctx, x, topY, barWidth, barHeight, styleType, barRoundness);
         }
         ctx.fill();
 
         // Batch falling peak caps in a single path
-        ctx.save();
-        ctx.fillStyle = v.secondaryColor || '#ffffff';
-        ctx.shadowColor = v.secondaryColor || v.primaryColor;
-        ctx.shadowBlur = this.highPerformanceMode ? 0 : 8;
-        ctx.beginPath();
-        for (let i = 0; i < barCount; i++) {
-          if (this.peakBars[i] > 4) {
-            const x = startX + i * (barWidth + barGap);
-            const peakDotY = posY - this.peakBars[i] - 5;
-            ctx.roundRect(x, peakDotY, barWidth, 3, 1.5);
+        if (showPeaks) {
+          ctx.save();
+          ctx.fillStyle = peakColor;
+          ctx.shadowColor = peakColor;
+          ctx.shadowBlur = this.highPerformanceMode ? 0 : 8;
+          ctx.beginPath();
+          for (let i = 0; i < barCount; i++) {
+            if (this.peakBars[i] > 4) {
+              const x = startX + i * (barWidth + barGap);
+              const peakDotY = posY - this.peakBars[i] - 5;
+              if (styleType === 'sharp') {
+                ctx.rect(x, peakDotY, barWidth, 3);
+              } else if (styleType === 'pointed') {
+                ctx.moveTo(x, peakDotY + 3);
+                ctx.lineTo(x + barWidth / 2, peakDotY);
+                ctx.lineTo(x + barWidth, peakDotY + 3);
+                ctx.closePath();
+              } else {
+                ctx.roundRect(x, peakDotY, barWidth, 3, 1.5);
+              }
+            }
           }
+          ctx.fill();
+          ctx.restore();
         }
-        ctx.fill();
-        ctx.restore();
         break;
       }
 
@@ -5914,45 +6463,72 @@ export class VisualizerRenderer {
       case 'bars-mirrored-peaks': {
         const totalW = barCount * (barWidth + barGap) - barGap;
         const startX = centerX - totalW / 2;
-        ctx.fillStyle = strokeOrFillStyle;
-        ctx.beginPath();
+        const centerGap = v.mirroredCenterGap !== undefined ? v.mirroredCenterGap : 6;
+        const mirroredStyle = v.mirroredStyleType || 'rounded';
+        const showPeakCaps = v.mirroredPeakCaps !== false;
+        const roundR = mirroredStyle === 'sharp' ? 0 : Math.max(2.5, Math.min(barWidth / 2, Math.max(barRoundness, 4)));
+
+        const upperPath = new Path2D();
+        const lowerPath = new Path2D();
+        const peakPath = new Path2D();
+
+        const segH = Math.max(3, Math.min(5, barWidth * 0.85));
+        const segGap = 2;
+        const segStep = segH + segGap;
 
         for (let i = 0; i < barCount; i++) {
-          const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.35) * (dataLength * 0.75)));
+          const dataIndex = getBarDataIndex(i, barCount, 1.35);
           const rawVal = freqData[dataIndex] || 0;
-          const barHeight = Math.max(4, (rawVal / 255) * 160 * amp * v.scale);
+          const halfHeight = Math.max(4, (rawVal / 255) * 105 * amp * v.scale);
 
-          if (barHeight >= this.peakBars[i]) {
-            this.peakBars[i] = barHeight;
+          if (halfHeight >= this.peakBars[i]) {
+            this.peakBars[i] = halfHeight;
             this.peakVelocities[i] = 0;
           } else {
-            this.peakVelocities[i] += 0.35;
+            this.peakVelocities[i] += 0.32;
             this.peakBars[i] = Math.max(0, this.peakBars[i] - this.peakVelocities[i]);
           }
 
           const x = startX + i * (barWidth + barGap);
-          const topY = posY - barHeight / 2;
-          ctx.roundRect(x, topY, barWidth, barHeight, barRoundness);
-        }
-        ctx.fill();
+          const upperBaseY = posY - centerGap / 2;
+          const lowerBaseY = posY + centerGap / 2;
 
-        // Dual peak caps: Top & Bottom batched in single path
-        ctx.save();
-        ctx.fillStyle = v.secondaryColor || '#ffffff';
-        ctx.shadowColor = v.secondaryColor || v.primaryColor;
-        ctx.shadowBlur = this.highPerformanceMode ? 0 : 8;
-        ctx.beginPath();
-        for (let i = 0; i < barCount; i++) {
-          if (this.peakBars[i] > 6) {
-            const x = startX + i * (barWidth + barGap);
-            // Top Cap
-            ctx.roundRect(x, posY - this.peakBars[i] / 2 - 5, barWidth, 3, 1.5);
-            // Bottom Cap
-            ctx.roundRect(x, posY + this.peakBars[i] / 2 + 2, barWidth, 3, 1.5);
+          if (mirroredStyle === 'segmented') {
+            const segCount = Math.max(1, Math.floor(halfHeight / segStep));
+            const ledR = Math.min(1.5, barWidth / 4);
+            for (let s = 0; s < segCount; s++) {
+              const uY = upperBaseY - (s + 1) * segStep + segGap;
+              const lY = lowerBaseY + s * segStep;
+              upperPath.roundRect(x, uY, barWidth, segH, ledR);
+              lowerPath.roundRect(x, lY, barWidth, segH, ledR);
+            }
+          } else if (mirroredStyle === 'sharp') {
+            upperPath.rect(x, upperBaseY - halfHeight, barWidth, halfHeight);
+            lowerPath.rect(x, lowerBaseY, barWidth, halfHeight);
+          } else {
+            upperPath.roundRect(x, upperBaseY - halfHeight, barWidth, halfHeight, [roundR, roundR, 1, 1]);
+            lowerPath.roundRect(x, lowerBaseY, barWidth, halfHeight, [1, 1, roundR, roundR]);
+          }
+
+          if (showPeakCaps && this.peakBars[i] > 4) {
+            const pR = mirroredStyle === 'sharp' ? 0 : 1.5;
+            peakPath.roundRect(x, upperBaseY - this.peakBars[i] - 5, barWidth, 3, pR);
+            peakPath.roundRect(x, lowerBaseY + this.peakBars[i] + 2, barWidth, 3, pR);
           }
         }
-        ctx.fill();
-        ctx.restore();
+
+        ctx.fillStyle = strokeOrFillStyle;
+        ctx.fill(upperPath);
+        ctx.fill(lowerPath);
+
+        if (showPeakCaps) {
+          ctx.save();
+          ctx.fillStyle = v.secondaryColor || '#ffffff';
+          ctx.shadowColor = v.secondaryColor || v.primaryColor;
+          ctx.shadowBlur = this.highPerformanceMode ? 0 : 8;
+          ctx.fill(peakPath);
+          ctx.restore();
+        }
         break;
       }
 
@@ -6036,9 +6612,11 @@ export class VisualizerRenderer {
 
       // 4. Radial Spikes with Orbiting Peak Dots
       case 'radial-bars-peaks': {
-        const radius = Math.min(width, height) * 0.22 * v.scale;
+        const radius = (v.spikesInnerRadius !== undefined ? (v.spikesInnerRadius / 100) : 0.22) * Math.min(width, height) * v.scale;
         const totalSpikes = barCount * 2;
         const angleStep = (Math.PI * 2) / totalSpikes;
+        const dir = v.spikesDirection || 'outward';
+        const beatBurst = v.spikesBeatBurst !== false ? (1 + beatIntensity * 0.4) : 1;
 
         if (this.radialPeaks.length !== totalSpikes) {
           this.radialPeaks = new Array(totalSpikes).fill(0);
@@ -6055,7 +6633,7 @@ export class VisualizerRenderer {
           const mirrorIdx = i < totalSpikes / 2 ? i : totalSpikes - i;
           const dataIndex = Math.min(dataLength - 1, Math.floor((mirrorIdx / (totalSpikes / 2)) * (dataLength * 0.7)));
           const rawVal = freqData[dataIndex] || 0;
-          const spikeLen = Math.max(2, (rawVal / 255) * 95 * amp);
+          const spikeLen = Math.max(2, (rawVal / 255) * 95 * amp * beatBurst);
 
           if (spikeLen >= this.radialPeaks[i]) {
             this.radialPeaks[i] = spikeLen;
@@ -6066,10 +6644,20 @@ export class VisualizerRenderer {
           }
 
           const angle = i * angleStep - Math.PI / 2;
-          const x1 = centerX + Math.cos(angle) * radius;
-          const y1 = posY + Math.sin(angle) * radius;
-          const x2 = centerX + Math.cos(angle) * (radius + spikeLen);
-          const y2 = posY + Math.sin(angle) * (radius + spikeLen);
+          let r1 = radius;
+          let r2 = radius + spikeLen;
+          if (dir === 'inward') {
+            r1 = radius;
+            r2 = Math.max(5, radius - spikeLen);
+          } else if (dir === 'both') {
+            r1 = Math.max(5, radius - spikeLen * 0.5);
+            r2 = radius + spikeLen * 0.5;
+          }
+
+          const x1 = centerX + Math.cos(angle) * r1;
+          const y1 = posY + Math.sin(angle) * r1;
+          const x2 = centerX + Math.cos(angle) * r2;
+          const y2 = posY + Math.sin(angle) * r2;
 
           ctx.moveTo(x1, y1);
           ctx.lineTo(x2, y2);
@@ -6085,8 +6673,14 @@ export class VisualizerRenderer {
         for (let i = 0; i < totalSpikes; i++) {
           if (this.radialPeaks[i] > 8) {
             const angle = i * angleStep - Math.PI / 2;
-            const dotX = centerX + Math.cos(angle) * (radius + this.radialPeaks[i] + 7);
-            const dotY = posY + Math.sin(angle) * (radius + this.radialPeaks[i] + 7);
+            const dotRadius =
+              dir === 'inward'
+                ? Math.max(3, radius - this.radialPeaks[i] - 7)
+                : dir === 'both'
+                ? radius + this.radialPeaks[i] * 0.5 + 7
+                : radius + this.radialPeaks[i] + 7;
+            const dotX = centerX + Math.cos(angle) * dotRadius;
+            const dotY = posY + Math.sin(angle) * dotRadius;
             ctx.moveTo(dotX + 2.5, dotY);
             ctx.arc(dotX, dotY, 2.5, 0, Math.PI * 2);
           }
@@ -6122,19 +6716,25 @@ export class VisualizerRenderer {
         const sColor = v.secondaryColor || '#f59e0b'; // Amber/yellow mid
         const tColor = v.tertiaryColor || '#ef4444'; // Red/crimson peak
 
+        const isSegmented = v.barsSegmented !== false;
+        const styleType = v.barsStyleType || 'rounded';
+        const showPeaks = v.barsPeakGravity !== false;
+        const peakColor = v.barsPeakColor || tColor || '#ffffff';
+
         const segH = Math.max(3, Math.min(6, barWidth * 0.9));
         const segGap = 1.5;
         const totalSegStep = segH + segGap;
-        const roundR = Math.min(barRoundness, 1.5);
+        const roundR = styleType === 'sharp' ? 0 : Math.min(barRoundness, styleType === 'pointed' ? 0.5 : 2.5);
 
         // Path batching for 3 LED segment tiers and peak caps
         const pPath = new Path2D();
         const sPath = new Path2D();
         const tPath = new Path2D();
         const peakPath = new Path2D();
+        const solidPath = new Path2D();
 
         for (let i = 0; i < barCount; i++) {
-          const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.35) * (dataLength * 0.75)));
+          const dataIndex = getBarDataIndex(i, barCount, 1.35);
           const rawVal = freqData[dataIndex] || 0;
           const barHeight = Math.max(5, (rawVal / 255) * 190 * amp * v.scale);
 
@@ -6148,45 +6748,69 @@ export class VisualizerRenderer {
           }
 
           const x = startX + i * (barWidth + barGap);
-          const numSegments = Math.max(1, Math.floor(barHeight / totalSegStep));
 
-          for (let s = 0; s < numSegments; s++) {
-            const segY = posY - (s + 1) * totalSegStep;
-            const progress = s / Math.max(1, numSegments);
+          if (!isSegmented) {
+            // Solid continuous column honoring bar cap geometry
+            const barTopY = posY - barHeight;
+            drawBarColumnGeometry(solidPath, x, barTopY, barWidth, barHeight, styleType, barRoundness);
+          } else {
+            // Segmented LED blocks
+            const numSegments = Math.max(1, Math.floor(barHeight / totalSegStep));
 
-            if (progress > 0.82) {
-              tPath.roundRect(x, segY, barWidth, segH, roundR);
-            } else if (progress > 0.48) {
-              sPath.roundRect(x, segY, barWidth, segH, roundR);
-            } else {
-              pPath.roundRect(x, segY, barWidth, segH, roundR);
+            for (let s = 0; s < numSegments; s++) {
+              const segY = posY - (s + 1) * totalSegStep;
+              const progress = s / Math.max(1, numSegments);
+
+              if (progress > 0.82) {
+                tPath.roundRect(x, segY, barWidth, segH, roundR);
+              } else if (progress > 0.48) {
+                sPath.roundRect(x, segY, barWidth, segH, roundR);
+              } else {
+                pPath.roundRect(x, segY, barWidth, segH, roundR);
+              }
             }
           }
 
           // Floating Peak Cap Line
-          if (this.peakBars[i] > 6) {
+          if (showPeaks && this.peakBars[i] > 6) {
             const peakY = posY - this.peakBars[i] - 4;
-            peakPath.roundRect(x, peakY, barWidth, 2.5, 1);
+            if (styleType === 'pointed') {
+              peakPath.moveTo(x, peakY + 2.5);
+              peakPath.lineTo(x + barWidth / 2, peakY - 1);
+              peakPath.lineTo(x + barWidth, peakY + 2.5);
+              peakPath.closePath();
+            } else {
+              peakPath.roundRect(x, peakY, barWidth, 2.5, styleType === 'sharp' ? 0 : 1.2);
+            }
           }
         }
 
-        ctx.fillStyle = pColor;
-        ctx.fill(pPath);
+        if (!isSegmented) {
+          ctx.fillStyle = strokeOrFillStyle;
+          ctx.fill(solidPath);
+        } else {
+          ctx.fillStyle = pColor;
+          ctx.fill(pPath);
 
-        ctx.fillStyle = sColor;
-        ctx.fill(sPath);
+          ctx.fillStyle = sColor;
+          ctx.fill(sPath);
 
-        ctx.save();
-        ctx.fillStyle = tColor;
-        ctx.shadowColor = tColor;
-        ctx.shadowBlur = this.highPerformanceMode ? 0 : 6;
-        ctx.fill(tPath);
+          ctx.save();
+          ctx.fillStyle = tColor;
+          ctx.shadowColor = tColor;
+          ctx.shadowBlur = this.highPerformanceMode ? 0 : 6;
+          ctx.fill(tPath);
+          ctx.restore();
+        }
 
-        ctx.fillStyle = tColor || '#ffffff';
-        ctx.shadowColor = tColor || '#ffffff';
-        ctx.shadowBlur = this.highPerformanceMode ? 0 : 8;
-        ctx.fill(peakPath);
-        ctx.restore();
+        if (showPeaks) {
+          ctx.save();
+          ctx.fillStyle = peakColor;
+          ctx.shadowColor = peakColor;
+          ctx.shadowBlur = this.highPerformanceMode ? 0 : 8;
+          ctx.fill(peakPath);
+          ctx.restore();
+        }
         break;
       }
 
@@ -6194,25 +6818,24 @@ export class VisualizerRenderer {
       case 'bars-mirrored': {
         const totalW = barCount * (barWidth + barGap) - barGap;
         const startX = centerX - totalW / 2;
-        const centerGap = 6; // Distinct separation gap between upper and lower halves
+        const centerGap = v.mirroredCenterGap !== undefined ? v.mirroredCenterGap : 6;
+        const mirroredStyle = v.mirroredStyleType || 'rounded';
+        const showPeakCaps = v.mirroredPeakCaps !== false;
 
-        // Glowing center symmetry axis beam running across the middle
-        ctx.save();
-        ctx.beginPath();
-        ctx.roundRect(startX - 12, posY - 1.5, totalW + 24, 3, 1.5);
-        ctx.fillStyle = v.secondaryColor || '#38bdf8';
-        ctx.shadowColor = v.secondaryColor || '#38bdf8';
-        ctx.shadowBlur = this.highPerformanceMode ? 0 : 10 + beatIntensity * 8;
-        ctx.fill();
+        // Subtle glowing center symmetry axis line (kept sleek so centerGap adjustment stays clearly visible)
+        if (centerGap <= 10) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(startX - 8, posY - 0.75, totalW + 16, 1.5, 0.75);
+          ctx.fillStyle = v.secondaryColor || '#38bdf8';
+          ctx.globalAlpha = 0.65;
+          ctx.shadowColor = v.secondaryColor || '#38bdf8';
+          ctx.shadowBlur = this.highPerformanceMode ? 0 : 8 + beatIntensity * 6;
+          ctx.fill();
+          ctx.restore();
+        }
 
-        // Inner laser core wire
-        ctx.beginPath();
-        ctx.roundRect(startX - 6, posY - 0.5, totalW + 12, 1, 0.5);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.restore();
-
-        // Pre-create gradients once outside the loop instead of 96 allocations per frame
+        // Pre-create gradients once outside the loop
         const maxExpectedH = Math.max(80, 110 * amp * v.scale);
         const upperGrad = ctx.createLinearGradient(0, posY - centerGap / 2, 0, posY - centerGap / 2 - maxExpectedH);
         upperGrad.addColorStop(0, v.primaryColor || '#ec4899');
@@ -6227,25 +6850,59 @@ export class VisualizerRenderer {
         const upperPath = new Path2D();
         const lowerPath = new Path2D();
         const dotPath = new Path2D();
-        const dotR = Math.max(1.2, Math.min(2.5, barWidth * 0.3));
+        const peakCapsPath = new Path2D();
+        const dotR = Math.max(1.0, Math.min(2.0, barWidth * 0.25));
+        const roundR = mirroredStyle === 'sharp' ? 0 : Math.max(2.5, Math.min(barWidth / 2, Math.max(barRoundness, 4)));
+
+        const segH = Math.max(3, Math.min(5, barWidth * 0.85));
+        const segGap = 2;
+        const segStep = segH + segGap;
 
         for (let i = 0; i < barCount; i++) {
-          const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.35) * (dataLength * 0.75)));
+          const dataIndex = getBarDataIndex(i, barCount, 1.35);
           const rawVal = freqData[dataIndex] || 0;
-          const halfHeight = Math.max(3, (rawVal / 255) * 110 * amp * v.scale);
+          const halfHeight = Math.max(4, (rawVal / 255) * 110 * amp * v.scale);
+
+          if (halfHeight >= this.peakBars[i]) {
+            this.peakBars[i] = halfHeight;
+            this.peakVelocities[i] = 0;
+          } else {
+            this.peakVelocities[i] += 0.34;
+            this.peakBars[i] = Math.max(0, this.peakBars[i] - this.peakVelocities[i]);
+          }
+
           const x = startX + i * (barWidth + barGap);
-
-          // Upper Mirrored Bar
-          const upperTopY = posY - centerGap / 2 - halfHeight;
-          upperPath.roundRect(x, upperTopY, barWidth, halfHeight, [barRoundness, barRoundness, 1, 1]);
-
-          // Lower Mirrored Bar
+          const upperBaseY = posY - centerGap / 2;
           const lowerStartY = posY + centerGap / 2;
-          lowerPath.roundRect(x, lowerStartY, barWidth, halfHeight, [1, 1, barRoundness, barRoundness]);
 
-          // Center symmetry node pulse
-          dotPath.moveTo(x + barWidth / 2 + dotR, posY);
-          dotPath.arc(x + barWidth / 2, posY, dotR, 0, Math.PI * 2);
+          if (mirroredStyle === 'segmented') {
+            const segCount = Math.max(1, Math.floor(halfHeight / segStep));
+            const ledR = Math.min(1.5, barWidth / 4);
+            for (let s = 0; s < segCount; s++) {
+              const uY = upperBaseY - (s + 1) * segStep + segGap;
+              const lY = lowerStartY + s * segStep;
+              upperPath.roundRect(x, uY, barWidth, segH, ledR);
+              lowerPath.roundRect(x, lY, barWidth, segH, ledR);
+            }
+          } else if (mirroredStyle === 'sharp') {
+            upperPath.rect(x, upperBaseY - halfHeight, barWidth, halfHeight);
+            lowerPath.rect(x, lowerStartY, barWidth, halfHeight);
+          } else {
+            upperPath.roundRect(x, upperBaseY - halfHeight, barWidth, halfHeight, [roundR, roundR, 1, 1]);
+            lowerPath.roundRect(x, lowerStartY, barWidth, halfHeight, [1, 1, roundR, roundR]);
+          }
+
+          if (centerGap <= 4) {
+            dotPath.moveTo(x + barWidth / 2 + dotR, posY);
+            dotPath.arc(x + barWidth / 2, posY, dotR, 0, Math.PI * 2);
+          }
+
+          // Dual gravity peak caps
+          if (showPeakCaps && this.peakBars[i] > 5) {
+            const capR = mirroredStyle === 'sharp' ? 0 : 1.5;
+            peakCapsPath.roundRect(x, upperBaseY - this.peakBars[i] - 4, barWidth, 2.5, capR);
+            peakCapsPath.roundRect(x, lowerStartY + this.peakBars[i] + 1.5, barWidth, 2.5, capR);
+          }
         }
 
         ctx.fillStyle = upperGrad;
@@ -6254,18 +6911,31 @@ export class VisualizerRenderer {
         ctx.fillStyle = lowerGrad;
         ctx.fill(lowerPath);
 
-        ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.globalAlpha = 0.85;
-        ctx.fill(dotPath);
-        ctx.restore();
+        if (showPeakCaps) {
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = v.secondaryColor || '#38bdf8';
+          ctx.shadowBlur = this.highPerformanceMode ? 0 : 6;
+          ctx.fill(peakCapsPath);
+          ctx.restore();
+        }
+
+        if (centerGap <= 4) {
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.globalAlpha = 0.75;
+          ctx.fill(dotPath);
+          ctx.restore();
+        }
         break;
       }
 
       case 'circular-spikes': {
-        const radius = Math.min(width, height) * 0.22 * v.scale;
+        const radius = (v.spikesInnerRadius !== undefined ? (v.spikesInnerRadius / 100) : 0.22) * Math.min(width, height) * v.scale;
         const totalSpikes = barCount * 2;
         const angleStep = (Math.PI * 2) / totalSpikes;
+        const dir = v.spikesDirection || 'outward';
+        const beatBurst = v.spikesBeatBurst !== false ? (1 + beatIntensity * 0.4) : 1;
 
         ctx.fillStyle = strokeOrFillStyle;
         ctx.strokeStyle = strokeOrFillStyle;
@@ -6277,13 +6947,24 @@ export class VisualizerRenderer {
           const mirrorIdx = i < totalSpikes / 2 ? i : totalSpikes - i;
           const dataIndex = Math.min(dataLength - 1, Math.floor((mirrorIdx / (totalSpikes / 2)) * (dataLength * 0.7)));
           const rawVal = freqData[dataIndex] || 0;
-          const spikeLen = Math.max(2, (rawVal / 255) * 90 * amp);
+          const spikeLen = Math.max(2, (rawVal / 255) * 90 * amp * beatBurst);
 
           const angle = i * angleStep - Math.PI / 2;
-          const x1 = centerX + Math.cos(angle) * radius;
-          const y1 = posY + Math.sin(angle) * radius;
-          const x2 = centerX + Math.cos(angle) * (radius + spikeLen);
-          const y2 = posY + Math.sin(angle) * (radius + spikeLen);
+          let r1 = radius;
+          let r2 = radius + spikeLen;
+
+          if (dir === 'inward') {
+            r1 = radius;
+            r2 = Math.max(5, radius - spikeLen);
+          } else if (dir === 'both') {
+            r1 = Math.max(5, radius - spikeLen * 0.5);
+            r2 = radius + spikeLen * 0.5;
+          }
+
+          const x1 = centerX + Math.cos(angle) * r1;
+          const y1 = posY + Math.sin(angle) * r1;
+          const x2 = centerX + Math.cos(angle) * r2;
+          const y2 = posY + Math.sin(angle) * r2;
 
           ctx.moveTo(x1, y1);
           ctx.lineTo(x2, y2);
@@ -6297,38 +6978,64 @@ export class VisualizerRenderer {
         const waveW = width * v.scale;
         const startX = centerX - waveW / 2;
         const step = waveW / (points - 1);
+        const layers = v.waveLayersCount || 2;
+        const tension = v.waveTension || 0.5;
+        const fillGradient = v.waveFillGradient !== false;
+        const isMirror = v.waveMirrorMode === true;
 
-        for (let layer = 0; layer < 2; layer++) {
-          ctx.save();
-          ctx.beginPath();
-          ctx.moveTo(startX, height);
-          ctx.lineTo(startX, posY);
-
+        for (let layer = 0; layer < layers; layer++) {
+          const curvePts: { x: number; y: number }[] = [];
           for (let i = 0; i < points; i++) {
             const dataIdx = Math.floor(Math.abs(i - points / 2) / (points / 2) * (dataLength * 0.6));
             const rawVal = freqData[dataIdx] || 0;
             const timeVal = (timeData[i % timeData.length] - 128) / 128;
-            
-            const offset = (rawVal / 255) * 90 * amp + timeVal * 30;
-            const waveY = posY + (layer === 0 ? -offset : offset * 0.6) + Math.sin(currentTime * 3 + i * 0.2) * 10;
-            const x = startX + i * step;
 
-            if (i === 0) {
-              ctx.lineTo(x, waveY);
-            } else {
-              const prevX = startX + (i - 1) * step;
-              const cx = (prevX + x) / 2;
-              ctx.quadraticCurveTo(prevX, waveY, cx, waveY);
-            }
+            const offset = ((rawVal / 255) * 90 * amp + timeVal * 30) * (0.8 + tension * 0.4);
+            const waveY = posY + (layer % 2 === 0 ? -offset : offset * 0.65) + Math.sin(currentTime * 3 + i * 0.2 + layer) * 10;
+            const x = startX + i * step;
+            curvePts.push({ x, y: waveY });
           }
 
-          ctx.lineTo(startX + waveW, posY);
-          ctx.lineTo(startX + waveW, height);
-          ctx.closePath();
+          if (fillGradient) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(startX, isMirror ? posY : height);
+            for (let i = 0; i < points; i++) {
+              if (i === 0) {
+                ctx.lineTo(curvePts[i].x, curvePts[i].y);
+              } else {
+                const prev = curvePts[i - 1];
+                const curr = curvePts[i];
+                const cx = (prev.x + curr.x) / 2;
+                ctx.quadraticCurveTo(prev.x, curr.y, cx, curr.y);
+              }
+            }
+            ctx.lineTo(startX + waveW, posY);
+            if (!isMirror) ctx.lineTo(startX + waveW, height);
+            ctx.closePath();
+            ctx.fillStyle = strokeOrFillStyle;
+            ctx.globalAlpha = (layer === 0 ? 0.45 : 0.75) / (layers * 0.6);
+            ctx.fill();
+            ctx.restore();
+          }
 
-          ctx.fillStyle = strokeOrFillStyle;
-          ctx.globalAlpha = layer === 0 ? 0.45 : 0.75;
-          ctx.fill();
+          // Top contour stroke honoring Line Thickness in both fill & line modes
+          ctx.save();
+          ctx.beginPath();
+          for (let i = 0; i < points; i++) {
+            if (i === 0) {
+              ctx.moveTo(curvePts[i].x, curvePts[i].y);
+            } else {
+              const prev = curvePts[i - 1];
+              const curr = curvePts[i];
+              const cx = (prev.x + curr.x) / 2;
+              ctx.quadraticCurveTo(prev.x, curr.y, cx, curr.y);
+            }
+          }
+          ctx.strokeStyle = strokeOrFillStyle;
+          ctx.lineWidth = Math.max(1.5, (v.lineThickness || 2) * (layer === 0 ? 1 : 0.7));
+          ctx.globalAlpha = fillGradient ? 0.9 : 0.85;
+          ctx.stroke();
           ctx.restore();
         }
         break;
@@ -6338,25 +7045,46 @@ export class VisualizerRenderer {
         const totalW = barCount * (barWidth + barGap) - barGap;
         const startX = centerX - totalW / 2;
         const blockHeight = 5;
-        const blockGap = 2;
-        const maxBlocks = 24;
+        const blockGap = v.cyberMatrixGap || 2;
+        const maxBlocks = v.cyberMatrixRows || 24;
+        const shape = v.cyberMatrixBlockShape || 'rectangle';
+        const showWarningRed = v.cyberMatrixWarningRed !== false;
 
-        ctx.fillStyle = strokeOrFillStyle;
-        ctx.beginPath();
+        const mainPath = new Path2D();
+        const warnPath = new Path2D();
 
         for (let i = 0; i < barCount; i++) {
           const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.3) * (dataLength * 0.7)));
           const rawVal = freqData[dataIndex] || 0;
           const activeBlocks = Math.floor((rawVal / 255) * maxBlocks * amp);
-
           const x = startX + i * (barWidth + barGap);
+
+          const r = shape === 'pill' ? blockHeight / 2 : (shape === 'square' ? 0 : 1);
+          const bW = shape === 'square' ? blockHeight : barWidth;
 
           for (let b = 0; b < activeBlocks; b++) {
             const y = posY - b * (blockHeight + blockGap);
-            ctx.roundRect(x, y, barWidth, blockHeight, 1);
+            const isTopOverload = showWarningRed && (b >= maxBlocks - 3);
+
+            if (isTopOverload) {
+              warnPath.roundRect(x, y, bW, blockHeight, r);
+            } else {
+              mainPath.roundRect(x, y, bW, blockHeight, r);
+            }
           }
         }
-        ctx.fill();
+
+        ctx.fillStyle = strokeOrFillStyle;
+        ctx.fill(mainPath);
+
+        if (showWarningRed) {
+          ctx.save();
+          ctx.fillStyle = '#ef4444';
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = this.highPerformanceMode ? 0 : 6;
+          ctx.fill(warnPath);
+          ctx.restore();
+        }
         break;
       }
 
@@ -6365,17 +7093,25 @@ export class VisualizerRenderer {
         const ribbonW = Math.min(width * 1.1, 1200) * v.scale;
         const startX = centerX - ribbonW / 2;
         const step = ribbonW / (points - 1);
+        const freqMult = v.ribbonFrequency || 2;
+        const lineThick = Math.max(1, (v.lineThickness || 3) + ((v.ribbonWidth !== undefined ? v.ribbonWidth : 4) - 4));
+        const hasTwist = v.ribbonTwist3D !== false;
+        const fillMesh = v.ribbonFillMesh === true;
+
+        const ribbonPoints: { x: number; y: number }[][] = [[], []];
 
         for (let r = 0; r < 2; r++) {
-          const phase = r * Math.PI;
+          const phase = r * Math.PI * (hasTwist ? 1 : 0.5);
           const drawRibbon = () => {
             ctx.beginPath();
             for (let i = 0; i < points; i++) {
               const mirrorDist = 1 - Math.abs(i - points / 2) / (points / 2);
               const dataIdx = Math.min(dataLength - 1, Math.floor(mirrorDist * (dataLength * 0.7)));
               const rawVal = freqData[dataIdx] || 0;
-              const waveY = posY + Math.sin(currentTime * 4 + i * 0.15 + phase) * ((rawVal / 255) * 90 * amp + 15);
+              const waveY = posY + Math.sin(currentTime * (2 + freqMult) + i * (0.08 * freqMult) + phase) * ((rawVal / 255) * 90 * amp + 15);
               const x = startX + i * step;
+
+              ribbonPoints[r].push({ x, y: waveY });
 
               if (i === 0) ctx.moveTo(x, waveY);
               else ctx.lineTo(x, waveY);
@@ -6387,11 +7123,26 @@ export class VisualizerRenderer {
             drawRibbon,
             strokeOrFillStyle,
             glowTint,
-            v.lineThickness + 1,
+            lineThick,
             effectiveGlow,
             isBloomEnabled,
             bloomScale
           );
+        }
+
+        // Connecting mesh between ribbons if enabled
+        if (fillMesh && ribbonPoints[0].length === points && ribbonPoints[1].length === points) {
+          ctx.save();
+          ctx.strokeStyle = strokeOrFillStyle;
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.25;
+          ctx.beginPath();
+          for (let i = 0; i < points; i += 3) {
+            ctx.moveTo(ribbonPoints[0][i].x, ribbonPoints[0][i].y);
+            ctx.lineTo(ribbonPoints[1][i].x, ribbonPoints[1][i].y);
+          }
+          ctx.stroke();
+          ctx.restore();
         }
         break;
       }
@@ -6399,12 +7150,29 @@ export class VisualizerRenderer {
       case 'flame-spectrum': {
         const totalW = barCount * (barWidth + barGap) - barGap;
         const startX = centerX - totalW / 2;
-        const maxFlameH = Math.max(60, 180 * amp * 1.15);
+        const turbulence = v.flameTurbulence || 1.2;
+        const heightBoost = (v.flameHeightBoost || 1.5) * (1 + beatIntensity * 0.45);
+        const maxFlameH = Math.max(60, 180 * amp * heightBoost);
+        const palette = v.flameColorPalette || 'fire-orange';
 
         const grad = ctx.createLinearGradient(0, posY, 0, posY - maxFlameH);
-        grad.addColorStop(0, '#f59e0b');
-        grad.addColorStop(0.6, '#ef4444');
-        grad.addColorStop(1, '#fbbf24');
+        if (palette === 'plasma-violet') {
+          grad.addColorStop(0, '#8b5cf6');
+          grad.addColorStop(0.5, '#d946ef');
+          grad.addColorStop(1, '#38bdf8');
+        } else if (palette === 'ice-blue') {
+          grad.addColorStop(0, '#0284c7');
+          grad.addColorStop(0.5, '#38bdf8');
+          grad.addColorStop(1, '#f0f9ff');
+        } else if (palette === 'toxic-green') {
+          grad.addColorStop(0, '#059669');
+          grad.addColorStop(0.5, '#84cc16');
+          grad.addColorStop(1, '#fef08a');
+        } else {
+          grad.addColorStop(0, '#f59e0b');
+          grad.addColorStop(0.6, '#ef4444');
+          grad.addColorStop(1, '#fbbf24');
+        }
 
         ctx.fillStyle = grad;
         ctx.beginPath();
@@ -6412,7 +7180,8 @@ export class VisualizerRenderer {
         for (let i = 0; i < barCount; i++) {
           const dataIndex = Math.min(dataLength - 1, Math.floor(Math.pow(i / barCount, 1.2) * (dataLength * 0.75)));
           const rawVal = freqData[dataIndex] || 0;
-          const flameH = (rawVal / 255) * 180 * amp * (0.85 + Math.random() * 0.3);
+          const noise = Math.sin(currentTime * 6 * turbulence + i * 0.8) * 0.2 + (Math.random() - 0.5) * 0.15;
+          const flameH = Math.max(4, (rawVal / 255) * maxFlameH * Math.max(0.2, (0.85 + noise)));
           const x = startX + i * (barWidth + barGap);
 
           ctx.moveTo(x, posY);
@@ -6723,21 +7492,25 @@ export class VisualizerRenderer {
 
       // 19. Stage EDM Concert Scanning Laser Beams
       case 'laser-beams': {
-        const beamCount = 14;
-        const baseOriginY = Math.min(height, posY + 220 * v.scale);
+        const beamCount = v.laserBeamsCount || 14;
+        const originType = v.laserCenterOrigin || 'bottom-center';
+        const baseOriginY = originType === 'center' ? posY : (originType === 'top-center' ? Math.max(0, posY - 220 * v.scale) : Math.min(height, posY + 220 * v.scale));
         const sweepSpeed = currentTime * 2.2;
+        const spreadRad = ((v.laserSpreadAngle || 120) / 180) * (Math.PI / 2);
+        const isStrobe = v.laserStrobeKick !== false && beatIntensity > 0.5;
 
         for (let i = 0; i < beamCount; i++) {
           const dataIdx = Math.min(dataLength - 1, Math.floor((i / beamCount) * (dataLength * 0.75)));
           const rawVal = freqData[dataIdx] || 0;
-          const laserPower = (rawVal / 255) * amp;
+          const laserPower = (rawVal / 255) * amp * (isStrobe ? 1.4 : 1.0);
 
           const normIndex = (i - beamCount / 2) / (beamCount / 2);
-          const sweepAngle = Math.sin(sweepSpeed + i * 0.45) * 0.38 + normIndex * 0.65;
+          const sweepAngle = Math.sin(sweepSpeed + i * 0.45) * 0.38 + normIndex * spreadRad;
           const laserLength = Math.max(width, height) * (1.1 + beatIntensity * 0.3);
 
+          const dirSign = originType === 'top-center' ? -1 : 1;
           const targetX = centerX + Math.sin(sweepAngle) * laserLength;
-          const targetY = baseOriginY - Math.cos(sweepAngle) * laserLength;
+          const targetY = baseOriginY - dirSign * Math.cos(sweepAngle) * laserLength;
 
           // A. Outer soft bloom beam
           ctx.save();
@@ -6746,7 +7519,7 @@ export class VisualizerRenderer {
           ctx.lineTo(targetX, targetY);
           ctx.strokeStyle = strokeOrFillStyle;
           ctx.lineWidth = Math.max(4, (6 + laserPower * 16) * v.scale);
-          ctx.globalAlpha = 0.25 + laserPower * 0.45;
+          ctx.globalAlpha = Math.min(1.0, (0.25 + laserPower * 0.45) * (isStrobe ? 1.3 : 1.0));
           ctx.stroke();
 
           // B. Inner intense white-hot core
@@ -6755,7 +7528,7 @@ export class VisualizerRenderer {
           ctx.lineTo(targetX, targetY);
           ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = Math.max(1.5, (1.8 + laserPower * 3.5) * v.scale);
-          ctx.globalAlpha = 0.8 + laserPower * 0.2;
+          ctx.globalAlpha = Math.min(1.0, (0.8 + laserPower * 0.2) * (isStrobe ? 1.2 : 1.0));
           ctx.stroke();
           ctx.restore();
 
@@ -6777,21 +7550,24 @@ export class VisualizerRenderer {
 
       // 20. Multi-Point Pulsating Starburst Nova Core
       case 'starburst-core': {
-        const rayCount = 48;
-        const innerR = Math.min(width, height) * 0.08 * v.scale;
+        const rayCount = v.starburstRaysCount || 48;
+        const innerR = (v.starburstCoreRadius !== undefined ? v.starburstCoreRadius : 24) * v.scale;
         const maxRayLen = Math.min(width, height) * 0.28 * v.scale;
         const rotOffset = currentTime * 0.6;
+        const showHalo = v.starburstHaloBloom !== false;
+        const showParticles = v.starburstParticleBurst !== false;
 
         // Pulsing core orb
         const corePulse = innerR * (1 + beatIntensity * 0.35 + (freqData[2] || 0) / 255 * 0.25);
         ctx.save();
-        const coreGrad = ctx.createRadialGradient(centerX, posY, 2, centerX, posY, corePulse * 1.5);
+        const coreGrad = ctx.createRadialGradient(centerX, posY, 2, centerX, posY, corePulse * (showHalo ? 2.0 : 1.5));
         coreGrad.addColorStop(0, '#ffffff');
-        coreGrad.addColorStop(0.5, v.primaryColor);
+        coreGrad.addColorStop(0.4, v.primaryColor);
+        if (showHalo) coreGrad.addColorStop(0.8, v.secondaryColor || '#fbbf24');
         coreGrad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = coreGrad;
         ctx.beginPath();
-        ctx.arc(centerX, posY, corePulse * 1.4, 0, Math.PI * 2);
+        ctx.arc(centerX, posY, corePulse * (showHalo ? 1.9 : 1.4), 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
 
@@ -6813,29 +7589,36 @@ export class VisualizerRenderer {
           rayPath.moveTo(x1, y1);
           rayPath.lineTo(x2, y2);
 
-          const sparkSize = Math.max(2, (2.5 + (rawVal / 255) * 4) * v.scale);
-          sparkPath.moveTo(x2 + sparkSize, y2);
-          sparkPath.arc(x2, y2, sparkSize, 0, Math.PI * 2);
+          if (showParticles) {
+            const sparkSize = Math.max(2, (2.5 + (rawVal / 255) * 4) * v.scale);
+            sparkPath.moveTo(x2 + sparkSize, y2);
+            sparkPath.arc(x2, y2, sparkSize, 0, Math.PI * 2);
+          }
         }
 
         ctx.strokeStyle = strokeOrFillStyle;
         ctx.lineWidth = Math.max(1.8, (2.5 * v.scale));
         ctx.stroke(rayPath);
 
-        ctx.fillStyle = '#ffffff';
-        ctx.fill(sparkPath);
+        if (showParticles) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fill(sparkPath);
+        }
         break;
       }
 
       // 21. Multi-Tiered Floating Digital EQ Cascade Blocks
       case 'audio-equalizer-grid': {
         const columns = Math.min(barCount, 48);
-        const rows = 12;
+        const rows = v.eqGridRows || 12;
         const totalW = columns * (barWidth + barGap + 2) - (barGap + 2);
         const startX = centerX - totalW / 2;
         const colW = Math.max(3, barWidth);
         const blockH = Math.max(3, 7 * v.scale);
         const blockGap = Math.max(1.5, 2.5 * v.scale);
+        const showPeaks = v.eqGridPeakDrop !== false;
+        const glow = v.eqGridGlowIntensity || 0.8;
+        const colorMode = v.eqGridColorStops || 'classic-green-yellow-red';
 
         const inactivePath = new Path2D();
         const pPath = new Path2D();
@@ -6868,7 +7651,7 @@ export class VisualizerRenderer {
           }
 
           // Top floating cap LED
-          if (activeRows > 0) {
+          if (showPeaks && activeRows > 0) {
             const peakY = posY - activeRows * (blockH + blockGap) - 2;
             capPath.rect(colX, peakY, colW, 2.5);
           }
@@ -6881,20 +7664,22 @@ export class VisualizerRenderer {
         ctx.restore();
 
         ctx.save();
-        ctx.globalAlpha = 0.95;
-        ctx.fillStyle = strokeOrFillStyle;
+        ctx.globalAlpha = Math.min(1.0, 0.95 * glow);
+        ctx.fillStyle = colorMode === 'cyber-cyan-magenta' ? '#06b6d4' : (colorMode === 'custom' ? strokeOrFillStyle : '#10b981');
         ctx.fill(pPath);
 
-        ctx.fillStyle = '#fbbf24'; // Amber mid
+        ctx.fillStyle = colorMode === 'cyber-cyan-magenta' ? '#a855f7' : (colorMode === 'custom' ? (v.secondaryColor || '#fbbf24') : '#fbbf24');
         ctx.fill(sPath);
 
-        ctx.fillStyle = '#f43f5e'; // Red high peak
+        ctx.fillStyle = colorMode === 'cyber-cyan-magenta' ? '#ec4899' : (colorMode === 'custom' ? (v.tertiaryColor || '#f43f5e') : '#f43f5e');
         ctx.fill(tPath);
 
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = v.primaryColor;
-        ctx.shadowBlur = this.highPerformanceMode ? 0 : 8;
-        ctx.fill(capPath);
+        if (showPeaks) {
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = v.primaryColor;
+          ctx.shadowBlur = this.highPerformanceMode ? 0 : 8;
+          ctx.fill(capPath);
+        }
         ctx.restore();
         break;
       }
@@ -6965,7 +7750,7 @@ export class VisualizerRenderer {
   ) {
     const effect = lyrics.fontEffect || 'none';
     const effectColor = lyrics.fontEffectColor || lyrics.glowColor || '#ec4899';
-    const baseColor = isActive ? (lyrics.activeColor || '#ffffff') : (lyrics.color || 'rgba(255,255,255,0.4)');
+    const baseColor = isActive ? (lyrics.activeColor || '#ffffff') : (lyrics.color || '#FFFFFF');
 
     ctx.save();
 
@@ -6994,27 +7779,70 @@ export class VisualizerRenderer {
       ctx.fillText(text, x, y, maxWidth);
 
     } else if (effect === '3d-shadow') {
-      const depth = isActive ? 5 : 3;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-      for (let d = depth; d >= 1; d--) {
-        ctx.fillText(text, x + d * 1.5, y + d * 1.5, maxWidth);
-      }
-      ctx.fillStyle = effectColor;
-      ctx.fillText(text, x + 1, y + 1, maxWidth);
+      const baseDepth = lyrics.threeDDepth !== undefined ? lyrics.threeDDepth : 6;
+      const depth = isActive ? Math.round(baseDepth * 1.25) : baseDepth;
+      const angle = lyrics.threeDAngle !== undefined ? lyrics.threeDAngle : 135;
+      const rad = (angle * Math.PI) / 180;
+      const stepX = Math.cos(rad);
+      const stepY = Math.sin(rad);
+      const shadowCol = lyrics.threeDColor || 'rgba(0, 0, 0, 0.9)';
 
+      // Draw layered 3D extrusion from back to front
+      ctx.fillStyle = shadowCol;
+      for (let d = depth; d >= 1; d--) {
+        ctx.fillText(text, x + stepX * d, y + stepY * d, maxWidth);
+      }
+
+      // Optional 3D outer outline stroke
+      if (lyrics.threeDStroke) {
+        ctx.strokeStyle = shadowCol;
+        ctx.lineWidth = 1.5;
+        ctx.strokeText(text, x + stepX * depth, y + stepY * depth, maxWidth);
+      }
+
+      // Front face
       ctx.fillStyle = baseColor;
       ctx.fillText(text, x, y, maxWidth);
 
     } else if (effect === 'gradient-fill') {
       const metrics = ctx.measureText(text);
       const h = lyrics.fontSize || 24;
-      const grad = ctx.createLinearGradient(x - metrics.width / 2, y - h / 2, x + metrics.width / 2, y + h / 2);
-      grad.addColorStop(0, effectColor);
-      grad.addColorStop(0.5, baseColor);
-      grad.addColorStop(1, lyrics.activeColor || '#ffffff');
+      const angle = lyrics.gradientAngle !== undefined ? lyrics.gradientAngle : 90;
+      const rad = (angle * Math.PI) / 180;
+      const halfW = metrics.width / 2;
+      const halfH = h / 2;
+      const dx = Math.cos(rad) * halfW;
+      const dy = Math.sin(rad) * halfH;
 
-      ctx.shadowColor = effectColor;
-      ctx.shadowBlur = isActive ? 14 : 0;
+      const grad = ctx.createLinearGradient(x - dx, y - dy, x + dx, y + dy);
+
+      // Resolve gradient colors from theme or custom colors
+      let col1 = lyrics.gradientColor1 || '#ff7e5f';
+      let col2 = lyrics.gradientColor2 || '#feb47b';
+      let col3 = lyrics.gradientColor3 || '#ffe066';
+
+      const themeId = lyrics.gradientTheme;
+      if (themeId && themeId !== 'custom') {
+        const found = LYRICS_GRADIENT_THEMES.find(t => t.id === themeId);
+        if (found) {
+          col1 = found.colors[0];
+          col2 = found.colors[1];
+          col3 = found.colors[2];
+        }
+      }
+
+      grad.addColorStop(0, col1);
+      grad.addColorStop(0.5, col2);
+      grad.addColorStop(1, col3);
+
+      if (isActive) {
+        ctx.shadowColor = col2;
+        ctx.shadowBlur = (lyrics.glowIntensity || 12) + beatIntensity * 8;
+      } else {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 4;
+      }
+
       ctx.fillStyle = grad;
       ctx.fillText(text, x, y, maxWidth);
 
@@ -7217,7 +8045,101 @@ export class VisualizerRenderer {
   }
 
   /**
-   * Synchronized Lyrics Renderer (Supports Karaoke Single-Line, 4-Line Teleprompter, 3-Line & Effects)
+   * Helper to compute In/Out animation transforms (fade, slide, char-drop, zoom, dissolve, bounce)
+   */
+  private computeLyricTransitionTransform(
+    currentTime: number,
+    startTime: number,
+    endTime: number,
+    inEffect: LyricsInEffect = 'fade',
+    outEffect: LyricsOutEffect = 'fade',
+    duration: number = 0.35
+  ): { alpha: number; scale: number; offsetX: number; offsetY: number; blur: number } {
+    let alpha = 1.0;
+    let scale = 1.0;
+    let offsetX = 0;
+    let offsetY = 0;
+    let blur = 0;
+
+    const animDur = Math.max(0.08, duration);
+
+    // In Transition
+    if (currentTime < startTime + animDur && inEffect !== 'none') {
+      const p = Math.max(0, Math.min(1, (currentTime - startTime) / animDur));
+      const ease = p * p * (3 - 2 * p); // smoothstep
+
+      switch (inEffect) {
+        case 'fade':
+          alpha *= ease;
+          break;
+        case 'slide-up':
+          alpha *= ease;
+          offsetY += (1 - ease) * 28;
+          break;
+        case 'slide-down':
+          alpha *= ease;
+          offsetY -= (1 - ease) * 28;
+          break;
+        case 'slide-left':
+          alpha *= ease;
+          offsetX += (1 - ease) * 36;
+          break;
+        case 'slide-right':
+          alpha *= ease;
+          offsetX -= (1 - ease) * 36;
+          break;
+        case 'zoom-in':
+          alpha *= ease;
+          scale *= (0.65 + ease * 0.35);
+          break;
+        case 'char-drop':
+          alpha *= ease;
+          offsetY -= (1 - ease) * 35;
+          break;
+        case 'dissolve':
+          alpha *= ease;
+          blur += (1 - ease) * 8;
+          break;
+        case 'bounce':
+          alpha *= Math.min(1, p * 2.5);
+          scale *= p < 0.7 ? 0.65 + p * 0.65 : 1.1 - (1 - p) * 0.33;
+          break;
+      }
+    }
+
+    // Out Transition
+    if (currentTime > endTime - animDur && outEffect !== 'none') {
+      const p = Math.max(0, Math.min(1, (endTime - currentTime) / animDur));
+      const ease = p * p * (3 - 2 * p); // smoothstep (1 -> 0)
+
+      switch (outEffect) {
+        case 'fade':
+          alpha *= ease;
+          break;
+        case 'slide-up':
+          alpha *= ease;
+          offsetY -= (1 - ease) * 28;
+          break;
+        case 'slide-down':
+          alpha *= ease;
+          offsetY += (1 - ease) * 28;
+          break;
+        case 'zoom-out':
+          alpha *= ease;
+          scale *= (0.65 + ease * 0.35);
+          break;
+        case 'dissolve':
+          alpha *= ease;
+          blur += (1 - ease) * 8;
+          break;
+      }
+    }
+
+    return { alpha, scale, offsetX, offsetY, blur };
+  }
+
+  /**
+   * Synchronized Lyrics Renderer (Supports Karaoke Duo 2-Line, Single-Line, 4-Line Teleprompter, 3-Line & Effects)
    */
   private renderLyrics(
     ctx: CanvasContext2D,
@@ -7228,6 +8150,174 @@ export class VisualizerRenderer {
     currentTime: number,
     beatIntensity: number
   ) {
+    // --- SPECIAL HANDLING: KARAOKE 2 DÒNG (Duo-Line Classic Vietnam Studio Karaoke) ---
+    if (lyrics.style === 'karaoke-duo') {
+      const duoInfo = getKaraokeDuoInfo(lyricsData, currentTime);
+      if (!duoInfo.line1.line && !duoInfo.line2.line) return;
+
+      ctx.save();
+      const baseFontSize = lyrics.fontSize || 24;
+      const lineFontSize = baseFontSize * 1.08;
+      const fontFam = lyrics.fontFamily || 'Be Vietnam Pro';
+      const fontWeight = lyrics.fontWeight || 'bold';
+      const fontStyle = lyrics.fontStyle === 'italic' ? 'italic ' : '';
+
+      const formatText = (text: string) => {
+        if (lyrics.textTransform === 'uppercase') return text.toUpperCase();
+        if (lyrics.textTransform === 'capitalize') {
+          return text.replace(/\b\w/g, l => l.toUpperCase());
+        }
+        return text;
+      };
+
+      const y1 = (height * (lyrics.duoLine1Y !== undefined ? lyrics.duoLine1Y : 76)) / 100;
+      const x1 = (width * (lyrics.duoLine1X !== undefined ? lyrics.duoLine1X : (lyrics.positionX !== undefined ? lyrics.positionX : 50))) / 100;
+      const y2 = (height * (lyrics.duoLine2Y !== undefined ? lyrics.duoLine2Y : (lyrics.duoLine1Y !== undefined ? lyrics.duoLine1Y + 9 : 85))) / 100;
+      const x2 = (width * (lyrics.duoLine2X !== undefined ? lyrics.duoLine2X : (lyrics.positionX !== undefined ? lyrics.positionX : 50))) / 100;
+
+      const alignMode = lyrics.duoAlignMode || lyrics.alignment || 'center';
+
+      const renderDuoLine = (
+        state: typeof duoInfo.line1,
+        anchorX: number,
+        anchorY: number,
+        isTopLine: boolean
+      ) => {
+        if (!state.line) return;
+        const fullText = formatText(state.text);
+        if (!fullText) return;
+
+        ctx.font = `${fontStyle}${fontWeight} ${lineFontSize}px '${fontFam}', sans-serif`;
+        const textMetrics = ctx.measureText(fullText);
+        const textW = textMetrics.width;
+
+        let drawX = anchorX;
+        let textLeft = anchorX - textW / 2;
+        let lineAlignment: CanvasTextAlign = 'center';
+
+        if (alignMode === 'left-right') {
+          if (isTopLine) {
+            lineAlignment = 'left';
+            drawX = Math.max(width * 0.08, anchorX - width * 0.32);
+            textLeft = drawX;
+          } else {
+            lineAlignment = 'right';
+            drawX = Math.min(width * 0.92, anchorX + width * 0.32);
+            textLeft = drawX - textW;
+          }
+        } else if (alignMode === 'left') {
+          lineAlignment = 'left';
+          drawX = anchorX;
+          textLeft = anchorX;
+        } else if (alignMode === 'right') {
+          lineAlignment = 'right';
+          drawX = anchorX;
+          textLeft = anchorX - textW;
+        } else {
+          lineAlignment = 'center';
+          drawX = anchorX;
+          textLeft = anchorX - textW / 2;
+        }
+
+        const trans = this.computeLyricTransitionTransform(
+          currentTime,
+          state.line.startTime,
+          state.line.endTime,
+          lyrics.inEffect,
+          lyrics.outEffect,
+          lyrics.inOutDuration ?? 0.35
+        );
+
+        ctx.save();
+        ctx.globalAlpha = trans.alpha;
+
+        const popScale = trans.scale * (1 + (state.isSinging ? beatIntensity * 0.04 : 0));
+        ctx.translate(drawX + trans.offsetX, anchorY + trans.offsetY);
+        ctx.scale(popScale, popScale);
+        ctx.translate(-(drawX + trans.offsetX), -(anchorY + trans.offsetY));
+
+        if (trans.blur > 0) {
+          ctx.filter = `blur(${trans.blur}px)`;
+        }
+
+        // Frosted Pill Background
+        if (lyrics.showBackgroundPill) {
+          const pillW = Math.min(width * 0.94, textW + 44);
+          const pillH = lineFontSize * 1.95;
+          const pillX = textLeft - 22;
+          ctx.beginPath();
+          ctx.roundRect(pillX, anchorY - pillH / 2, pillW, pillH, pillH / 2);
+          ctx.fillStyle = lyrics.pillColor || 'rgba(10, 14, 28, 0.7)';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+          ctx.shadowBlur = 14;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+
+        ctx.textAlign = lineAlignment;
+        ctx.textBaseline = 'middle';
+
+        // 1. Base text (Inactive / Waiting singing color)
+        this.renderLyricTextWithEffect(
+          ctx,
+          fullText,
+          drawX,
+          anchorY,
+          width * 0.88,
+          lyrics,
+          false,
+          beatIntensity
+        );
+
+        // 2. Active Karaoke Sweeping Highlight
+        if (state.isSinging && state.progress > 0) {
+          const fillWidth = textW * state.progress;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(textLeft - 4, anchorY - lineFontSize * 1.6, fillWidth + 4, lineFontSize * 3.2);
+          ctx.clip();
+
+          this.renderLyricTextWithEffect(
+            ctx,
+            fullText,
+            drawX,
+            anchorY,
+            width * 0.88,
+            lyrics,
+            true,
+            beatIntensity
+          );
+          ctx.restore();
+
+          // Animated flying star / ball cursor
+          const cursorX = textLeft + fillWidth;
+          const bounce = Math.abs(Math.sin(state.progress * Math.PI * 8)) * (8 + beatIntensity * 6);
+          const cursorY = anchorY - lineFontSize * 0.68 - bounce;
+
+          this.renderKaraokeCursor(
+            ctx,
+            cursorX,
+            cursorY,
+            lineFontSize * 0.95,
+            beatIntensity,
+            lyrics.karaokeSweepMode || 'star-flying',
+            lyrics
+          );
+        }
+
+        ctx.restore();
+      };
+
+      // Render Line 1 (Top) and Line 2 (Bottom)
+      renderDuoLine(duoInfo.line1, x1, y1, true);
+      renderDuoLine(duoInfo.line2, x2, y2, false);
+
+      ctx.restore();
+      return;
+    }
+
     const info = getActiveLyricInfo(lyricsData, currentTime);
     if (!info.activeLine && !info.prevLine && !info.nextLine && !info.nextLine2) return;
 
@@ -7279,7 +8369,18 @@ export class VisualizerRenderer {
         const fullText = formatText(targetLine.text);
         const progress = info.activeLine ? Math.max(0, Math.min(1, info.lineProgress || 0)) : 0;
         const lineFontSize = baseFontSize * 1.15;
-        const popScale = 1 + (info.activeLine ? beatIntensity * 0.06 : 0);
+
+        // In / Out transition calculation
+        const trans = this.computeLyricTransitionTransform(
+          currentTime,
+          targetLine.startTime,
+          targetLine.endTime,
+          lyrics.inEffect,
+          lyrics.outEffect,
+          lyrics.inOutDuration ?? 0.35
+        );
+
+        const popScale = trans.scale * (1 + (info.activeLine ? beatIntensity * 0.06 : 0));
 
         ctx.font = `${fontStyle}${fontWeight} ${lineFontSize}px '${fontFam}', sans-serif`;
         const textMetrics = ctx.measureText(fullText);
@@ -7287,9 +8388,14 @@ export class VisualizerRenderer {
         const { drawX, textLeft } = computeLyricCoords(textW);
 
         ctx.save();
-        ctx.translate(drawX, posY);
+        ctx.globalAlpha = trans.alpha;
+        ctx.translate(drawX + trans.offsetX, posY + trans.offsetY);
         ctx.scale(popScale, popScale);
-        ctx.translate(-drawX, -posY);
+        ctx.translate(-(drawX + trans.offsetX), -(posY + trans.offsetY));
+
+        if (trans.blur > 0) {
+          ctx.filter = `blur(${trans.blur}px)`;
+        }
 
         // Frosted Container Pill
         if (lyrics.showBackgroundPill) {
@@ -7573,12 +8679,101 @@ export class VisualizerRenderer {
     // --- 5. MINIMAL GLOW / DEFAULT ---
     } else {
       if (info.activeLine) {
-        const text = formatText(info.activeLine.text);
+        const fullText = formatText(info.activeLine.text);
+        const trans = this.computeLyricTransitionTransform(
+          currentTime,
+          info.activeLine.startTime,
+          info.activeLine.endTime,
+          lyrics.inEffect,
+          lyrics.outEffect,
+          lyrics.inOutDuration ?? 0.35
+        );
+
+        ctx.save();
+        if (trans.alpha < 1) ctx.globalAlpha = trans.alpha;
+        if (trans.scale !== 1 || trans.offsetX !== 0 || trans.offsetY !== 0) {
+          ctx.translate(basePosX + trans.offsetX, posY + trans.offsetY);
+          ctx.scale(trans.scale, trans.scale);
+          ctx.translate(-(basePosX + trans.offsetX), -(posY + trans.offsetY));
+        }
+        if (trans.blur > 0) {
+          ctx.filter = `blur(${trans.blur}px)`;
+        }
+
         ctx.font = `${fontStyle}${fontWeight} ${baseFontSize}px '${fontFam}', sans-serif`;
-        const { drawX } = computeLyricCoords(ctx.measureText(text).width);
         ctx.textAlign = lyrics.alignment;
         ctx.textBaseline = 'middle';
-        this.renderLyricTextWithEffect(ctx, text, drawX, posY, width * 0.9, lyrics, true, beatIntensity);
+
+        if (lyrics.minimalGlowAutoTwoLines) {
+          const [line1, line2] = splitIntoTwoBalancedLines(fullText);
+          const lineGap = lyrics.minimalGlowLineGap ?? Math.round(baseFontSize * 1.35);
+
+          if (line2 && line2.trim().length > 0) {
+            const y1 = posY - lineGap / 2;
+            const y2 = posY + lineGap / 2;
+            const m1 = ctx.measureText(line1);
+            const m2 = ctx.measureText(line2);
+            const coords1 = computeLyricCoords(m1.width);
+            const coords2 = computeLyricCoords(m2.width);
+
+            if (lyrics.showBackgroundPill) {
+              const maxW = Math.max(m1.width, m2.width);
+              const pillW = Math.min(width * 0.94, maxW + 48);
+              const pillH = lineGap + baseFontSize * 1.8;
+              const pillLeft = Math.min(coords1.textLeft, coords2.textLeft) - 24;
+              ctx.beginPath();
+              ctx.roundRect(pillLeft, posY - pillH / 2, pillW, pillH, 18);
+              ctx.fillStyle = lyrics.pillColor || 'rgba(10, 14, 28, 0.7)';
+              ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+              ctx.shadowBlur = 14;
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+
+            this.renderLyricTextWithEffect(ctx, line1, coords1.drawX, y1, width * 0.9, lyrics, true, beatIntensity);
+            this.renderLyricTextWithEffect(ctx, line2, coords2.drawX, y2, width * 0.9, lyrics, true, beatIntensity);
+          } else {
+            const textMetrics = ctx.measureText(line1);
+            const { drawX, textLeft } = computeLyricCoords(textMetrics.width);
+            if (lyrics.showBackgroundPill) {
+              const pillW = Math.min(width * 0.94, textMetrics.width + 48);
+              const pillH = baseFontSize * 2.1;
+              const pillX = textLeft - 24;
+              ctx.beginPath();
+              ctx.roundRect(pillX, posY - pillH / 2, pillW, pillH, 16);
+              ctx.fillStyle = lyrics.pillColor || 'rgba(10, 14, 28, 0.7)';
+              ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+              ctx.shadowBlur = 14;
+              ctx.fill();
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+            this.renderLyricTextWithEffect(ctx, line1, drawX, posY, width * 0.9, lyrics, true, beatIntensity);
+          }
+        } else {
+          const textMetrics = ctx.measureText(fullText);
+          const { drawX, textLeft } = computeLyricCoords(textMetrics.width);
+          if (lyrics.showBackgroundPill) {
+            const pillW = Math.min(width * 0.94, textMetrics.width + 48);
+            const pillH = baseFontSize * 2.1;
+            const pillX = textLeft - 24;
+            ctx.beginPath();
+            ctx.roundRect(pillX, posY - pillH / 2, pillW, pillH, 16);
+            ctx.fillStyle = lyrics.pillColor || 'rgba(10, 14, 28, 0.7)';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 14;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+          this.renderLyricTextWithEffect(ctx, fullText, drawX, posY, width * 0.9, lyrics, true, beatIntensity);
+        }
+
+        ctx.restore();
       }
     }
 

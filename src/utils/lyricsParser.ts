@@ -275,12 +275,17 @@ export function parseLRC(lrcContent: string): LyricLine[] {
     const cur = tempItems[i];
     if (!cur.text) continue;
     const next = tempItems[i + 1];
-    const endTime = next ? next.time : cur.time + 4.5;
+    const gap = next ? next.time - cur.time : 4.5;
+    // Smarter end time calculation: if there's a long gap (e.g. guitar solo / interlude), cap duration
+    const calculatedEnd = next ? (gap > 7.0 ? cur.time + Math.min(6.0, gap * 0.75) : next.time) : cur.time + 4.5;
+    const endTime = calculatedEnd > cur.time ? calculatedEnd : cur.time + 3.5;
     result.push({
       id: `lrc_${i}_${Date.now()}`,
       startTime: cur.time,
-      endTime: endTime > cur.time ? endTime : cur.time + 3.5,
+      endTime,
       text: cur.text,
+      karaokeStartTime: cur.time,
+      karaokeEndTime: endTime,
     });
   }
 
@@ -479,5 +484,417 @@ export function splitAllLyricsByChars(
     result.push(...splitLines);
   }
   return result;
+}
+
+/**
+ * Tự động chuyển đổi timing danh sách câu sang định dạng Karaoke 2 dòng:
+ * - 2 dòng hiển thị đồng thời (cover text) để người hát chuẩn bị sẵn.
+ * - Giữ nguyên mốc timing gốc (originalStartTime/originalEndTime) để phục hồi khi chuyển về 1/3/4 dòng.
+ * - KaraokeStartTime/KaraokeEndTime giữ nguyên thời gian quét chữ chính xác của từng câu.
+ */
+export function convertLyricsTo2LineKaraokeTiming(lyrics: LyricLine[]): LyricLine[] {
+  if (!lyrics || lyrics.length === 0) return [];
+
+  // Sort by original start time
+  const sorted = [...lyrics].sort((a, b) => {
+    const aStart = a.originalStartTime !== undefined ? a.originalStartTime : a.startTime;
+    const bStart = b.originalStartTime !== undefined ? b.originalStartTime : b.startTime;
+    return aStart - bStart;
+  });
+
+  const n = sorted.length;
+  if (n === 1) {
+    const l = sorted[0];
+    const oStart = l.originalStartTime !== undefined ? l.originalStartTime : l.startTime;
+    const oEnd = l.originalEndTime !== undefined ? l.originalEndTime : l.endTime;
+    const oKStart = l.originalKaraokeStartTime !== undefined ? l.originalKaraokeStartTime : (l.karaokeStartTime ?? oStart);
+    const oKEnd = l.originalKaraokeEndTime !== undefined ? l.originalKaraokeEndTime : (l.karaokeEndTime ?? oEnd);
+    return [{
+      ...l,
+      originalStartTime: oStart,
+      originalEndTime: oEnd,
+      originalKaraokeStartTime: oKStart,
+      originalKaraokeEndTime: oKEnd,
+    }];
+  }
+
+  const result: LyricLine[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const cur = sorted[i];
+
+    // Backup original timing if not already stored
+    const origStart = cur.originalStartTime !== undefined ? cur.originalStartTime : cur.startTime;
+    const origEnd = cur.originalEndTime !== undefined ? cur.originalEndTime : cur.endTime;
+    const origKStart = cur.originalKaraokeStartTime !== undefined 
+      ? cur.originalKaraokeStartTime 
+      : (cur.karaokeStartTime !== undefined ? cur.karaokeStartTime : origStart);
+    const origKEnd = cur.originalKaraokeEndTime !== undefined 
+      ? cur.originalKaraokeEndTime 
+      : (cur.karaokeEndTime !== undefined ? cur.karaokeEndTime : origEnd);
+
+    let newStart = origStart;
+    let newEnd = origEnd;
+
+    if (i === 0) {
+      // Dòng 0 (Hàng 1 - Even):
+      // Bắt đầu hiển thị từ mốc bắt đầu bài hát
+      // Kéo dài hiển thị đến khi Dòng 1 bắt đầu hát hoặc kết thúc (để Dòng 2 thế chỗ)
+      const line1Start = sorted[1].originalStartTime !== undefined ? sorted[1].originalStartTime : sorted[1].startTime;
+      newEnd = Math.max(origEnd, line1Start);
+    } else if (i === 1) {
+      // Dòng 1 (Hàng 2 - Odd):
+      // QUAN TRỌNG: Hiển thị NGAY TỪ ĐẦU cùng với Dòng 0 (cover text chờ hát)
+      const line0Start = sorted[0].originalStartTime !== undefined ? sorted[0].originalStartTime : sorted[0].startTime;
+      newStart = line0Start;
+
+      // Kéo dài đến khi Dòng 2 bắt đầu hát (để Dòng 3 thế chỗ)
+      if (n > 2) {
+        const line2Start = sorted[2].originalStartTime !== undefined ? sorted[2].originalStartTime : sorted[2].startTime;
+        newEnd = Math.max(origEnd, line2Start);
+      } else {
+        newEnd = Math.max(origEnd, origStart + 4);
+      }
+    } else {
+      // Dòng i >= 2:
+      // Xuất hiện ngay khi dòng liền trước (i-1) trên hàng đối diện bắt đầu hát
+      const prevStart = sorted[i - 1].originalStartTime !== undefined ? sorted[i - 1].originalStartTime : sorted[i - 1].startTime;
+      const prevEnd = sorted[i - 1].originalEndTime !== undefined ? sorted[i - 1].originalEndTime : sorted[i - 1].endTime;
+      const gap = origStart - prevEnd;
+
+      if (gap > 6) {
+        // Nếu có đoạn dạo nhạc dài > 6s, cho câu xuất hiện trước 2.5s
+        newStart = Math.max(prevEnd + 0.5, origStart - 2.5);
+      } else {
+        newStart = prevStart;
+      }
+
+      // Biến mất khi dòng kế tiếp (i+1) bắt đầu hát
+      if (i + 1 < n) {
+        const nextStart = sorted[i + 1].originalStartTime !== undefined ? sorted[i + 1].originalStartTime : sorted[i + 1].startTime;
+        newEnd = Math.max(origEnd, nextStart);
+      } else {
+        newEnd = Math.max(origEnd, origStart + 3.5);
+      }
+    }
+
+    // Đảm bảo newEnd luôn lớn hơn newStart
+    if (newEnd <= newStart) {
+      newEnd = newStart + Math.max(2.0, origEnd - origStart);
+    }
+
+    result.push({
+      ...cur,
+      startTime: parseFloat(newStart.toFixed(2)),
+      endTime: parseFloat(newEnd.toFixed(2)),
+      karaokeStartTime: parseFloat(origKStart.toFixed(2)),
+      karaokeEndTime: parseFloat(origKEnd.toFixed(2)),
+      originalStartTime: origStart,
+      originalEndTime: origEnd,
+      originalKaraokeStartTime: origKStart,
+      originalKaraokeEndTime: origKEnd,
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Khôi phục lại mốc timing lời bài hát gốc khi chuyển từ Karaoke 2 dòng về 1 dòng, 3 dòng hoặc 4 dòng
+ */
+export function restoreOriginalLyricsTiming(lyrics: LyricLine[]): LyricLine[] {
+  if (!lyrics || lyrics.length === 0) return [];
+  return lyrics.map(line => {
+    if (line.originalStartTime === undefined) return line;
+    return {
+      ...line,
+      startTime: line.originalStartTime,
+      endTime: line.originalEndTime !== undefined ? line.originalEndTime : line.endTime,
+      karaokeStartTime: line.originalKaraokeStartTime !== undefined ? line.originalKaraokeStartTime : line.karaokeStartTime,
+      karaokeEndTime: line.originalKaraokeEndTime !== undefined ? line.originalKaraokeEndTime : line.karaokeEndTime,
+    };
+  });
+}
+
+export interface KaraokeDuoLineState {
+  line: LyricLine | null;
+  text: string;
+  isSinging: boolean;
+  progress: number;
+  lineIndex: number;
+}
+
+export interface KaraokeDuoInfo {
+  line1: KaraokeDuoLineState;
+  line2: KaraokeDuoLineState;
+}
+
+/**
+ * Returns state for 2-line karaoke (Karaoke 2 dòng):
+ * Line 1 (top) and Line 2 (bottom) alternate singing and previewing the upcoming line.
+ * Both lines are displayed clearly and fully without collision.
+ */
+export function getKaraokeDuoInfo(
+  lyrics: LyricLine[],
+  currentTime: number
+): KaraokeDuoInfo {
+  const emptyState: KaraokeDuoLineState = {
+    line: null,
+    text: '',
+    isSinging: false,
+    progress: 0,
+    lineIndex: -1,
+  };
+
+  if (!lyrics || lyrics.length === 0) {
+    return { line1: { ...emptyState }, line2: { ...emptyState } };
+  }
+
+  if (lyrics.length === 1) {
+    const l0 = lyrics[0];
+    const kStart = l0.karaokeStartTime !== undefined ? l0.karaokeStartTime : l0.startTime;
+    const kEnd = l0.karaokeEndTime !== undefined ? l0.karaokeEndTime : l0.endTime;
+    const isSinging = currentTime >= kStart && currentTime <= kEnd;
+    const dur = Math.max(0.1, kEnd - kStart);
+    const prog = isSinging
+      ? Math.min(1, Math.max(0, (currentTime - kStart) / dur))
+      : (currentTime > kEnd ? 1 : 0);
+    return {
+      line1: { line: l0, text: l0.text, isSinging, progress: prog, lineIndex: 0 },
+      line2: { ...emptyState },
+    };
+  }
+
+  // Find currently active singing index based on karaokeStartTime & karaokeEndTime
+  let activeIndex = -1;
+  for (let i = 0; i < lyrics.length; i++) {
+    const l = lyrics[i];
+    const kStart = l.karaokeStartTime !== undefined ? l.karaokeStartTime : l.startTime;
+    const kEnd = l.karaokeEndTime !== undefined ? l.karaokeEndTime : l.endTime;
+    if (currentTime >= kStart && currentTime <= kEnd) {
+      activeIndex = i;
+      break;
+    }
+  }
+
+  // Case A: Before the first line starts singing
+  const firstKStart = lyrics[0].karaokeStartTime !== undefined ? lyrics[0].karaokeStartTime : lyrics[0].startTime;
+  if (currentTime < firstKStart) {
+    return {
+      line1: {
+        line: lyrics[0],
+        text: lyrics[0].text,
+        isSinging: false,
+        progress: 0,
+        lineIndex: 0,
+      },
+      line2: {
+        line: lyrics[1] || null,
+        text: lyrics[1]?.text || '',
+        isSinging: false,
+        progress: 0,
+        lineIndex: lyrics[1] ? 1 : -1,
+      },
+    };
+  }
+
+  // Case B: In a gap between lines or past the song
+  if (activeIndex === -1) {
+    let nextIdx = -1;
+    for (let i = 0; i < lyrics.length; i++) {
+      const kStart = lyrics[i].karaokeStartTime !== undefined ? lyrics[i].karaokeStartTime : lyrics[i].startTime;
+      if (currentTime < kStart) {
+        nextIdx = i;
+        break;
+      }
+    }
+
+    if (nextIdx !== -1) {
+      if (nextIdx % 2 === 1) {
+        const line1Target = nextIdx + 1 < lyrics.length ? lyrics[nextIdx + 1] : lyrics[nextIdx - 1];
+        const line1Idx = nextIdx + 1 < lyrics.length ? nextIdx + 1 : nextIdx - 1;
+        return {
+          line1: {
+            line: line1Target || null,
+            text: line1Target?.text || '',
+            isSinging: false,
+            progress: nextIdx + 1 < lyrics.length ? 0 : 1,
+            lineIndex: line1Idx,
+          },
+          line2: {
+            line: lyrics[nextIdx],
+            text: lyrics[nextIdx].text,
+            isSinging: false,
+            progress: 0,
+            lineIndex: nextIdx,
+          },
+        };
+      } else {
+        const line2Target = nextIdx + 1 < lyrics.length ? lyrics[nextIdx + 1] : lyrics[nextIdx - 1];
+        const line2Idx = nextIdx + 1 < lyrics.length ? nextIdx + 1 : nextIdx - 1;
+        return {
+          line1: {
+            line: lyrics[nextIdx],
+            text: lyrics[nextIdx].text,
+            isSinging: false,
+            progress: 0,
+            lineIndex: nextIdx,
+          },
+          line2: {
+            line: line2Target || null,
+            text: line2Target?.text || '',
+            isSinging: false,
+            progress: nextIdx + 1 < lyrics.length ? 0 : 1,
+            lineIndex: line2Idx,
+          },
+        };
+      }
+    } else {
+      const last = lyrics.length - 1;
+      const secondLast = Math.max(0, last - 1);
+      const isLastEven = last % 2 === 0;
+      return {
+        line1: {
+          line: isLastEven ? lyrics[last] : lyrics[secondLast],
+          text: (isLastEven ? lyrics[last] : lyrics[secondLast]).text,
+          isSinging: false,
+          progress: 1,
+          lineIndex: isLastEven ? last : secondLast,
+        },
+        line2: {
+          line: isLastEven ? lyrics[secondLast] : lyrics[last],
+          text: (isLastEven ? lyrics[secondLast] : lyrics[last]).text,
+          isSinging: false,
+          progress: 1,
+          lineIndex: isLastEven ? secondLast : last,
+        },
+      };
+    }
+  }
+
+  // Case C: Active line being sung
+  const activeLine = lyrics[activeIndex];
+  const kStart = activeLine.karaokeStartTime !== undefined ? activeLine.karaokeStartTime : activeLine.startTime;
+  const kEnd = activeLine.karaokeEndTime !== undefined ? activeLine.karaokeEndTime : activeLine.endTime;
+  const kDur = Math.max(0.1, kEnd - kStart);
+  let progress = 0;
+  if (currentTime < kStart) {
+    progress = 0;
+  } else if (currentTime >= kEnd) {
+    progress = 1;
+  } else {
+    progress = Math.min(1, Math.max(0, (currentTime - kStart) / kDur));
+  }
+
+  const isEven = activeIndex % 2 === 0;
+  if (isEven) {
+    const nextLine = activeIndex + 1 < lyrics.length ? lyrics[activeIndex + 1] : null;
+    return {
+      line1: {
+        line: activeLine,
+        text: activeLine.text,
+        isSinging: true,
+        progress,
+        lineIndex: activeIndex,
+      },
+      line2: {
+        line: nextLine,
+        text: nextLine?.text || '',
+        isSinging: false,
+        progress: 0,
+        lineIndex: nextLine ? activeIndex + 1 : -1,
+      },
+    };
+  } else {
+    const nextLine = activeIndex + 1 < lyrics.length ? lyrics[activeIndex + 1] : (activeIndex - 1 >= 0 ? lyrics[activeIndex - 1] : null);
+    return {
+      line1: {
+        line: nextLine,
+        text: nextLine?.text || '',
+        isSinging: false,
+        progress: activeIndex + 1 < lyrics.length ? 0 : 1,
+        lineIndex: nextLine ? (activeIndex + 1 < lyrics.length ? activeIndex + 1 : activeIndex - 1) : -1,
+      },
+      line2: {
+        line: activeLine,
+        text: activeLine.text,
+        isSinging: true,
+        progress,
+        lineIndex: activeIndex,
+      },
+    };
+  }
+}
+
+/**
+ * Split a single lyric line into two balanced lines for vertical video displays (e.g. 9:16 TikTok/Shorts)
+ * Balances based on explicit delimiters (\n, " / ", " | "), mid-sentence punctuation (, ; -), or center whitespace.
+ */
+export function splitIntoTwoBalancedLines(text: string): [string, string] {
+  const trimmed = (text || '').trim();
+  if (!trimmed) return ['', ''];
+
+  // 1. Explicit line break or separator
+  if (trimmed.includes('\n')) {
+    const parts = trimmed.split('\n');
+    return [parts[0].trim(), parts.slice(1).join(' ').trim()];
+  }
+  if (trimmed.includes(' / ')) {
+    const parts = trimmed.split(' / ');
+    return [parts[0].trim(), parts.slice(1).join(' / ').trim()];
+  }
+  if (trimmed.includes(' | ')) {
+    const parts = trimmed.split(' | ');
+    return [parts[0].trim(), parts.slice(1).join(' | ').trim()];
+  }
+
+  const words = trimmed.split(/\s+/);
+  if (words.length <= 1) {
+    return [trimmed, ''];
+  }
+
+  // 2. Check for natural punctuation near middle (comma, semicolon, dash, hyphen)
+  const punctRegex = /([,;\-–—~]\s+)/g;
+  let match: RegExpExecArray | null;
+  let bestPunctIdx = -1;
+  let minPunctDist = Infinity;
+  const halfLen = trimmed.length / 2;
+
+  while ((match = punctRegex.exec(trimmed)) !== null) {
+    const splitPoint = match.index + match[1].length;
+    // Only accept if within 25% to 75% of string length
+    if (splitPoint >= trimmed.length * 0.25 && splitPoint <= trimmed.length * 0.75) {
+      const dist = Math.abs(splitPoint - halfLen);
+      if (dist < minPunctDist) {
+        minPunctDist = dist;
+        bestPunctIdx = splitPoint;
+      }
+    }
+  }
+
+  if (bestPunctIdx !== -1) {
+    return [trimmed.slice(0, bestPunctIdx).trim(), trimmed.slice(bestPunctIdx).trim()];
+  }
+
+  // 3. Find whitespace closest to center
+  let bestSpaceIdx = -1;
+  let minSpaceDist = Infinity;
+  for (let i = 0; i < trimmed.length; i++) {
+    if (trimmed[i] === ' ') {
+      const dist = Math.abs(i - halfLen);
+      if (dist < minSpaceDist) {
+        minSpaceDist = dist;
+        bestSpaceIdx = i;
+      }
+    }
+  }
+
+  if (bestSpaceIdx !== -1) {
+    return [trimmed.slice(0, bestSpaceIdx).trim(), trimmed.slice(bestSpaceIdx + 1).trim()];
+  }
+
+  // 4. Word boundary fallback
+  const midWord = Math.ceil(words.length / 2);
+  return [words.slice(0, midWord).join(' '), words.slice(midWord).join(' ')];
 }
 

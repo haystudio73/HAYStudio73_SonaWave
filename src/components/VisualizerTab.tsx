@@ -2791,31 +2791,6 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
       {/* ========================================================================= */}
       {!is3DActive && (
         <div className="space-y-3.5 pt-3 border-t border-neutral-800/80">
-          <div className="flex items-center justify-between pb-0.5">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-              </div>
-              <h4 className="text-xs font-bold text-neutral-200 flex items-center gap-1.5">
-                <span>{isVi ? 'Tùy Chỉnh Riêng Visualizer 2D' : '2D-Specific Visualizer Settings'}</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
-                  2D Only
-                </span>
-              </h4>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
-              {isVi ? 'Vị Trí & Nét Vẽ Trên Màn Hình 2D' : '2D Position & Stroke Thickness'}
-            </label>
-            <p className="text-[10px] text-neutral-400 mt-0.5">
-              {isVi
-                ? 'Tùy chỉnh vị trí chỉ tác động lên các mẫu sóng 2D (Không ảnh hưởng đến không gian 3D)'
-                : 'Position settings only apply to 2D waveforms (Does not affect 3D spatial visualizers)'}
-            </p>
-          </div>
-
           {/* Position X & Position Y Sliders */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800/80">
             {/* Position X Slider */}
@@ -3049,26 +3024,28 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
             </div>
           </div>
 
-          {/* Line Thickness for Waveforms (2D) */}
-          <div className="bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800/80">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-neutral-400">
-                {isVi 
-                  ? (config.type === 'minimal-pulse' ? 'Độ dày nét kẻ ngang & tia cuống sóng' : 'Độ dày nét vẽ sóng âm 2D (Line Thickness)')
-                  : (config.type === 'minimal-pulse' ? 'Baseline & Stem Line Thickness' : '2D Waveform Line Thickness')}
-              </span>
-              <span className="text-rose-400 font-mono font-bold text-[11px]">{config.lineThickness || 3}px</span>
+          {/* Line Thickness for Waveforms (Only shown when active 2D visualizer uses lineThickness) */}
+          {(['spectrum-line', 'smooth-wave', 'double-ribbon', 'minimal-pulse', 'dna-helix', 'tunnel-vortex'] as VisualizerType[]).includes(config.type) && (
+            <div className="bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-800/80">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-neutral-400">
+                  {isVi 
+                    ? (config.type === 'minimal-pulse' ? 'Độ dày nét kẻ ngang & tia cuống sóng' : 'Độ dày nét vẽ sóng âm 2D (Line Thickness)')
+                    : (config.type === 'minimal-pulse' ? 'Baseline & Stem Line Thickness' : '2D Waveform Line Thickness')}
+                </span>
+                <span className="text-rose-400 font-mono font-bold text-[11px]">{config.lineThickness || 3}px</span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={8}
+                step={0.5}
+                value={config.lineThickness || 3}
+                onChange={(e) => update({ lineThickness: parseFloat(e.target.value) })}
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+              />
             </div>
-            <input
-              type="range"
-              min={1}
-              max={8}
-              step={0.5}
-              value={config.lineThickness || 3}
-              onChange={(e) => update({ lineThickness: parseFloat(e.target.value) })}
-              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
-            />
-          </div>
+          )}
 
           {/* Bar Count, Bar Gap & Bar Width Configuration */}
           <div className="p-3 bg-neutral-900/70 rounded-xl border border-neutral-800/90 space-y-3">
@@ -3368,6 +3345,1188 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                     </span>
                     <span className="text-[10px] text-neutral-400">
                       {isVi ? 'Chấm đỉnh màu phụ' : 'Secondary color peaks'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR CLASSIC BARS (EQ) */}
+          {config.type === 'bars' && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-rose-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                    <BarChart2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>{isVi ? 'Tùy Chỉnh Chuyên Biệt: Cột Cổ Điển (EQ)' : 'Classic Bars Studio Customizer'}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
+                        Hardware EQ
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tùy chỉnh kiểu vát đầu cột, vạch chia tầng LED và điểm đỉnh rơi trọng lực' : 'Customize bar cap style, LED segment division, and gravity peak hold'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cap Style & Segmentation */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <span className="text-[11px] text-neutral-300 font-medium block mb-1.5">
+                    {isVi ? 'Kiểu dáng đầu cột' : 'Bar Cap Geometry'}
+                  </span>
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                    {[
+                      { id: 'rounded', vi: 'Bo tròn', en: 'Rounded' },
+                      { id: 'sharp', vi: 'Vuông phẳng', en: 'Sharp' },
+                      { id: 'pointed', vi: 'Vát nhọn', en: 'Pointed' },
+                    ].map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => update({ barsStyleType: s.id as any })}
+                        className={`py-1.5 px-1 text-center rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                          (config.barsStyleType || 'rounded') === s.id
+                            ? 'bg-rose-600 text-white font-semibold shadow-sm'
+                            : 'text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {isVi ? s.vi : s.en}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[11px] text-neutral-300 font-medium block mb-1.5">
+                    {isVi ? 'Kiểu kết cấu cột' : 'Column Texture Structure'}
+                  </span>
+                  <div className="grid grid-cols-2 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                    <button
+                      type="button"
+                      onClick={() => update({ barsSegmented: true })}
+                      className={`py-1.5 px-1.5 text-center rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        config.barsSegmented !== false
+                          ? 'bg-rose-600 text-white font-semibold shadow-sm'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {isVi ? 'Khối LED tầng' : 'Segmented LED'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => update({ barsSegmented: false })}
+                      className={`py-1.5 px-1.5 text-center rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        config.barsSegmented === false
+                          ? 'bg-rose-600 text-white font-semibold shadow-sm'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {isVi ? 'Liền khối mượt' : 'Solid Smooth'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Shape Curve Distribution */}
+              <div>
+                <span className="text-[11px] text-neutral-300 font-medium block mb-1.5">
+                  {isVi ? 'Hình dáng phân bố cột' : 'Column Shape Curve'}
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                  {[
+                    { id: 'normal', vi: 'Bình thường', en: 'Normal (L ➔ R)' },
+                    { id: 'reverse', vi: 'Phải ➔ Trái', en: 'Reversed (R ➔ L)' },
+                    { id: 'center-peak', vi: 'Đỉnh ở giữa', en: 'Center Peak' },
+                    { id: 'edges-peak', vi: 'Đỉnh 2 bên', en: 'Dual Side Peaks' },
+                  ].map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => update({ barsShapeCurve: c.id as any })}
+                      className={`py-1.5 px-1 text-center rounded-lg text-[11px] font-medium transition-all cursor-pointer truncate ${
+                        (config.barsShapeCurve || 'normal') === c.id
+                          ? 'bg-rose-600 text-white font-semibold shadow-sm'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {isVi ? c.vi : c.en}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Peak Gravity Toggle & Color */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-neutral-800/70">
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.barsPeakGravity !== false}
+                    onChange={(e) => update({ barsPeakGravity: e.target.checked })}
+                    className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Giữ vạch đỉnh rơi chậm' : 'Gravity Peak Hold Caps'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Vạch đỉnh lơ lửng theo nhịp' : 'Floating peak indicator caps'}
+                    </span>
+                  </div>
+                </label>
+
+                <div className="flex items-center justify-between p-2 rounded-xl bg-neutral-950/60 border border-neutral-800">
+                  <span className="text-[11px] font-semibold text-neutral-300">
+                    {isVi ? 'Màu vạch đỉnh' : 'Peak Cap Tint'}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {['#ffffff', '#ef4444', '#f59e0b', '#38bdf8'].map((col) => (
+                      <button
+                        key={col}
+                        type="button"
+                        onClick={() => update({ barsPeakColor: col })}
+                        className={`w-5 h-5 rounded-full border transition-transform ${
+                          (config.barsPeakColor || '#ffffff') === col
+                            ? 'scale-110 border-white ring-2 ring-rose-500/50'
+                            : 'border-neutral-700 opacity-70 hover:opacity-100'
+                        }`}
+                        style={{ backgroundColor: col }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR SIMPLE SPECTRUM & PEAK DROPS */}
+          {(config.type === 'spectrum-bars-simple' || config.type === 'bars-peaks') && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-rose-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                    <BarChart3 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>
+                        {config.type === 'spectrum-bars-simple'
+                          ? (isVi ? 'Tùy Chỉnh Chuyên Biệt: Spectrum Cột (Simple)' : 'Simple Column Spectrum Customizer')
+                          : (isVi ? 'Tùy Chỉnh Chuyên Biệt: Spectrum Cột Hạt Rơi' : 'Spectrum Peak Drops Customizer')}
+                      </span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
+                        Spectrum
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi
+                        ? 'Tùy chỉnh kiểu đầu cột và hình dáng phân bố đỉnh dải tần sóng âm'
+                        : 'Customize column cap geometry and frequency spectrum distribution curve'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column Shape Distribution */}
+              <div>
+                <span className="text-[11px] text-neutral-300 font-medium block mb-1.5">
+                  {isVi ? 'Hình dáng cột (Phân bố đỉnh sóng)' : 'Column Shape & Frequency Curve'}
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                  {[
+                    { id: 'normal', vi: 'Bình thường', en: 'Normal' },
+                    { id: 'reverse', vi: 'Phải ➔ Trái', en: 'Reversed (R ➔ L)' },
+                    { id: 'center-peak', vi: 'Đỉnh ở giữa', en: 'Center Peak' },
+                    { id: 'edges-peak', vi: 'Đỉnh 2 bên', en: 'Side Peaks' },
+                  ].map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => update({ barsShapeCurve: c.id as any })}
+                      className={`py-1.5 px-1 text-center rounded-lg text-[11px] font-medium transition-all cursor-pointer truncate ${
+                        (config.barsShapeCurve || 'normal') === c.id
+                          ? 'bg-rose-600 text-white font-semibold shadow-sm'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {isVi ? c.vi : c.en}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Cap Geometry Style */}
+              <div>
+                <span className="text-[11px] text-neutral-300 font-medium block mb-1.5">
+                  {isVi ? 'Kiểu dáng đầu cột' : 'Bar Cap Geometry'}
+                </span>
+                <div className="grid grid-cols-3 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                  {[
+                    { id: 'rounded', vi: 'Bo tròn', en: 'Rounded' },
+                    { id: 'sharp', vi: 'Vuông phẳng', en: 'Sharp' },
+                    { id: 'pointed', vi: 'Vát nhọn', en: 'Pointed' },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => update({ barsStyleType: s.id as any })}
+                      className={`py-1.5 px-1 text-center rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                        (config.barsStyleType || 'rounded') === s.id
+                          ? 'bg-rose-600 text-white font-semibold shadow-sm'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {isVi ? s.vi : s.en}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Peak Gravity Toggle & Color (Only for bars-peaks) */}
+              {config.type === 'bars-peaks' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-neutral-800/70">
+                  <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.barsPeakGravity !== false}
+                      onChange={(e) => update({ barsPeakGravity: e.target.checked })}
+                      className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
+                    />
+                    <div className="text-[11px]">
+                      <span className="font-semibold text-neutral-200 block">
+                        {isVi ? 'Giữ hạt đỉnh rơi chậm' : 'Gravity Peak Dots'}
+                      </span>
+                      <span className="text-[10px] text-neutral-400">
+                        {isVi ? 'Hạt đỉnh rơi theo trọng lực' : 'Floating peak indicator dots'}
+                      </span>
+                    </div>
+                  </label>
+
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-neutral-950/60 border border-neutral-800">
+                    <span className="text-[11px] font-semibold text-neutral-300">
+                      {isVi ? 'Màu hạt đỉnh' : 'Peak Dot Tint'}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {['#ffffff', '#ef4444', '#f59e0b', '#38bdf8'].map((col) => (
+                        <button
+                          key={col}
+                          type="button"
+                          onClick={() => update({ barsPeakColor: col })}
+                          className={`w-5 h-5 rounded-full border transition-transform ${
+                            (config.barsPeakColor || '#ffffff') === col
+                              ? 'scale-110 border-white ring-2 ring-rose-500/50'
+                              : 'border-neutral-700 opacity-70 hover:opacity-100'
+                          }`}
+                          style={{ backgroundColor: col }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR MIRRORED BARS & MIRRORED PEAKS */}
+          {(config.type === 'bars-mirrored' || config.type === 'bars-mirrored-peaks') && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-rose-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-sky-500/20 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                    <Split className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>
+                        {config.type === 'bars-mirrored-peaks'
+                          ? (isVi ? 'Tùy Chỉnh Chuyên Biệt: Sóng Đối Xứng Hạt Đỉnh' : 'Mirrored Peaks Studio Customizer')
+                          : (isVi ? 'Tùy Chỉnh Chuyên Biệt: Sóng Cột Đối Xứng' : 'Mirrored Bars Studio Customizer')}
+                      </span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30 font-mono">
+                        Symmetry
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tùy chỉnh khoảng cách khe giữa, vạch đỉnh 2 đầu và phong cách đối xứng' : 'Customize center gap, dual peak caps, and mirrored column style'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Center Gap Slider */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-300 text-[11px] font-medium">
+                    {isVi ? 'Khoảng cách khe giữa 2 nửa (Center Gap)' : 'Center Symmetry Gap'}
+                  </span>
+                  <span className="text-sky-400 font-mono text-[11px] font-bold">
+                    {config.mirroredCenterGap !== undefined ? config.mirroredCenterGap : 6}px
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={24}
+                  value={config.mirroredCenterGap !== undefined ? config.mirroredCenterGap : 6}
+                  onChange={(e) => update({ mirroredCenterGap: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                />
+              </div>
+
+              {/* Style & Peak Caps Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-neutral-800/70">
+                <div>
+                  <span className="text-[11px] text-neutral-300 font-medium block mb-1">
+                    {isVi ? 'Phong cách đối xứng' : 'Mirrored Style'}
+                  </span>
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                    {[
+                      { id: 'rounded', vi: 'Bo tròn', en: 'Rounded' },
+                      { id: 'sharp', vi: 'Vuông', en: 'Sharp' },
+                      { id: 'segmented', vi: 'Tầng LED', en: 'Segmented' },
+                    ].map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => update({ mirroredStyleType: s.id as any })}
+                        className={`py-1.5 px-1 text-center rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                          (config.mirroredStyleType || 'rounded') === s.id
+                            ? 'bg-sky-600 text-white font-semibold shadow-sm'
+                            : 'text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {isVi ? s.vi : s.en}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer self-end">
+                  <input
+                    type="checkbox"
+                    checked={config.mirroredPeakCaps !== false}
+                    onChange={(e) => update({ mirroredPeakCaps: e.target.checked })}
+                    className="rounded text-sky-500 focus:ring-sky-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Giữ vạch đỉnh 2 đầu' : 'Dual-Sided Peak Caps'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Vạch đỉnh trên và dưới' : 'Upper & lower peak caps'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR SMOOTH WAVE */}
+          {(config.type === 'smooth-wave' || config.type === 'spectrum-line') && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-cyan-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                    <Waves className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>{isVi ? 'Tùy Chỉnh Chuyên Biệt: Sóng Nước Mềm Mại' : 'Smooth Liquid Wave Studio Customizer'}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono">
+                        Fluid
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tùy chỉnh số tầng sóng xếp lớp, độ uốn lượn Bezier và đổ màu chân sóng' : 'Customize layered waves count, Bezier curve tension, and gradient fill'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Layer count & Wave Tension */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <span className="text-[11px] text-neutral-300 font-medium block mb-1">
+                    {isVi ? 'Số tầng sóng xếp lớp' : 'Stacked Wave Layers'}
+                  </span>
+                  <div className="grid grid-cols-4 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                    {[1, 2, 3, 4].map((cnt) => (
+                      <button
+                        key={cnt}
+                        type="button"
+                        onClick={() => update({ waveLayersCount: cnt })}
+                        className={`py-1.5 text-center rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                          (config.waveLayersCount || 2) === cnt
+                            ? 'bg-cyan-600 text-white font-semibold shadow-sm'
+                            : 'text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {cnt} {isVi ? 'Tầng' : 'L'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 text-[11px] font-medium">
+                      {isVi ? 'Độ mềm uốn lượn (Tension)' : 'Wave Curve Tension'}
+                    </span>
+                    <span className="text-cyan-400 font-mono text-[11px] font-bold">
+                      {Math.round((config.waveTension || 0.5) * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={1.0}
+                    step={0.05}
+                    value={config.waveTension || 0.5}
+                    onChange={(e) => update({ waveTension: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                  />
+                </div>
+              </div>
+
+              {/* Fill Gradient & Mirror Mode Toggles */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-neutral-800/70">
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.waveFillGradient !== false}
+                    onChange={(e) => update({ waveFillGradient: e.target.checked })}
+                    className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Đổ màu chân sóng' : 'Gradient Curve Fill'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Mờ dần xuống đáy' : 'Soft ambient ground fill'}
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.waveMirrorMode === true}
+                    onChange={(e) => update({ waveMirrorMode: e.target.checked })}
+                    className="rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Đối xứng 2 chiều' : 'Dual-Sided Mirror'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Sóng nảy trên & dưới' : 'Up and down wave mirror'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR CIRCULAR SPIKES */}
+          {(config.type === 'circular-spikes' || config.type === 'radial-bars-peaks') && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-amber-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Sun className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>{isVi ? 'Tùy Chỉnh Chuyên Biệt: Tia Tròn Tỏa Sáng' : 'Circular Spikes Studio Customizer'}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                        Radial 360°
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tùy chỉnh bán kính lõi trong, hướng tỏa tia và xung lực nhịp bass' : 'Customize inner core radius, spike orientation, and bass kick burst'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Inner Radius Slider */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-300 text-[11px] font-medium">
+                    {isVi ? 'Bán kính lõi trong (Inner Core Radius)' : 'Inner Core Radius'}
+                  </span>
+                  <span className="text-amber-400 font-mono text-[11px] font-bold">
+                    {config.spikesInnerRadius !== undefined ? config.spikesInnerRadius : 22}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={55}
+                  value={config.spikesInnerRadius !== undefined ? config.spikesInnerRadius : 22}
+                  onChange={(e) => update({ spikesInnerRadius: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                />
+              </div>
+
+              {/* Direction & Cap Style */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-neutral-800/70">
+                <div>
+                  <span className="text-[11px] text-neutral-300 font-medium block mb-1">
+                    {isVi ? 'Hướng tia tỏa' : 'Spike Orientation'}
+                  </span>
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                    {[
+                      { id: 'outward', vi: 'Tỏa ngoài', en: 'Outward' },
+                      { id: 'inward', vi: 'Thu tâm', en: 'Inward' },
+                      { id: 'both', vi: 'Hai chiều', en: 'Both' },
+                    ].map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => update({ spikesDirection: d.id as any })}
+                        className={`py-1.5 px-1 text-center rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                          (config.spikesDirection || 'outward') === d.id
+                            ? 'bg-amber-600 text-white font-semibold shadow-sm'
+                            : 'text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {isVi ? d.vi : d.en}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer self-end">
+                  <input
+                    type="checkbox"
+                    checked={config.spikesBeatBurst !== false}
+                    onChange={(e) => update({ spikesBeatBurst: e.target.checked })}
+                    className="rounded text-amber-500 focus:ring-amber-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Phóng tia theo Bass Kick' : 'Bass Beat Burst Kick'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tia bung dài bùng nổ' : 'Spikes pulse explosively'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR CYBER MATRIX */}
+          {config.type === 'cyber-matrix' && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-emerald-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <Cpu className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>{isVi ? 'Tùy Chỉnh Chuyên Biệt: Ma Trận LED Cyber' : 'Cyber Matrix LED Studio Customizer'}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+                        Digital LED
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tùy biến số hàng LED, hình dạng khối ma trận và đèn cảnh báo quá tải' : 'Customize LED row count, block geometry, and overload peak warning'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rows Count Slider */}
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-neutral-300 text-[11px] font-medium">
+                    {isVi ? 'Số hàng LED dọc (LED Matrix Rows)' : 'LED Matrix Rows Count'}
+                  </span>
+                  <span className="text-emerald-400 font-mono text-[11px] font-bold">
+                    {config.cyberMatrixRows || 24} {isVi ? 'hàng' : 'rows'}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={8}
+                  max={32}
+                  value={config.cyberMatrixRows || 24}
+                  onChange={(e) => update({ cyberMatrixRows: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                />
+              </div>
+
+              {/* Block Shape & Warning Red */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-neutral-800/70">
+                <div>
+                  <span className="text-[11px] text-neutral-300 font-medium block mb-1">
+                    {isVi ? 'Hình dạng khối LED' : 'LED Block Shape'}
+                  </span>
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                    {[
+                      { id: 'rectangle', vi: 'Chữ nhật', en: 'Rect' },
+                      { id: 'square', vi: 'Vuông', en: 'Square' },
+                      { id: 'pill', vi: 'Bo tròn', en: 'Pill' },
+                    ].map((b) => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => update({ cyberMatrixBlockShape: b.id as any })}
+                        className={`py-1.5 px-1 text-center rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                          (config.cyberMatrixBlockShape || 'rectangle') === b.id
+                            ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+                            : 'text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {isVi ? b.vi : b.en}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer self-end">
+                  <input
+                    type="checkbox"
+                    checked={config.cyberMatrixWarningRed !== false}
+                    onChange={(e) => update({ cyberMatrixWarningRed: e.target.checked })}
+                    className="rounded text-emerald-500 focus:ring-emerald-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Đèn đỏ cảnh báo đỉnh' : 'Red Overload Peak LEDs'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Khối đỉnh đổi đỏ khi max' : 'High volume clipping warning'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR AUDIO EQUALIZER GRID */}
+          {config.type === 'audio-equalizer-grid' && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-purple-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                    <Grid3X3 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>{isVi ? 'Tùy Chỉnh Chuyên Biệt: Ma Trận EQ Khối Nổi' : 'Floating EQ Grid Studio Customizer'}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono">
+                        Cascade EQ
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tùy chỉnh số tầng LED ma trận, độ phát sáng và bảng màu dải tần' : 'Customize matrix cascade rows, glow bloom intensity, and frequency colors'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid Rows & Glow Intensity */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 text-[11px] font-medium">
+                      {isVi ? 'Số tầng ma trận (Grid Rows)' : 'Grid Rows Count'}
+                    </span>
+                    <span className="text-purple-400 font-mono text-[11px] font-bold">
+                      {config.eqGridRows || 12}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={6}
+                    max={24}
+                    value={config.eqGridRows || 12}
+                    onChange={(e) => update({ eqGridRows: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 text-[11px] font-medium">
+                      {isVi ? 'Độ phát sáng LED' : 'LED Glow Intensity'}
+                    </span>
+                    <span className="text-purple-400 font-mono text-[11px] font-bold">
+                      {Math.round((config.eqGridGlowIntensity || 0.8) * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.2}
+                    max={1.0}
+                    step={0.05}
+                    value={config.eqGridGlowIntensity || 0.8}
+                    onChange={(e) => update({ eqGridGlowIntensity: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  />
+                </div>
+              </div>
+
+              {/* Color Stops & Peak Drop Toggle */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-neutral-800/70">
+                <div>
+                  <span className="text-[11px] text-neutral-300 font-medium block mb-1">
+                    {isVi ? 'Bảng màu dải tần' : 'Color Scheme'}
+                  </span>
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                    {[
+                      { id: 'classic-green-yellow-red', vi: 'Cổ điển', en: 'Classic' },
+                      { id: 'cyber-cyan-magenta', vi: 'Cyber', en: 'Cyber' },
+                      { id: 'custom', vi: 'Tùy chỉnh', en: 'Custom' },
+                    ].map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => update({ eqGridColorStops: c.id as any })}
+                        className={`py-1.5 px-1 text-center rounded-lg text-[10px] font-medium transition-all cursor-pointer truncate ${
+                          (config.eqGridColorStops || 'classic-green-yellow-red') === c.id
+                            ? 'bg-purple-600 text-white font-semibold shadow-sm'
+                            : 'text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {isVi ? c.vi : c.en}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer self-end">
+                  <input
+                    type="checkbox"
+                    checked={config.eqGridPeakDrop !== false}
+                    onChange={(e) => update({ eqGridPeakDrop: e.target.checked })}
+                    className="rounded text-purple-500 focus:ring-purple-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Đỉnh LED rơi trọng lực' : 'Peak Gravity Drop'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Vạch LED đỉnh rơi chậm' : 'Floating peak cap LEDs'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR PLASMA FLAME */}
+          {config.type === 'flame-spectrum' && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-orange-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400">
+                    <Flame className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>{isVi ? 'Tùy Chỉnh Chuyên Biệt: Ngọn Lửa Plasma' : 'Plasma Flame Studio Customizer'}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/30 font-mono">
+                        Inferno
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tùy biến độ cuộn xoáy ngọn lửa, độ bùng nổ theo Bass Kick và tông màu' : 'Customize flame turbulence, bass kick height boost, and color palette'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Turbulence & Height Boost */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 text-[11px] font-medium">
+                      {isVi ? 'Độ cuộn xoáy ngọn lửa' : 'Flame Turbulence'}
+                    </span>
+                    <span className="text-orange-400 font-mono text-[11px] font-bold">
+                      {config.flameTurbulence || 1.2}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={3.0}
+                    step={0.1}
+                    value={config.flameTurbulence || 1.2}
+                    onChange={(e) => update({ flameTurbulence: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 text-[11px] font-medium">
+                      {isVi ? 'Bùng nổ theo Bass Kick' : 'Bass Height Boost'}
+                    </span>
+                    <span className="text-orange-400 font-mono text-[11px] font-bold">
+                      {config.flameHeightBoost || 1.5}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1.0}
+                    max={2.5}
+                    step={0.1}
+                    value={config.flameHeightBoost || 1.5}
+                    onChange={(e) => update({ flameHeightBoost: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                  />
+                </div>
+              </div>
+
+              {/* Flame Color Palette */}
+              <div className="pt-1 border-t border-neutral-800/70">
+                <span className="text-[11px] text-neutral-300 font-medium block mb-1.5">
+                  {isVi ? 'Tông màu ngọn lửa' : 'Flame Color Palette'}
+                </span>
+                <div className="grid grid-cols-4 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                  {[
+                    { id: 'fire-orange', vi: 'Lửa', en: 'Fire' },
+                    { id: 'plasma-violet', vi: 'Plasma', en: 'Plasma' },
+                    { id: 'ice-blue', vi: 'Băng', en: 'Ice' },
+                    { id: 'toxic-green', vi: 'Độc tố', en: 'Toxic' },
+                  ].map((fp) => (
+                    <button
+                      key={fp.id}
+                      type="button"
+                      onClick={() => update({ flameColorPalette: fp.id as any })}
+                      className={`py-1.5 px-1 text-center rounded-lg text-[11px] font-medium transition-all cursor-pointer truncate ${
+                        (config.flameColorPalette || 'fire-orange') === fp.id
+                          ? 'bg-orange-600 text-white font-semibold shadow-sm'
+                          : 'text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      {isVi ? fp.vi : fp.en}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR DOUBLE RIBBON */}
+          {config.type === 'double-ribbon' && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-pink-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400">
+                    <Activity className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>{isVi ? 'Tùy Chỉnh Chuyên Biệt: Dải Ruy Băng Đôi' : 'Dual Neon Ribbon Studio Customizer'}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 font-mono">
+                        Neon Silk
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tùy chỉnh tần số uốn lượn, độ rộng bản dải ruy băng và hiệu ứng xoắn 3D' : 'Customize wave frequency, ribbon width, and 3D phase twisting'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ribbon Frequency & Width */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 text-[11px] font-medium">
+                      {isVi ? 'Tần số sóng uốn lượn' : 'Wave Frequency'}
+                    </span>
+                    <span className="text-pink-400 font-mono text-[11px] font-bold">
+                      {config.ribbonFrequency || 2}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={5}
+                    value={config.ribbonFrequency || 2}
+                    onChange={(e) => update({ ribbonFrequency: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 text-[11px] font-medium">
+                      {isVi ? 'Độ rộng bản ruy băng' : 'Ribbon Line Width'}
+                    </span>
+                    <span className="text-pink-400 font-mono text-[11px] font-bold">
+                      {config.ribbonWidth || 4}px
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={2}
+                    max={16}
+                    value={config.ribbonWidth || 4}
+                    onChange={(e) => update({ ribbonWidth: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                  />
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-neutral-800/70">
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.ribbonTwist3D !== false}
+                    onChange={(e) => update({ ribbonTwist3D: e.target.checked })}
+                    className="rounded text-pink-500 focus:ring-pink-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Xoắn 3D lồng ghép' : '3D Intertwined Twist'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? '2 dải cuộn quanh nhau' : 'Braided 3D depth phase'}
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.ribbonFillMesh === true}
+                    onChange={(e) => update({ ribbonFillMesh: e.target.checked })}
+                    className="rounded text-pink-500 focus:ring-pink-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Đổ lưới giữa 2 dải' : 'Connecting Mesh Fill'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Mạng lưới nối 2 sợi' : 'Volumetric gradient mesh'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR LASER BEAMS */}
+          {config.type === 'laser-beams' && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-red-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-400">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>{isVi ? 'Tùy Chỉnh Chuyên Biệt: Tia Laser Sân Khấu EDM' : 'EDM Laser Beams Studio Customizer'}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 font-mono">
+                        Concert EDM
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tùy biến góc quét quạt laser, số lượng chùm tia và chớp nháy Strobe' : 'Customize scanning fan angle, beam count, and strobe beat kick'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Spread Angle & Beam Count */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 text-[11px] font-medium">
+                      {isVi ? 'Góc quét quạt Laser' : 'Laser Spread Angle'}
+                    </span>
+                    <span className="text-red-400 font-mono text-[11px] font-bold">
+                      {config.laserSpreadAngle || 120}°
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={45}
+                    max={180}
+                    value={config.laserSpreadAngle || 120}
+                    onChange={(e) => update({ laserSpreadAngle: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-red-500"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 text-[11px] font-medium">
+                      {isVi ? 'Số lượng chùm tia' : 'Laser Beams Count'}
+                    </span>
+                    <span className="text-red-400 font-mono text-[11px] font-bold">
+                      {config.laserBeamsCount || 14} {isVi ? 'tia' : 'beams'}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={6}
+                    max={32}
+                    value={config.laserBeamsCount || 14}
+                    onChange={(e) => update({ laserBeamsCount: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-red-500"
+                  />
+                </div>
+              </div>
+
+              {/* Origin Position & Strobe Kick */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-neutral-800/70">
+                <div>
+                  <span className="text-[11px] text-neutral-300 font-medium block mb-1">
+                    {isVi ? 'Nguồn phát tia' : 'Emitter Origin Position'}
+                  </span>
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-neutral-950/70 rounded-xl border border-neutral-800">
+                    {[
+                      { id: 'bottom-center', vi: 'Đáy sàn', en: 'Floor' },
+                      { id: 'center', vi: 'Giữa', en: 'Center' },
+                      { id: 'top-center', vi: 'Đỉnh trần', en: 'Ceiling' },
+                    ].map((org) => (
+                      <button
+                        key={org.id}
+                        type="button"
+                        onClick={() => update({ laserCenterOrigin: org.id as any })}
+                        className={`py-1.5 px-1 text-center rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                          (config.laserCenterOrigin || 'bottom-center') === org.id
+                            ? 'bg-red-600 text-white font-semibold shadow-sm'
+                            : 'text-neutral-400 hover:text-neutral-200'
+                        }`}
+                      >
+                        {isVi ? org.vi : org.en}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer self-end">
+                  <input
+                    type="checkbox"
+                    checked={config.laserStrobeKick !== false}
+                    onChange={(e) => update({ laserStrobeKick: e.target.checked })}
+                    className="rounded text-red-500 focus:ring-red-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Chớp nháy Strobe theo Bass' : 'Bass Strobe Flicker Kick'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Chớp sáng mạnh khi drop' : 'High energy strobe bursts'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* SPECIALIZED STUDIO SETTINGS FOR STARBURST CORE */}
+          {config.type === 'starburst-core' && (
+            <div className="p-3.5 bg-neutral-900/80 rounded-2xl border border-yellow-500/30 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-800">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center text-yellow-400">
+                    <Stars className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-neutral-100 flex items-center gap-1.5">
+                      <span>{isVi ? 'Tùy Chỉnh Chuyên Biệt: Lõi Siêu Tân Tinh' : 'Starburst Nova Core Studio Customizer'}</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 font-mono">
+                        Supernova
+                      </span>
+                    </h5>
+                    <p className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tùy biến số lượng tia sao tỏa sáng, kích thước lõi năng lượng và vầng hào quang' : 'Customize ray count, core energy radius, halo bloom, and particle bursts'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rays Count & Core Radius */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 text-[11px] font-medium">
+                      {isVi ? 'Số lượng tia sao tỏa sáng' : 'Starburst Rays Count'}
+                    </span>
+                    <span className="text-yellow-400 font-mono text-[11px] font-bold">
+                      {config.starburstRaysCount || 48} {isVi ? 'tia' : 'rays'}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={16}
+                    max={72}
+                    value={config.starburstRaysCount || 48}
+                    onChange={(e) => update({ starburstRaysCount: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-300 text-[11px] font-medium">
+                      {isVi ? 'Bán kính lõi năng lượng' : 'Core Energy Radius'}
+                    </span>
+                    <span className="text-yellow-400 font-mono text-[11px] font-bold">
+                      {config.starburstCoreRadius || 24}px
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={6}
+                    max={50}
+                    value={config.starburstCoreRadius || 24}
+                    onChange={(e) => update({ starburstCoreRadius: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                  />
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-neutral-800/70">
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.starburstHaloBloom !== false}
+                    onChange={(e) => update({ starburstHaloBloom: e.target.checked })}
+                    className="rounded text-yellow-500 focus:ring-yellow-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Hào quang cực đại quanh lõi' : 'Halo Core Bloom'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Vầng sáng tỏa xung quanh' : 'Luminous core halo ring'}
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.starburstParticleBurst !== false}
+                    onChange={(e) => update({ starburstParticleBurst: e.target.checked })}
+                    className="rounded text-yellow-500 focus:ring-yellow-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-semibold text-neutral-200 block">
+                      {isVi ? 'Bắn hạt năng lượng theo Bass' : 'Beat Particle Bursts'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Hạt sao nổ bùng ở chóp' : 'Sparks exploding at ray tips'}
                     </span>
                   </div>
                 </label>

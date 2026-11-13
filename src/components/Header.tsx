@@ -16,7 +16,8 @@ import {
   Sliders, 
   Settings, 
   Globe,
-  FilePlus2
+  FilePlus2,
+  HelpCircle
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -29,6 +30,7 @@ interface HeaderProps {
   onNewProject: () => void;
   onOpenMasterEqModal: () => void;
   onOpenSettingsModal: () => void;
+  onOpenAboutModal?: () => void;
   onLoadDemoTrack: (type: 'lofi' | 'synthwave' | 'acoustic' | 'edm') => void;
   isLoadingAudio: boolean;
   savedIndicator?: boolean;
@@ -47,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNewProject,
   onOpenMasterEqModal,
   onOpenSettingsModal,
+  onOpenAboutModal,
   onLoadDemoTrack,
   isLoadingAudio,
   savedIndicator = false,
@@ -287,6 +290,17 @@ export const Header: React.FC<HeaderProps> = ({
           className="p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white transition-all cursor-pointer flex items-center justify-center hover:border-purple-500/50"
         >
           <Settings className="w-4 h-4 text-purple-400" />
+        </button>
+
+        {/* About Modal Trigger (? icon only) */}
+        <button
+          type="button"
+          onClick={onOpenAboutModal}
+          title={language === 'vi' ? 'Thông tin ứng dụng (About)' : 'About Sona Wave Pro'}
+          aria-label={language === 'vi' ? 'Thông tin ứng dụng' : 'About'}
+          className="p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white transition-all cursor-pointer flex items-center justify-center hover:border-cyan-500/50"
+        >
+          <HelpCircle className="w-4 h-4 text-cyan-400" />
         </button>
 
         {/* Snapshot */}

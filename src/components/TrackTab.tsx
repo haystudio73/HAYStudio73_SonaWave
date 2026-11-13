@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { TrackMetadata, CardStyle, LogoPosition, BadgeBeatJumpStyle, TrackLayerOrder, TrackFontEffect, LogoAnimation, LogoAnimationDirection, TrackFontWeight } from '../types';
+import { TrackMetadata, CardStyle, LogoPosition, BadgeBeatJumpStyle, TrackLayerOrder, TrackFontEffect, LogoAnimation, LogoAnimationDirection, TrackFontWeight, PlaylistConfig } from '../types';
 import { AVAILABLE_FONTS, DEFAULT_TRACK } from '../utils/presets';
 import { 
   Disc, 
@@ -26,15 +26,19 @@ import {
   Sliders,
   Palette,
   RotateCw,
-  RotateCcw
+  RotateCcw,
+  GripVertical,
+  Move,
 } from 'lucide-react';
 
 import { Language, TRANSLATIONS } from '../utils/i18n';
+import { Position2DPad } from './Position2DPad';
 
 interface TrackTabProps {
   track: TrackMetadata;
   onChange: (track: TrackMetadata) => void;
   language?: Language;
+  playlist?: PlaylistConfig;
 }
 
 const CARD_STYLES: { id: CardStyle; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -45,19 +49,19 @@ const CARD_STYLES: { id: CardStyle; nameVi: string; nameEn: string; descVi: stri
   { id: 'hidden', nameVi: 'Ẩn Thẻ Bìa', nameEn: 'Hidden / Off', descVi: 'Không hiển thị thẻ thông tin bài hát trên video', descEn: 'Hide track card info from the video render', icon: EyeOff },
 ];
 
-const BEAT_JUMP_STYLES: { id: BadgeBeatJumpStyle; name: string; desc: string }[] = [
-  { id: 'pulse', name: 'Phóng To Co Giãn (Pulse)', desc: 'Thu phóng mượt mà theo nhịp trống' },
-  { id: 'bounce-up', name: 'Nảy Lên Tưng Tưng (Bounce Up)', desc: 'Nảy bật lên phía trên theo từng cú Kick' },
-  { id: 'scale-rotate', name: 'Lắc Lư Nghiêng (Tilt & Rock)', desc: 'Nghiêng góc nhịp nhàng kết hợp phóng to' },
-  { id: 'jelly', name: 'Đàn Hồi Thạch (Jelly)', desc: 'Co ép đàn hồi như thạch rau câu' },
-  { id: 'shake', name: 'Rung Giật Bass (Shake)', desc: 'Rung giật điện ảnh cực mạnh theo Bass Sub' },
+const BEAT_JUMP_STYLES: { id: BadgeBeatJumpStyle; nameVi: string; nameEn: string; descVi: string; descEn: string }[] = [
+  { id: 'pulse', nameVi: 'Phóng To Co Giãn (Pulse)', nameEn: 'Pulse Scaling', descVi: 'Thu phóng mượt mà theo nhịp trống', descEn: 'Smooth scaling synchronized to drum beats' },
+  { id: 'bounce-up', nameVi: 'Nảy Lên Tưng Tưng (Bounce Up)', nameEn: 'Bounce Upward', descVi: 'Nảy bật lên phía trên theo từng cú Kick', descEn: 'Bounces upward dynamically on each kick' },
+  { id: 'scale-rotate', nameVi: 'Lắc Lư Nghiêng (Tilt & Rock)', nameEn: 'Tilt & Rock', descVi: 'Nghiêng góc nhịp nhàng kết hợp phóng to', descEn: 'Rhythmic angle tilting combined with scale' },
+  { id: 'jelly', nameVi: 'Đàn Hồi Thạch (Jelly)', nameEn: 'Jelly Elastic', descVi: 'Co ép đàn hồi như thạch rau câu', descEn: 'Squash and stretch elastic jelly motion' },
+  { id: 'shake', nameVi: 'Rung Giật Bass (Shake)', nameEn: 'Sub-Bass Shake', descVi: 'Rung giật điện ảnh cực mạnh theo Bass Sub', descEn: 'Cinematic shake pulse on heavy sub drops' },
 ];
 
-const LAYER_ORDERS: { id: TrackLayerOrder; name: string; desc: string }[] = [
-  { id: 'behind-visualizer', name: 'Phía Sau Sóng Âm (Mặc Định)', desc: 'Sóng âm vẽ đè lên trên thẻ bài hát' },
-  { id: 'front-visualizer', name: 'Phía Trước Sóng Âm', desc: 'Thẻ bài hát nổi lên phía trước sóng âm' },
-  { id: 'back-all', name: 'Phía Sau Cùng (Dưới Hạt Bay)', desc: 'Nằm sát nền, dưới cả hiệu ứng hạt rơi' },
-  { id: 'front-all', name: 'Lớp Trên Cùng (Topmost)', desc: 'Hiển thị trên cùng đè lên tất cả các lớp' },
+const LAYER_ORDERS: { id: TrackLayerOrder; nameVi: string; nameEn: string; descVi: string; descEn: string }[] = [
+  { id: 'behind-visualizer', nameVi: 'Phía Sau Sóng Âm (Mặc Định)', nameEn: 'Behind Visualizer (Default)', descVi: 'Sóng âm vẽ đè lên trên thẻ bài hát', descEn: 'Visualizer waveform renders over track badge' },
+  { id: 'front-visualizer', nameVi: 'Phía Trước Sóng Âm', nameEn: 'In Front of Visualizer', descVi: 'Thẻ bài hát nổi lên phía trước sóng âm', descEn: 'Track badge floats in front of visualizer' },
+  { id: 'back-all', nameVi: 'Phía Sau Cùng (Dưới Hạt Bay)', nameEn: 'Behind All (Under Particles)', descVi: 'Nằm sát nền, dưới cả hiệu ứng hạt rơi', descEn: 'Lowest layer under particle effects' },
+  { id: 'front-all', nameVi: 'Lớp Trên Cùng (Topmost)', nameEn: 'Topmost Layer', descVi: 'Hiển thị trên cùng đè lên tất cả các lớp', descEn: 'Renders on very top over all elements' },
 ];
 
 const TRACK_FONT_EFFECTS: { id: TrackFontEffect; nameVi: string; nameEn: string }[] = [
@@ -92,9 +96,11 @@ const LOGO_ANIMATIONS: { id: LogoAnimation; nameVi: string; nameEn: string; desc
   { id: 'circular-spin', nameVi: 'Xoay tròn 360° (Circular 2D)', nameEn: 'Circular Spin (360°)', descVi: 'Xoay tròn đều đặn theo chiều kim đồng hồ', descEn: 'Smooth circular clockwise rotation' },
 ];
 
-export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, language = 'vi' }) => {
+export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, language = 'vi', playlist }) => {
   const track = rawTrack || DEFAULT_TRACK;
-  const [selectedDetailTab, setSelectedDetailTab] = useState<'subtitle' | 'title' | 'artist'>('subtitle');
+  const [selectedDetailTab, setSelectedDetailTab] = useState<'subtitle' | 'title' | 'artist' | 'track-title'>('title');
+  const [draggedDetailKey, setDraggedDetailKey] = useState<string | null>(null);
+  const [dragOverDetailKey, setDragOverDetailKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const t = TRANSLATIONS[language] || TRANSLATIONS['vi'];
@@ -118,6 +124,9 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
   };
 
   const isBadgeJumpActive = track.badgeBeatJump !== false;
+  const hasMultiplePlaylistSongs = !!(playlist && playlist.tracks && playlist.tracks.length > 1);
+  const activePlaylistTrack = playlist?.tracks?.[playlist.currentIndex || 0];
+  const activePlayingTitle = track.currentPlayingTrackTitle || activePlaylistTrack?.title || (playlist?.tracks?.[0]?.title) || '01. Track Title';
 
   return (
     <div className="space-y-6 text-neutral-200">
@@ -125,14 +134,16 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
-            Thông Tin Bài Hát (Track Details)
+            {language === 'vi' ? 'Thông Tin Bài Hát & Tiêu Đề' : 'Track Details & Titles'}
           </label>
         </div>
 
         {/* 1. Subtitle Input & Toggle (Positioned above main title) */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-neutral-400">Tiêu đề phụ / Thể loại (Subtitle - Phía trên)</span>
+            <span className="text-xs text-neutral-400">
+              {language === 'vi' ? 'Tiêu đề phụ / Thể loại (Subtitle)' : 'Subtitle / Tagline'}
+            </span>
             <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-neutral-400 hover:text-white">
               <input
                 type="checkbox"
@@ -140,7 +151,7 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                 onChange={(e) => update({ showSubtitle: e.target.checked })}
                 className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
               />
-              <span>Hiển thị</span>
+              <span>{language === 'vi' ? 'Hiển thị' : 'Show'}</span>
             </label>
           </div>
           <div className="relative">
@@ -149,16 +160,25 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
               type="text"
               value={track.subtitle || ''}
               onChange={(e) => update({ subtitle: e.target.value })}
-              placeholder="VD: Official Audio, Acoustic Version, Remake, Lofi Chill..."
+              placeholder={language === 'vi' ? 'VD: Official Audio, Acoustic Version, Remake, Lofi Chill...' : 'e.g. Official Audio, Acoustic Version, Remake, Lofi Chill...'}
               className="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 font-medium"
             />
           </div>
         </div>
 
-        {/* 2. Title Input & Toggle (Main title in middle) */}
+        {/* 2. Main Title Input & Toggle (Main Playlist / Album Title - Preserved) */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-neutral-400">Tên bài hát chính (Main Title - Ở giữa)</span>
+            <div>
+              <span className="text-xs font-semibold text-rose-300">
+                {language === 'vi' ? 'Tiêu Đề Chính Playlist / Album (Main Title)' : 'Main Title of Playlist (Album / Project)'}
+              </span>
+              {hasMultiplePlaylistSongs && (
+                <span className="block text-[10px] text-neutral-400">
+                  {language === 'vi' ? 'Tiêu đề cố định của Playlist (không bị đổi khi chuyển bài)' : 'Permanent main title of playlist (preserved across songs)'}
+                </span>
+              )}
+            </div>
             <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-neutral-400 hover:text-white">
               <input
                 type="checkbox"
@@ -166,17 +186,17 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                 onChange={(e) => update({ showTitle: e.target.checked })}
                 className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
               />
-              <span>Hiển thị</span>
+              <span>{language === 'vi' ? 'Hiển thị' : 'Show'}</span>
             </label>
           </div>
           <div className="relative">
-            <Music className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Music className="w-4 h-4 text-rose-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={track.title}
               onChange={(e) => update({ title: e.target.value })}
-              placeholder="VD: Đêm Lặng, Nơi Này Có Anh..."
-              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 font-medium"
+              placeholder={language === 'vi' ? 'VD: Tuyển Tập Nhạc Lofi Chill, Đêm Lặng, Best Hits...' : 'e.g. Best of Lofi Chill, Deep Space, Greatest Hits...'}
+              className="w-full bg-neutral-900 border border-rose-500/40 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500 font-semibold"
             />
           </div>
         </div>
@@ -184,7 +204,9 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
         {/* 3. Artist Input & Toggle (Artist information positioned below main title) */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-neutral-400">Tên ca sĩ / Nghệ sĩ (Artist - Phía dưới)</span>
+            <span className="text-xs text-neutral-400">
+              {language === 'vi' ? 'Tên ca sĩ / Nghệ sĩ (Artist)' : 'Artist / Producer'}
+            </span>
             <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-neutral-400 hover:text-white">
               <input
                 type="checkbox"
@@ -192,7 +214,7 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                 onChange={(e) => update({ showArtist: e.target.checked })}
                 className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
               />
-              <span>Hiển thị</span>
+              <span>{language === 'vi' ? 'Hiển thị' : 'Show'}</span>
             </label>
           </div>
           <div className="relative">
@@ -206,6 +228,344 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
             />
           </div>
         </div>
+
+        {/* 4. Dedicated Playlist Track Title Section (Displayed when playlist has > 1 song) */}
+        {hasMultiplePlaylistSongs ? (
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-neutral-900/90 to-neutral-950 border border-rose-500/40 space-y-3.5 shadow-lg mt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
+                  <Music className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      {language === 'vi' ? 'Tên Bài Hát (Track Title)' : 'Playlist Track Title'}
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-mono font-bold">
+                      {playlist.tracks.length} bài
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-neutral-400">
+                    {language === 'vi' 
+                      ? 'Hiển thị tên bài đang phát và tự động cập nhật khi đổi bài' 
+                      : 'Display active song title from playlist and auto-update'}
+                  </span>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-2">
+                <input
+                  type="checkbox"
+                  checked={track.showTrackTitle !== false}
+                  onChange={(e) => update({ showTrackTitle: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500"></div>
+              </label>
+            </div>
+
+            {/* Controls when showTrackTitle is enabled */}
+            {track.showTrackTitle !== false && (
+              <div className="space-y-3 pt-2 border-t border-neutral-800/80">
+                {/* Active song banner indicator */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-neutral-950/80 border border-neutral-800 text-xs">
+                  <span className="text-neutral-400 text-[11px]">
+                    {language === 'vi' ? 'Bài đang phát:' : 'Currently Playing:'}
+                  </span>
+                  <span className="font-semibold text-rose-300 truncate max-w-[220px]">
+                    {activePlayingTitle}
+                  </span>
+                </div>
+
+                {/* Font Family selector */}
+                <div>
+                  <span className="text-xs text-neutral-400 block mb-1">
+                    {language === 'vi' ? 'Phông chữ riêng của Tên Bài Hát' : 'Track Title Font'}
+                  </span>
+                  <div className="relative">
+                    <Type className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <select
+                      value={track.trackTitleFontFamily || track.fontFamily || 'Be Vietnam Pro'}
+                      onChange={(e) => update({ trackTitleFontFamily: e.target.value })}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-9 pr-8 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer appearance-none"
+                    >
+                      {AVAILABLE_FONTS.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Font Weight & Font Effect */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <span className="text-xs text-neutral-400 block mb-1">
+                      {language === 'vi' ? 'Độ đậm chữ' : 'Font Weight'}
+                    </span>
+                    <select
+                      value={track.trackTitleFontWeight || 'bold'}
+                      onChange={(e) => update({ trackTitleFontWeight: e.target.value as TrackFontWeight })}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer"
+                    >
+                      {TRACK_FONT_WEIGHTS.map((wt) => (
+                        <option key={wt.id} value={wt.id}>
+                          {language === 'vi' ? wt.nameVi : wt.nameEn}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <span className="text-xs text-neutral-400 block mb-1">
+                      {language === 'vi' ? 'Hiệu ứng chữ (Effect)' : 'Font Effect'}
+                    </span>
+                    <select
+                      value={track.trackTitleFontEffect || 'none'}
+                      onChange={(e) => update({ trackTitleFontEffect: e.target.value as TrackFontEffect })}
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer"
+                    >
+                      {TRACK_FONT_EFFECTS.map((ef) => (
+                        <option key={ef.id} value={ef.id}>
+                          {language === 'vi' ? ef.nameVi : ef.nameEn}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Italic & Uppercase checkboxes */}
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={!!track.trackTitleItalic}
+                      onChange={(e) => update({ trackTitleItalic: e.target.checked })}
+                      className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700 cursor-pointer"
+                    />
+                    <span className="text-xs text-neutral-300 font-medium italic">
+                      {language === 'vi' ? 'Chữ nghiêng (Italic)' : 'Italic Style'}
+                    </span>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-2 rounded-xl bg-neutral-950/60 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={!!track.trackTitleUppercase}
+                      onChange={(e) => update({ trackTitleUppercase: e.target.checked })}
+                      className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700 cursor-pointer"
+                    />
+                    <span className="text-xs text-neutral-300 font-medium font-mono uppercase">
+                      {language === 'vi' ? 'In hoa (UPPERCASE)' : 'ALL CAPS'}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Font Size & Color */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-neutral-400">
+                        {language === 'vi' ? 'Cỡ chữ' : 'Font Size'}
+                      </span>
+                      <span className="text-rose-400 font-mono font-bold">
+                        {track.trackTitleFontSize || 18}px
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cur = track.trackTitleFontSize || 18;
+                          update({ trackTitleFontSize: Math.max(10, cur - 1) });
+                        }}
+                        className="w-6 h-6 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold flex items-center justify-center cursor-pointer active:scale-95"
+                      >
+                        -
+                      </button>
+                      <input
+                        type="range"
+                        min={10}
+                        max={48}
+                        value={track.trackTitleFontSize || 18}
+                        onChange={(e) => update({ trackTitleFontSize: parseInt(e.target.value) })}
+                        className="flex-1 h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cur = track.trackTitleFontSize || 18;
+                          update({ trackTitleFontSize: Math.min(64, cur + 1) });
+                        }}
+                        className="w-6 h-6 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold flex items-center justify-center cursor-pointer active:scale-95"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-xs text-neutral-400 block mb-1">
+                      {language === 'vi' ? 'Màu chữ' : 'Font Color'}
+                    </span>
+                    <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 p-1 rounded-xl">
+                      <input
+                        type="color"
+                        value={track.trackTitleColor || '#ffffff'}
+                        onChange={(e) => update({ trackTitleColor: e.target.value })}
+                        className="w-7 h-7 rounded-lg border-0 cursor-pointer bg-transparent"
+                      />
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {['#ffffff', '#f43f5e', '#38bdf8', '#facc15', '#a855f7', '#fb923c'].map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => update({ trackTitleColor: c })}
+                            style={{ backgroundColor: c }}
+                            className="w-3.5 h-3.5 rounded-full border border-neutral-700 hover:scale-110 transition-transform cursor-pointer"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Position Options: With card or Custom X, Y on Stage */}
+                <div className="pt-2 border-t border-neutral-800/70 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-neutral-300">
+                      {language === 'vi' ? 'Vị trí hiển thị Tên Bài Hát' : 'Track Title Placement'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {track.trackTitleCustomPosition 
+                        ? (language === 'vi' ? 'Tọa độ X, Y tự do' : 'Custom X/Y')
+                        : (language === 'vi' ? 'Gắn cùng Thẻ bài hát' : 'Inline with Card')}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => update({ trackTitleCustomPosition: false })}
+                      className={`p-2 rounded-xl text-xs font-semibold border text-left transition-all cursor-pointer ${
+                        !track.trackTitleCustomPosition
+                          ? 'bg-rose-500/20 border-rose-500 text-rose-300 ring-1 ring-rose-500/30'
+                          : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      <span className="block font-bold">
+                        {language === 'vi' ? 'Đi cùng Thẻ bìa' : 'With Track Card'}
+                      </span>
+                      <span className="text-[9px] text-neutral-500 block font-normal">
+                        {language === 'vi' ? 'Xếp chung dòng thông tin' : 'Flow in card details'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => update({ trackTitleCustomPosition: true })}
+                      className={`p-2 rounded-xl text-xs font-semibold border text-left transition-all cursor-pointer ${
+                        track.trackTitleCustomPosition
+                          ? 'bg-rose-500/20 border-rose-500 text-rose-300 ring-1 ring-rose-500/30'
+                          : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                      }`}
+                    >
+                      <span className="block font-bold">
+                        {language === 'vi' ? 'Tọa độ X, Y tự do' : 'Custom X, Y'}
+                      </span>
+                      <span className="text-[9px] text-neutral-500 block font-normal">
+                        {language === 'vi' ? 'Di chuyển bất kỳ đâu trên video' : 'Position anywhere on video'}
+                      </span>
+                    </button>
+                  </div>
+
+                  {track.trackTitleCustomPosition && (
+                    <div className="p-2.5 rounded-xl bg-neutral-950/80 border border-neutral-800/80 space-y-2.5 mt-2">
+                      <Position2DPad
+                        x={track.trackTitlePositionX ?? 50}
+                        y={track.trackTitlePositionY ?? 44}
+                        onChange={(newX, newY) => update({ trackTitlePositionX: newX, trackTitlePositionY: newY })}
+                        label={language === 'vi' ? 'Kéo Thả Vị Trí Tên Bài Hát (Drag & Drop)' : 'Track Title Drag & Drop Position'}
+                        color="#f43f5e"
+                        language={language}
+                      />
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-neutral-400">
+                            {language === 'vi' ? 'Vị trí ngang (Position X)' : 'Horizontal X'}
+                          </span>
+                          <span className="text-rose-400 font-mono font-bold">
+                            {track.trackTitlePositionX ?? 50}%
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={5}
+                          max={95}
+                          value={track.trackTitlePositionX ?? 50}
+                          onChange={(e) => update({ trackTitlePositionX: parseInt(e.target.value) })}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-neutral-400">
+                            {language === 'vi' ? 'Vị trí dọc (Position Y)' : 'Vertical Y'}
+                          </span>
+                          <span className="text-rose-400 font-mono font-bold">
+                            {track.trackTitlePositionY ?? 44}%
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={5}
+                          max={95}
+                          value={track.trackTitlePositionY ?? 44}
+                          onChange={(e) => update({ trackTitlePositionY: parseInt(e.target.value) })}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Live Preview Card */}
+                <div className="p-2.5 rounded-xl bg-neutral-950/90 border border-neutral-800 text-center overflow-hidden">
+                  <span className="text-[9px] text-neutral-500 uppercase tracking-wider block mb-1">
+                    {language === 'vi' ? 'Xem trước kiểu chữ Tên Bài Hát' : 'Live Track Title Preview'}
+                  </span>
+                  <p
+                    style={{
+                      fontFamily: `'${track.trackTitleFontFamily || track.fontFamily || 'Be Vietnam Pro'}', sans-serif`,
+                      fontSize: `${Math.min(Math.max(track.trackTitleFontSize || 18, 12), 24)}px`,
+                      fontWeight: track.trackTitleFontWeight === 'bold' || track.trackTitleFontWeight === '900' ? 700 : 400,
+                      fontStyle: track.trackTitleItalic ? 'italic' : 'normal',
+                      textTransform: track.trackTitleUppercase ? 'uppercase' : 'none',
+                      color: track.trackTitleColor || '#ffffff',
+                    }}
+                    className="truncate px-2 font-bold"
+                  >
+                    {activePlayingTitle}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-3 rounded-2xl bg-neutral-900/40 border border-neutral-800/80 text-[11px] text-neutral-400 flex items-center gap-2.5 mt-2">
+            <div className="w-6 h-6 rounded-lg bg-neutral-800 text-neutral-400 flex items-center justify-center shrink-0">
+              <Music className="w-3.5 h-3.5 text-neutral-400" />
+            </div>
+            <span>
+              {language === 'vi'
+                ? 'Playlist chỉ có 1 bài hát: Tên bài hát (Track Title) được tự động ẩn để tránh lặp lại Tiêu đề chính.'
+                : 'Playlist has only 1 track: Track Title is automatically removed to prevent repeating the Main Title.'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* 2. Cover Artwork Upload */}
@@ -551,6 +911,18 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
               </div>
             </div>
           )}
+
+          {/* Badge Drag & Drop 2D Position Pad */}
+          <div className="pt-2 border-t border-neutral-800/80">
+            <Position2DPad
+              x={track.positionX !== undefined ? track.positionX : 50}
+              y={track.positionY !== undefined ? track.positionY : 28}
+              onChange={(newX, newY) => update({ positionX: newX, positionY: newY })}
+              label={language === 'vi' ? 'Kéo Thả Vị Trí Huy Hiệu (Badge Drag & Drop)' : 'Badge Drag & Drop Position'}
+              color="#f97316"
+              language={language}
+            />
+          </div>
         </div>
       )}
 
@@ -590,7 +962,9 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
               {/* Intensity Slider */}
               <div>
                 <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-neutral-400">Cường độ nảy theo Beat</span>
+                  <span className="text-neutral-400">
+                    {language === 'vi' ? 'Cường độ nảy theo Beat' : 'Beat Jump Intensity'}
+                  </span>
                   <span className="text-amber-400 font-mono font-bold">
                     {Math.round(((track.badgeBeatJumpIntensity ?? 0.18) / 0.5) * 100)}%
                   </span>
@@ -605,16 +979,26 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                   className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                 />
                 <div className="flex justify-between text-[10px] text-neutral-500 mt-1">
-                  <button onClick={() => update({ badgeBeatJumpIntensity: 0.10 })} className="hover:text-amber-400 cursor-pointer">Nhẹ (10%)</button>
-                  <button onClick={() => update({ badgeBeatJumpIntensity: 0.18 })} className="hover:text-amber-400 cursor-pointer">Vừa (18%)</button>
-                  <button onClick={() => update({ badgeBeatJumpIntensity: 0.32 })} className="hover:text-amber-400 cursor-pointer">Mạnh (32%)</button>
-                  <button onClick={() => update({ badgeBeatJumpIntensity: 0.45 })} className="hover:text-amber-400 cursor-pointer">Cực mạnh (45%)</button>
+                  <button onClick={() => update({ badgeBeatJumpIntensity: 0.10 })} className="hover:text-amber-400 cursor-pointer">
+                    {language === 'vi' ? 'Nhẹ (10%)' : 'Soft (10%)'}
+                  </button>
+                  <button onClick={() => update({ badgeBeatJumpIntensity: 0.18 })} className="hover:text-amber-400 cursor-pointer">
+                    {language === 'vi' ? 'Vừa (18%)' : 'Mid (18%)'}
+                  </button>
+                  <button onClick={() => update({ badgeBeatJumpIntensity: 0.32 })} className="hover:text-amber-400 cursor-pointer">
+                    {language === 'vi' ? 'Mạnh (32%)' : 'High (32%)'}
+                  </button>
+                  <button onClick={() => update({ badgeBeatJumpIntensity: 0.45 })} className="hover:text-amber-400 cursor-pointer">
+                    {language === 'vi' ? 'Cực mạnh (45%)' : 'Max (45%)'}
+                  </button>
                 </div>
               </div>
 
               {/* Jump Style Selector */}
               <div>
-                <span className="text-xs text-neutral-400 block mb-1.5">Kiểu chuyển động nhảy</span>
+                <span className="text-xs text-neutral-400 block mb-1.5">
+                  {language === 'vi' ? 'Kiểu chuyển động nhảy' : 'Beat Jump Motion Style'}
+                </span>
                 <div className="grid grid-cols-1 gap-1.5">
                   {BEAT_JUMP_STYLES.map((style) => {
                     const isSelected = (track.badgeBeatJumpStyle || 'pulse') === style.id;
@@ -629,8 +1013,8 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                         }`}
                       >
                         <div>
-                          <span className="font-semibold block">{style.name}</span>
-                          <span className="text-[10px] text-neutral-500">{style.desc}</span>
+                          <span className="font-semibold block">{language === 'vi' ? style.nameVi : style.nameEn}</span>
+                          <span className="text-[10px] text-neutral-500">{language === 'vi' ? style.descVi : style.descEn}</span>
                         </div>
                         {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0 ml-2" />}
                       </button>
@@ -670,7 +1054,7 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-rose-400" />
             <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
-              Thứ Tự Lớp Hiển Thị (Layout Order)
+              {language === 'vi' ? 'Thứ Tự Lớp Hiển Thị (Layout Order)' : 'Layer Render Order'}
             </label>
           </div>
 
@@ -688,8 +1072,8 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                   }`}
                 >
                   <div>
-                    <span className="font-semibold block">{layer.name}</span>
-                    <span className="text-[10px] text-neutral-500">{layer.desc}</span>
+                    <span className="font-semibold block">{language === 'vi' ? layer.nameVi : layer.nameEn}</span>
+                    <span className="text-[10px] text-neutral-500">{language === 'vi' ? layer.descVi : layer.descEn}</span>
                   </div>
                   {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-rose-400 shrink-0 ml-2" />}
                 </button>
@@ -817,6 +1201,14 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
 
             {/* Arbitrary X & Y Sliders */}
             <div className="p-2.5 rounded-xl bg-neutral-950/70 border border-neutral-800/80 space-y-2.5">
+              <Position2DPad
+                x={track.logoPositionX ?? 6}
+                y={track.logoPositionY ?? 6}
+                onChange={(newX, newY) => update({ logoPositionX: newX, logoPositionY: newY, logoPosition: 'custom' })}
+                label={language === 'vi' ? 'Kéo Thả Vị Trí Logo Watermark' : 'Logo Watermark Drag & Drop Position'}
+                color="#06b6d4"
+                language={language}
+              />
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-neutral-300">
                   {language === 'vi' ? 'Di dời vị trí tự do (X, Y Tùy ý)' : 'Free Position (X, Y Offset)'}
@@ -1090,7 +1482,7 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                 {language === 'vi' ? 'Thứ tự sắp xếp dòng (Layout Order)' : 'Element Layout Order'}
               </span>
               <span className="text-[10px] text-neutral-400">
-                {language === 'vi' ? 'Nhấn ▲ ▼ để đảo thứ tự hiển thị' : 'Click ▲ ▼ to rearrange'}
+                {language === 'vi' ? 'Kéo thả hoặc nhấn ▲ ▼ để đảo thứ tự hiển thị' : 'Drag & drop or click ▲ ▼ to rearrange'}
               </span>
             </div>
 
@@ -1107,13 +1499,49 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                   : isTitle
                   ? { vi: '2. Tên bài hát chính (Main Title)', en: '2. Main Title', color: 'text-rose-400' }
                   : { vi: '3. Tên ca sĩ / Nghệ sĩ (Artist)', en: '3. Artist Info', color: 'text-amber-400' };
+                const isDragging = draggedDetailKey === key;
+                const isDragOver = dragOverDetailKey === key;
 
                 return (
                   <div
                     key={key}
-                    className="flex items-center justify-between p-2 rounded-xl bg-neutral-950/80 border border-neutral-800/80 text-xs"
+                    draggable
+                    onDragStart={() => setDraggedDetailKey(key)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOverDetailKey(key);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedDetailKey(null);
+                      setDragOverDetailKey(null);
+                    }}
+                    onDrop={() => {
+                      if (!draggedDetailKey || draggedDetailKey === key) {
+                        setDraggedDetailKey(null);
+                        setDragOverDetailKey(null);
+                        return;
+                      }
+                      const order = track.trackDetailsOrder && track.trackDetailsOrder.length === 3
+                        ? [...track.trackDetailsOrder]
+                        : ['subtitle', 'title', 'artist'];
+                      const fromIdx = order.indexOf(draggedDetailKey as any);
+                      const toIdx = order.indexOf(key as any);
+                      if (fromIdx !== -1 && toIdx !== -1) {
+                        const [item] = order.splice(fromIdx, 1);
+                        order.splice(toIdx, 0, item);
+                        update({ trackDetailsOrder: order as any });
+                      }
+                      setDraggedDetailKey(null);
+                      setDragOverDetailKey(null);
+                    }}
+                    className={`flex items-center justify-between p-2 rounded-xl border text-xs transition-all select-none ${
+                      isDragging ? 'opacity-40 scale-95 border-rose-500 bg-neutral-900' : 'bg-neutral-950/80 border-neutral-800/80'
+                    } ${isDragOver ? 'border-cyan-400 ring-2 ring-cyan-400/30' : ''}`}
                   >
                     <div className="flex items-center gap-2">
+                      <div className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-white p-0.5" title={language === 'vi' ? 'Kéo để đổi thứ tự' : 'Drag to reorder'}>
+                        <GripVertical className="w-3.5 h-3.5" />
+                      </div>
                       <span className="w-5 h-5 rounded-full bg-neutral-800 flex items-center justify-center text-[10px] font-mono text-neutral-400 font-bold">
                         {idx + 1}
                       </span>
@@ -1250,11 +1678,14 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
             </div>
 
             {/* Tab switch buttons */}
-            <div className="grid grid-cols-3 gap-1.5 p-1 bg-neutral-900 rounded-xl border border-neutral-800">
+            <div className={`grid ${hasMultiplePlaylistSongs ? 'grid-cols-4' : 'grid-cols-3'} gap-1.5 p-1 bg-neutral-900 rounded-xl border border-neutral-800`}>
               {[
                 { id: 'subtitle', labelVi: 'Tiêu đề phụ', labelEn: 'Subtitle', activeColor: 'border-sky-500 text-sky-400 bg-sky-500/10' },
-                { id: 'title', labelVi: 'Tên bài hát', labelEn: 'Main Title', activeColor: 'border-rose-500 text-rose-400 bg-rose-500/10' },
+                { id: 'title', labelVi: 'Tiêu đề chính', labelEn: 'Main Title', activeColor: 'border-rose-500 text-rose-400 bg-rose-500/10' },
                 { id: 'artist', labelVi: 'Ca sĩ / Artist', labelEn: 'Artist', activeColor: 'border-amber-500 text-amber-400 bg-amber-500/10' },
+                ...(hasMultiplePlaylistSongs
+                  ? [{ id: 'track-title' as const, labelVi: 'Tên bài hát', labelEn: 'Track Title', activeColor: 'border-emerald-500 text-emerald-400 bg-emerald-500/10' }]
+                  : []),
               ].map((tab) => {
                 const isActive = selectedDetailTab === tab.id;
                 return (
@@ -1289,11 +1720,14 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                         ? track.subtitleFontFamily || track.fontFamily || 'Be Vietnam Pro'
                         : selectedDetailTab === 'title'
                         ? track.titleFontFamily || track.fontFamily || 'Be Vietnam Pro'
+                        : selectedDetailTab === 'track-title'
+                        ? track.trackTitleFontFamily || track.fontFamily || 'Be Vietnam Pro'
                         : track.artistFontFamily || track.fontFamily || 'Be Vietnam Pro'
                     }
                     onChange={(e) => {
                       if (selectedDetailTab === 'subtitle') update({ subtitleFontFamily: e.target.value });
                       else if (selectedDetailTab === 'title') update({ titleFontFamily: e.target.value, fontFamily: e.target.value });
+                      else if (selectedDetailTab === 'track-title') update({ trackTitleFontFamily: e.target.value });
                       else update({ artistFontFamily: e.target.value });
                     }}
                     className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-9 pr-8 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer appearance-none"
@@ -1320,12 +1754,15 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                         ? track.subtitleFontWeight || (track.subtitleFontStyle === 'bold' || track.subtitleFontStyle === 'bold-italic' ? 'bold' : 'normal')
                         : selectedDetailTab === 'title'
                         ? track.titleFontWeight || (track.titleFontStyle === 'bold' || track.titleFontStyle === 'bold-italic' || track.titleFontStyle === 'uppercase' ? 'bold' : 'normal')
+                        : selectedDetailTab === 'track-title'
+                        ? track.trackTitleFontWeight || 'bold'
                         : track.artistFontWeight || (track.artistFontStyle === 'bold' || track.artistFontStyle === 'bold-italic' ? 'bold' : 'normal')
                     }
                     onChange={(e) => {
                       const val = e.target.value as TrackFontWeight;
                       if (selectedDetailTab === 'subtitle') update({ subtitleFontWeight: val });
                       else if (selectedDetailTab === 'title') update({ titleFontWeight: val });
+                      else if (selectedDetailTab === 'track-title') update({ trackTitleFontWeight: val });
                       else update({ artistFontWeight: val });
                     }}
                     className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer"
@@ -1349,12 +1786,15 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                         ? track.subtitleFontEffect || 'none'
                         : selectedDetailTab === 'title'
                         ? track.titleFontEffect || 'none'
+                        : selectedDetailTab === 'track-title'
+                        ? track.trackTitleFontEffect || 'none'
                         : track.artistFontEffect || 'none'
                     }
                     onChange={(e) => {
                       const val = e.target.value as any;
                       if (selectedDetailTab === 'subtitle') update({ subtitleFontEffect: val });
                       else if (selectedDetailTab === 'title') update({ titleFontEffect: val });
+                      else if (selectedDetailTab === 'track-title') update({ trackTitleFontEffect: val });
                       else update({ artistFontEffect: val });
                     }}
                     className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-2.5 py-2 text-xs text-neutral-200 focus:outline-none focus:border-rose-500 cursor-pointer"
@@ -1378,12 +1818,15 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                         ? (track.subtitleItalic !== undefined ? track.subtitleItalic : (track.subtitleFontStyle === 'italic' || track.subtitleFontStyle === 'bold-italic'))
                         : selectedDetailTab === 'title'
                         ? (track.titleItalic !== undefined ? track.titleItalic : (track.titleFontStyle === 'italic' || track.titleFontStyle === 'bold-italic'))
+                        : selectedDetailTab === 'track-title'
+                        ? !!track.trackTitleItalic
                         : (track.artistItalic !== undefined ? track.artistItalic : (track.artistFontStyle === 'italic' || track.artistFontStyle === 'bold-italic'))
                     }
                     onChange={(e) => {
                       const chk = e.target.checked;
                       if (selectedDetailTab === 'subtitle') update({ subtitleItalic: chk });
                       else if (selectedDetailTab === 'title') update({ titleItalic: chk });
+                      else if (selectedDetailTab === 'track-title') update({ trackTitleItalic: chk });
                       else update({ artistItalic: chk });
                     }}
                     className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700 cursor-pointer"
@@ -1401,12 +1844,15 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                         ? (track.subtitleUppercase !== undefined ? track.subtitleUppercase : (track.subtitleFontStyle === 'uppercase'))
                         : selectedDetailTab === 'title'
                         ? (track.titleUppercase !== undefined ? track.titleUppercase : (track.titleFontStyle === 'uppercase'))
+                        : selectedDetailTab === 'track-title'
+                        ? !!track.trackTitleUppercase
                         : (track.artistUppercase !== undefined ? track.artistUppercase : (track.artistFontStyle === 'uppercase'))
                     }
                     onChange={(e) => {
                       const chk = e.target.checked;
                       if (selectedDetailTab === 'subtitle') update({ subtitleUppercase: chk });
                       else if (selectedDetailTab === 'title') update({ titleUppercase: chk });
+                      else if (selectedDetailTab === 'track-title') update({ trackTitleUppercase: chk });
                       else update({ artistUppercase: chk });
                     }}
                     className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700 cursor-pointer"
@@ -1430,6 +1876,8 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                         ? (track.subtitleFontSize || 13)
                         : selectedDetailTab === 'title'
                         ? (track.titleFontSize || 24)
+                        : selectedDetailTab === 'track-title'
+                        ? (track.trackTitleFontSize || 18)
                         : (track.artistFontSize || 15)}px
                     </span>
                   </div>
@@ -1437,10 +1885,17 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                     <button
                       type="button"
                       onClick={() => {
-                        const cur = selectedDetailTab === 'subtitle' ? (track.subtitleFontSize || 13) : selectedDetailTab === 'title' ? (track.titleFontSize || 24) : (track.artistFontSize || 15);
+                        const cur = selectedDetailTab === 'subtitle' 
+                          ? (track.subtitleFontSize || 13) 
+                          : selectedDetailTab === 'title' 
+                          ? (track.titleFontSize || 24) 
+                          : selectedDetailTab === 'track-title'
+                          ? (track.trackTitleFontSize || 18)
+                          : (track.artistFontSize || 15);
                         const next = Math.max(8, cur - 1);
                         if (selectedDetailTab === 'subtitle') update({ subtitleFontSize: next });
                         else if (selectedDetailTab === 'title') update({ titleFontSize: next });
+                        else if (selectedDetailTab === 'track-title') update({ trackTitleFontSize: next });
                         else update({ artistFontSize: next });
                       }}
                       className="w-6 h-6 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold flex items-center justify-center cursor-pointer active:scale-95"
@@ -1450,18 +1905,21 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                     <input
                       type="range"
                       min={selectedDetailTab === 'subtitle' ? 8 : selectedDetailTab === 'title' ? 12 : 10}
-                      max={selectedDetailTab === 'subtitle' ? 42 : selectedDetailTab === 'title' ? 64 : 44}
+                      max={selectedDetailTab === 'subtitle' ? 42 : selectedDetailTab === 'title' ? 64 : 48}
                       value={
                         selectedDetailTab === 'subtitle'
                           ? (track.subtitleFontSize || 13)
                           : selectedDetailTab === 'title'
                           ? (track.titleFontSize || 24)
+                          : selectedDetailTab === 'track-title'
+                          ? (track.trackTitleFontSize || 18)
                           : (track.artistFontSize || 15)
                       }
                       onChange={(e) => {
                         const sz = parseInt(e.target.value);
                         if (selectedDetailTab === 'subtitle') update({ subtitleFontSize: sz });
                         else if (selectedDetailTab === 'title') update({ titleFontSize: sz });
+                        else if (selectedDetailTab === 'track-title') update({ trackTitleFontSize: sz });
                         else update({ artistFontSize: sz });
                       }}
                       className="flex-1 h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
@@ -1469,10 +1927,17 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                     <button
                       type="button"
                       onClick={() => {
-                        const cur = selectedDetailTab === 'subtitle' ? (track.subtitleFontSize || 13) : selectedDetailTab === 'title' ? (track.titleFontSize || 24) : (track.artistFontSize || 15);
+                        const cur = selectedDetailTab === 'subtitle' 
+                          ? (track.subtitleFontSize || 13) 
+                          : selectedDetailTab === 'title' 
+                          ? (track.titleFontSize || 24) 
+                          : selectedDetailTab === 'track-title'
+                          ? (track.trackTitleFontSize || 18)
+                          : (track.artistFontSize || 15);
                         const next = Math.min(64, cur + 1);
                         if (selectedDetailTab === 'subtitle') update({ subtitleFontSize: next });
                         else if (selectedDetailTab === 'title') update({ titleFontSize: next });
+                        else if (selectedDetailTab === 'track-title') update({ trackTitleFontSize: next });
                         else update({ artistFontSize: next });
                       }}
                       className="w-6 h-6 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-bold flex items-center justify-center cursor-pointer active:scale-95"
@@ -1493,6 +1958,8 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                         ? (track.subtitleColor || '#a3a3a3')
                         : selectedDetailTab === 'title'
                         ? (track.textColor || '#ffffff')
+                        : selectedDetailTab === 'track-title'
+                        ? (track.trackTitleColor || '#ffffff')
                         : (track.artistColor || '#cccccc')}
                     </span>
                   </div>
@@ -1504,12 +1971,15 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                           ? (track.subtitleColor || '#a3a3a3')
                           : selectedDetailTab === 'title'
                           ? (track.textColor || '#ffffff')
+                          : selectedDetailTab === 'track-title'
+                          ? (track.trackTitleColor || '#ffffff')
                           : (track.artistColor || '#cccccc')
                       }
                       onChange={(e) => {
                         const col = e.target.value;
                         if (selectedDetailTab === 'subtitle') update({ subtitleColor: col });
                         else if (selectedDetailTab === 'title') update({ textColor: col });
+                        else if (selectedDetailTab === 'track-title') update({ trackTitleColor: col });
                         else update({ artistColor: col });
                       }}
                       className="w-7 h-7 rounded-lg border-0 cursor-pointer bg-transparent"
@@ -1522,6 +1992,7 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                           onClick={() => {
                             if (selectedDetailTab === 'subtitle') update({ subtitleColor: c });
                             else if (selectedDetailTab === 'title') update({ textColor: c });
+                            else if (selectedDetailTab === 'track-title') update({ trackTitleColor: c });
                             else update({ artistColor: c });
                           }}
                           style={{ backgroundColor: c }}
@@ -1539,26 +2010,57 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                   ? (track.subtitleFontFamily || track.fontFamily || 'Be Vietnam Pro')
                   : selectedDetailTab === 'title'
                   ? (track.titleFontFamily || track.fontFamily || 'Be Vietnam Pro')
+                  : selectedDetailTab === 'track-title'
+                  ? (track.trackTitleFontFamily || track.fontFamily || 'Be Vietnam Pro')
                   : (track.artistFontFamily || track.fontFamily || 'Be Vietnam Pro');
                 const curStyle = selectedDetailTab === 'subtitle'
                   ? (track.subtitleFontStyle || 'normal')
                   : selectedDetailTab === 'title'
                   ? (track.titleFontStyle || 'bold')
+                  : selectedDetailTab === 'track-title'
+                  ? (track.trackTitleFontStyle || 'bold')
                   : (track.artistFontStyle || 'normal');
+                const curWeight = selectedDetailTab === 'subtitle'
+                  ? (track.subtitleFontWeight || 'normal')
+                  : selectedDetailTab === 'title'
+                  ? (track.titleFontWeight || 'bold')
+                  : selectedDetailTab === 'track-title'
+                  ? (track.trackTitleFontWeight || 'bold')
+                  : (track.artistFontWeight || 'normal');
+                const isItalicVal = selectedDetailTab === 'subtitle'
+                  ? (track.subtitleItalic !== undefined ? track.subtitleItalic : curStyle === 'italic')
+                  : selectedDetailTab === 'title'
+                  ? (track.titleItalic !== undefined ? track.titleItalic : curStyle === 'italic')
+                  : selectedDetailTab === 'track-title'
+                  ? !!track.trackTitleItalic
+                  : (track.artistItalic !== undefined ? track.artistItalic : curStyle === 'italic');
+                const isUpperVal = selectedDetailTab === 'subtitle'
+                  ? (track.subtitleUppercase !== undefined ? track.subtitleUppercase : curStyle === 'uppercase')
+                  : selectedDetailTab === 'title'
+                  ? (track.titleUppercase !== undefined ? track.titleUppercase : curStyle === 'uppercase')
+                  : selectedDetailTab === 'track-title'
+                  ? !!track.trackTitleUppercase
+                  : (track.artistUppercase !== undefined ? track.artistUppercase : curStyle === 'uppercase');
                 const curSize = selectedDetailTab === 'subtitle'
                   ? (track.subtitleFontSize || 13)
                   : selectedDetailTab === 'title'
                   ? (track.titleFontSize || 24)
+                  : selectedDetailTab === 'track-title'
+                  ? (track.trackTitleFontSize || 18)
                   : (track.artistFontSize || 15);
                 const curColor = selectedDetailTab === 'subtitle'
                   ? (track.subtitleColor || '#fb923c')
                   : selectedDetailTab === 'title'
                   ? (track.textColor || '#ffffff')
+                  : selectedDetailTab === 'track-title'
+                  ? (track.trackTitleColor || '#ffffff')
                   : (track.artistColor || '#cccccc');
                 const sampleText = selectedDetailTab === 'subtitle'
                   ? (track.subtitle || 'Audio Experience')
                   : selectedDetailTab === 'title'
                   ? (track.title || 'SonaWave Music Title')
+                  : selectedDetailTab === 'track-title'
+                  ? activePlayingTitle
                   : (track.artist || 'Artist / Producer');
 
                 return (
@@ -1570,9 +2072,9 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                       style={{
                         fontFamily: `'${curFamily}', sans-serif`,
                         fontSize: `${Math.min(Math.max(curSize, 13), 26)}px`,
-                        fontWeight: curStyle === 'bold' || curStyle === 'bold-italic' || curStyle === 'uppercase' ? 700 : 400,
-                        fontStyle: curStyle === 'italic' || curStyle === 'bold-italic' ? 'italic' : 'normal',
-                        textTransform: curStyle === 'uppercase' ? 'uppercase' : 'none',
+                        fontWeight: curWeight === 'bold' || curWeight === '900' || curStyle === 'bold' ? 700 : 400,
+                        fontStyle: isItalicVal ? 'italic' : 'normal',
+                        textTransform: isUpperVal ? 'uppercase' : 'none',
                         color: curColor,
                       }}
                       className="truncate px-2"
@@ -1590,7 +2092,9 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
             {/* Resize Scale Slider */}
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-neutral-400">Kích thước tổng thể (Resize Scale)</span>
+                <span className="text-neutral-400">
+                  {language === 'vi' ? 'Kích thước tổng thể (Resize Scale)' : 'Overall Scale (Resize)'}
+                </span>
                 <span className="text-rose-400 font-mono">{(track.scale || 1.0).toFixed(2)}x</span>
               </div>
               <input
@@ -1606,13 +2110,15 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
 
             {/* Text Alignment */}
             <div>
-              <span className="text-xs text-neutral-400 block mb-1.5">Căn chỉnh lề chữ</span>
+              <span className="text-xs text-neutral-400 block mb-1.5">
+                {language === 'vi' ? 'Căn chỉnh lề chữ' : 'Text Alignment'}
+              </span>
               <div className="grid grid-cols-3 gap-2">
                 {(
                   [
-                    { id: 'left', name: 'Căn Trái', icon: AlignLeft },
-                    { id: 'center', name: 'Căn Giữa', icon: AlignCenter },
-                    { id: 'right', name: 'Căn Phải', icon: AlignRight },
+                    { id: 'left', name: language === 'vi' ? 'Căn Trái' : 'Left', icon: AlignLeft },
+                    { id: 'center', name: language === 'vi' ? 'Căn Giữa' : 'Center', icon: AlignCenter },
+                    { id: 'right', name: language === 'vi' ? 'Căn Phải' : 'Right', icon: AlignRight },
                   ] as const
                 ).map((al) => {
                   const Icon = al.icon;
@@ -1637,7 +2143,9 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
 
             {/* Accent Color Picker */}
             <div>
-              <span className="text-[10px] text-neutral-400 block mb-1">Màu Điểm nhấn (Accent / Glow)</span>
+              <span className="text-[10px] text-neutral-400 block mb-1">
+                {language === 'vi' ? 'Màu Điểm Nhấn (Accent / Glow)' : 'Accent / Highlight Color'}
+              </span>
               <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 p-1.5 rounded-xl">
                 <input
                   type="color"
@@ -1663,12 +2171,23 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
             </div>
           </div>
 
-          {/* Position X & Position Y */}
+          {/* Position X & Position Y with 2D Drag & Drop Pad */}
           <div className="space-y-3 pt-2">
+            <Position2DPad
+              x={track.positionX !== undefined ? track.positionX : 50}
+              y={track.positionY !== undefined ? track.positionY : 28}
+              onChange={(newX, newY) => update({ positionX: newX, positionY: newY })}
+              label={language === 'vi' ? 'Kéo Thả Vị Trí Chi Tiết Bài Hát (Drag & Drop)' : 'Track Details Drag & Drop Position'}
+              color="#f43f5e"
+              language={language}
+            />
+
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-neutral-400">Vị trí ngang (Position X)</span>
-                <span className="text-rose-400 font-mono">{track.positionX !== undefined ? track.positionX : 50}%</span>
+                <span className="text-neutral-400">
+                  {language === 'vi' ? 'Vị trí ngang (Tọa độ X)' : 'Horizontal Position (X)'}
+                </span>
+                <span className="text-rose-400 font-mono font-bold">{track.positionX !== undefined ? track.positionX : 50}%</span>
               </div>
               <input
                 type="range"
@@ -1682,8 +2201,10 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
 
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-neutral-400">Vị trí dọc (Position Y)</span>
-                <span className="text-rose-400 font-mono">{track.positionY}%</span>
+                <span className="text-neutral-400">
+                  {language === 'vi' ? 'Vị trí dọc (Tọa độ Y)' : 'Vertical Position (Y)'}
+                </span>
+                <span className="text-rose-400 font-mono font-bold">{track.positionY}%</span>
               </div>
               <input
                 type="range"
@@ -1699,7 +2220,9 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
           {/* Frosted Background Box for minimal tag or texts */}
           <div className="p-3 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-2.5">
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-xs font-semibold text-neutral-300">Khung nền mờ cho chữ (Backdrop Pill)</span>
+              <span className="text-xs font-semibold text-neutral-300">
+                {language === 'vi' ? 'Khung nền mờ cho chữ (Backdrop Pill)' : 'Text Backdrop Pill'}
+              </span>
               <input
                 type="checkbox"
                 checked={!!track.boxBackground}
@@ -1717,7 +2240,9 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                     onChange={(e) => update({ boxBgColor: e.target.value })}
                     className="w-5 h-5 rounded border-0 cursor-pointer bg-transparent"
                   />
-                  <span className="text-[11px] font-mono text-neutral-400">Màu nền khung</span>
+                  <span className="text-[11px] font-mono text-neutral-400">
+                    {language === 'vi' ? 'Màu nền khung' : 'Pill Background Color'}
+                  </span>
                 </div>
               </div>
             )}

@@ -23,7 +23,6 @@ import {
   Repeat1,
   Shuffle,
   Volume2,
-  GripVertical,
   SlidersHorizontal,
   ArrowUpDown,
   Clock,
@@ -93,8 +92,6 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const batchLyricsInputRef = useRef<HTMLInputElement>(null);
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [pastingLyricsTrackId, setPastingLyricsTrackId] = useState<string | null>(null);
@@ -373,148 +370,6 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
       ...playlist,
       tracks: updated,
     });
-  };
-
-  // Track specific background handlers
-  const handleTrackImageUpload = (trackId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    const track = playlist.tracks.find((t) => t.id === trackId);
-    const baseBg = track?.background || currentBackground || defaultBackground || {
-      type: 'upload',
-      url: '',
-      color1: '#111827',
-      color2: '#000000',
-      gradientAngle: 135,
-      blur: 0,
-      brightness: 85,
-      contrast: 100,
-      vignette: 40,
-      beatZoom: true,
-      beatZoomIntensity: 4,
-    };
-    const updatedBg: BackgroundConfig = {
-      ...baseBg,
-      type: 'upload',
-      isVideo: false,
-      url,
-    };
-    handleUpdateTrack(trackId, { background: updatedBg });
-  };
-
-  const handleTrackVideoUpload = (trackId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    const track = playlist.tracks.find((t) => t.id === trackId);
-    const baseBg = track?.background || currentBackground || defaultBackground || {
-      type: 'video',
-      url: '',
-      color1: '#111827',
-      color2: '#000000',
-      gradientAngle: 135,
-      blur: 0,
-      brightness: 85,
-      contrast: 100,
-      vignette: 40,
-      beatZoom: true,
-      beatZoomIntensity: 4,
-    };
-    const updatedBg: BackgroundConfig = {
-      ...baseBg,
-      type: 'video',
-      isVideo: true,
-      url,
-      videoUrl: url,
-    };
-    handleUpdateTrack(trackId, { background: updatedBg });
-  };
-
-  const handleAssignPresetToTrack = (trackId: string, presetUrl: string) => {
-    const track = playlist.tracks.find((t) => t.id === trackId);
-    const baseBg = track?.background || currentBackground || defaultBackground || {
-      type: 'preset',
-      url: presetUrl,
-      color1: '#111827',
-      color2: '#000000',
-      gradientAngle: 135,
-      blur: 0,
-      brightness: 85,
-      contrast: 100,
-      vignette: 40,
-      beatZoom: true,
-      beatZoomIntensity: 4,
-    };
-    const updatedBg: BackgroundConfig = {
-      ...baseBg,
-      type: 'preset',
-      isVideo: false,
-      url: presetUrl,
-    };
-    handleUpdateTrack(trackId, { background: updatedBg });
-  };
-
-  const handleCopyCurrentBackgroundToTrack = (trackId: string) => {
-    if (!currentBackground) return;
-    handleUpdateTrack(trackId, { background: { ...currentBackground } });
-  };
-
-  const handleResetTrackBackground = (trackId: string) => {
-    handleUpdateTrack(trackId, { background: undefined });
-  };
-
-  const handleUpdateTrackBackgroundProp = (trackId: string, partial: Partial<BackgroundConfig>) => {
-    const track = playlist.tracks.find((t) => t.id === trackId);
-    const baseBg = track?.background || currentBackground || defaultBackground || {
-      type: 'preset',
-      url: BACKGROUND_PRESETS[0]?.url || '',
-      color1: '#111827',
-      color2: '#000000',
-      gradientAngle: 135,
-      blur: 0,
-      brightness: 85,
-      contrast: 100,
-      vignette: 40,
-      beatZoom: true,
-      beatZoomIntensity: 4,
-    };
-    handleUpdateTrack(trackId, { background: { ...baseBg, ...partial } });
-  };
-
-  // Drag and Drop reordering handlers
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    setDragOverIndex(index);
-  };
-
-  const handleDrop = (index: number) => {
-    if (draggedIndex === null || draggedIndex === index) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
-    const reordered = reorderTracks(playlist.tracks, draggedIndex, index);
-    let newCurrent = playlist.currentIndex;
-    if (playlist.currentIndex === draggedIndex) {
-      newCurrent = index;
-    } else if (draggedIndex < playlist.currentIndex && index >= playlist.currentIndex) {
-      newCurrent -= 1;
-    } else if (draggedIndex > playlist.currentIndex && index <= playlist.currentIndex) {
-      newCurrent += 1;
-    }
-
-    onChangePlaylist({
-      ...playlist,
-      tracks: reordered,
-      currentIndex: newCurrent,
-    });
-    setDraggedIndex(null);
-    setDragOverIndex(null);
   };
 
   return (
@@ -904,29 +759,21 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
             {language === 'vi' ? 'Thứ Tự Danh Sách Phát' : 'Playlist Track Queue'}
           </span>
           <span className="text-[10px] text-neutral-500">
-            {language === 'vi' ? 'Kéo thả hoặc bấm mũi tên để đổi vị trí' : 'Drag or use arrows to re-order'}
+            {language === 'vi' ? 'Bấm mũi tên ▲ ▼ để đổi thứ tự bài' : 'Use arrows ▲ ▼ to re-order tracks'}
           </span>
         </div>
 
         {playlist.tracks.map((track, index) => {
           const isActive = index === playlist.currentIndex;
           const isExpanded = expandedTrackId === track.id;
-          const isDragging = draggedIndex === index;
-          const isDragOver = dragOverIndex === index;
 
           return (
             <div
               key={`${track.id || 'track'}-${index}`}
-              draggable
-              onDragStart={() => handleDragStart(index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDrop={() => handleDrop(index)}
               className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
                 isActive
                   ? 'bg-neutral-900 border-rose-500/60 shadow-lg shadow-rose-950/40 ring-1 ring-rose-500/30'
                   : 'bg-neutral-900/60 border-neutral-800/80 hover:border-neutral-700'
-              } ${isDragging ? 'opacity-40 scale-98' : 'opacity-100'} ${
-                isDragOver ? 'border-cyan-400 ring-2 ring-cyan-400/30' : ''
               }`}
             >
               {/* Card Header Bar */}
@@ -934,13 +781,6 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
                 onClick={() => onPlayTrackAtIndex(index)}
                 className="p-3 flex items-center gap-2.5 cursor-pointer hover:bg-neutral-800/40 transition-colors"
               >
-                {/* Drag Handle */}
-                <div
-                  title={language === 'vi' ? 'Kéo để đổi thứ tự' : 'Drag to re-order'}
-                  className="cursor-grab active:cursor-grabbing text-neutral-500 hover:text-white p-1 -ml-1"
-                >
-                  <GripVertical className="w-4 h-4" />
-                </div>
 
                 {/* Index & Play Button */}
                 <button
@@ -968,46 +808,11 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
                   )}
                 </button>
 
-                {/* Track Background Thumbnail Indicator */}
+                {/* Track Audio Note Indicator */}
                 <div 
-                  className="w-8 h-8 rounded-lg overflow-hidden border border-neutral-700/80 bg-neutral-950 shrink-0 relative flex items-center justify-center shadow-inner"
-                  title={
-                    track.background 
-                      ? (language === 'vi' ? 'Bài này có hình/video nền riêng' : 'Custom track background assigned')
-                      : (language === 'vi' ? 'Dùng nền mặc định của dự án' : 'Project default background')
-                  }
+                  className="w-8 h-8 rounded-lg border border-neutral-700/80 bg-neutral-900/90 shrink-0 flex items-center justify-center shadow-inner text-rose-400"
                 >
-                  {track.background?.isVideo ? (
-                    <div className="w-full h-full bg-neutral-900 flex items-center justify-center relative">
-                      <Film className="w-3.5 h-3.5 text-rose-400" />
-                      <span className="absolute bottom-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-rose-500 ring-1 ring-neutral-950" />
-                    </div>
-                  ) : track.background?.url ? (
-                    <img
-                      src={track.background.url}
-                      alt="BG"
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : currentBackground?.url ? (
-                    <img
-                      src={currentBackground.url}
-                      alt="Default BG"
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover opacity-60"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-neutral-800 text-neutral-500">
-                      <ImageIcon className="w-3.5 h-3.5" />
-                    </div>
-                  )}
-
-                  {track.background && (
-                    <span 
-                      className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-purple-400 ring-1 ring-neutral-950 shadow-sm" 
-                      title={language === 'vi' ? 'Có nền riêng' : 'Custom BG'}
-                    />
-                  )}
+                  <Music className="w-3.5 h-3.5" />
                 </div>
 
                 {/* Track Details */}
@@ -1050,8 +855,6 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-[10px] text-neutral-400 truncate">
-                    <span>{track.artist || 'SonaWave Master'}</span>
-                    <span>•</span>
                     <span className="font-mono text-neutral-300">{formatTime(track.duration)}</span>
                     <span>•</span>
                     <span className="text-emerald-400 font-mono">
@@ -1125,30 +928,18 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
               {/* Expandable Fine-Tune Panel (Fade-In / Fade-Out / Volume) */}
               {isExpanded && (
                 <div className="p-3.5 bg-neutral-950/90 border-t border-neutral-800/80 space-y-3">
-                  {/* Track metadata editing */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                        {language === 'vi' ? 'Tên Bài Hát' : 'Title'}
-                      </label>
-                      <input
-                        type="text"
-                        value={track.title}
-                        onChange={(e) => handleUpdateTrack(track.id, { title: e.target.value })}
-                        className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500 font-medium"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
-                        {language === 'vi' ? 'Nghệ Sĩ' : 'Artist'}
-                      </label>
-                      <input
-                        type="text"
-                        value={track.artist}
-                        onChange={(e) => handleUpdateTrack(track.id, { artist: e.target.value })}
-                        className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500 font-medium"
-                      />
-                    </div>
+                  {/* Track metadata editing - TRACK TITLE only */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-neutral-400 uppercase mb-1">
+                      {language === 'vi' ? 'TÊN BÀI HÁT (TRACK TITLE)' : 'TRACK TITLE'}
+                    </label>
+                    <input
+                      type="text"
+                      value={track.title}
+                      onChange={(e) => handleUpdateTrack(track.id, { title: e.target.value })}
+                      placeholder={language === 'vi' ? 'Nhập tên bài hát...' : 'Enter track title...'}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500 font-semibold"
+                    />
                   </div>
 
                   {/* Fade-in & Fade-out Fine tuning sliders */}
@@ -1252,274 +1043,6 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
                       }
                       className="w-full h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-cyan-400"
                     />
-                  </div>
-
-                  {/* Track Background Customization Section */}
-                  <div className="p-3 rounded-xl bg-neutral-900/90 border border-neutral-800 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-md bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                          <ImageIcon className="w-3 h-3" />
-                        </div>
-                        <div>
-                          <span className="text-[11px] font-bold text-neutral-200 block">
-                            {language === 'vi' ? 'Hình Nền Của Bài Này' : 'Track Background'}
-                          </span>
-                          <span className="text-[9px] text-neutral-400">
-                            {track.background
-                              ? (language === 'vi' ? '✨ Đang dùng hình/video nền riêng biệt' : '✨ Using custom track background')
-                              : (language === 'vi' ? 'Dùng nền mặc định của dự án' : 'Using project default background')}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        {track.background ? (
-                          <button
-                            type="button"
-                            onClick={() => handleResetTrackBackground(track.id)}
-                            title={language === 'vi' ? 'Xóa nền riêng, dùng nền mặc định' : 'Reset to default background'}
-                            className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-rose-500/20 text-neutral-300 hover:text-rose-300 text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
-                          >
-                            <Trash2 className="w-3 h-3 text-rose-400" />
-                            <span>{language === 'vi' ? 'Xóa Nền Riêng' : 'Reset'}</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleCopyCurrentBackgroundToTrack(track.id)}
-                            title={language === 'vi' ? 'Sao chép nền đang hiển thị trên sân khấu cho bài này' : 'Copy active stage background'}
-                            className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
-                          >
-                            <Copy className="w-3 h-3 text-cyan-400" />
-                            <span>{language === 'vi' ? 'Lấy Nền Sân Khấu' : 'Copy Current'}</span>
-                          </button>
-                        )}
-
-                        {onNavigateToBackgroundTab && (
-                          <button
-                            type="button"
-                            onClick={() => onNavigateToBackgroundTab(track.id)}
-                            title={language === 'vi' ? 'Mở Tab Background để chỉnh hiệu ứng chuyên sâu' : 'Open Background Tab for full controls'}
-                            className="px-2 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 text-[10px] font-semibold border border-purple-500/30 transition-all cursor-pointer flex items-center gap-1"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            <span>{language === 'vi' ? 'Chỉnh Chi Tiết' : 'Full Tab'}</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Background Preview & Upload Controls */}
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-neutral-950/60 border border-neutral-800/80">
-                      {/* Preview Thumbnail */}
-                      <div className="w-14 h-14 rounded-lg overflow-hidden border border-neutral-700 bg-neutral-900 shrink-0 relative flex items-center justify-center">
-                        {track.background?.isVideo ? (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-rose-400 p-1 text-center">
-                            <Film className="w-5 h-5 mb-0.5" />
-                            <span className="text-[8px] font-bold uppercase">Video MP4</span>
-                          </div>
-                        ) : track.background?.url ? (
-                          <img
-                            src={track.background.url}
-                            alt="Track BG"
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : currentBackground?.url ? (
-                          <img
-                            src={currentBackground.url}
-                            alt="Default BG"
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover opacity-60"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center text-neutral-500 p-1 text-center">
-                            <ImageIcon className="w-5 h-5 mb-0.5" />
-                            <span className="text-[8px] font-medium">{language === 'vi' ? 'Mặc Định' : 'Default'}</span>
-                          </div>
-                        )}
-
-                        {track.background && (
-                          <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400 ring-1 ring-neutral-950" />
-                        )}
-                      </div>
-
-                      {/* Upload Buttons */}
-                      <div className="flex-1 space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <label className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-300 text-[11px] font-semibold transition-all cursor-pointer">
-                            <Upload className="w-3 h-3" />
-                            <span>{language === 'vi' ? 'Tải Ảnh Nền' : 'Upload Image'}</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => handleTrackImageUpload(track.id, e)}
-                            />
-                          </label>
-
-                          <label className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-[11px] font-semibold transition-all cursor-pointer">
-                            <Video className="w-3 h-3" />
-                            <span>{language === 'vi' ? 'Tải Video MP4' : 'Upload MP4'}</span>
-                            <input
-                              type="file"
-                              accept="video/mp4,video/*,.mp4,.mov,.webm"
-                              className="hidden"
-                              onChange={(e) => handleTrackVideoUpload(track.id, e)}
-                            />
-                          </label>
-                        </div>
-                        <p className="text-[9px] text-neutral-400">
-                          {language === 'vi' 
-                            ? 'Nền riêng này sẽ tự động kích hoạt ngay khi bài hát bắt đầu phát' 
-                            : 'This background triggers automatically when this track plays'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Quick Preset Selector for this track */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-[10px] text-neutral-400 font-bold uppercase">
-                        <span>{language === 'vi' ? 'Chọn Nhanh Preset Nền' : 'Quick Presets'}</span>
-                        <span className="text-[9px] text-neutral-500 font-normal">
-                          {language === 'vi' ? 'Nhấp để áp dụng ngay' : 'Click to apply'}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-6 gap-1.5">
-                        {BACKGROUND_PRESETS.slice(0, 6).map((preset) => {
-                          const isPresetSelected = track.background?.url === preset.url;
-                          return (
-                            <button
-                              key={preset.id}
-                              type="button"
-                              onClick={() => handleAssignPresetToTrack(track.id, preset.url)}
-                              title={language === 'vi' ? preset.nameVi : preset.nameEn}
-                              className={`group relative aspect-video rounded-lg overflow-hidden border transition-all cursor-pointer ${
-                                isPresetSelected
-                                  ? 'border-purple-500 ring-2 ring-purple-500/40 scale-102'
-                                  : 'border-neutral-800 hover:border-neutral-600'
-                              }`}
-                            >
-                              <img
-                                src={preset.url}
-                                alt={preset.nameEn}
-                                referrerPolicy="no-referrer"
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-1">
-                                <span className="text-[8px] font-bold text-white truncate block w-full leading-tight">
-                                  {language === 'vi' ? preset.nameVi : preset.nameEn}
-                                </span>
-                              </div>
-                              {isPresetSelected && (
-                                <div className="absolute top-1 right-1 w-3 h-3 rounded-full bg-purple-500 flex items-center justify-center">
-                                  <Check className="w-2 h-2 text-white" />
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Background Adjustments (Blur, Brightness, Beat Zoom) if track has background */}
-                    {track.background && (
-                      <div className="space-y-2 pt-2 border-t border-neutral-800/80">
-                        <div className="grid grid-cols-2 gap-2">
-                          {/* Blur slider */}
-                          <div className="p-2 rounded-lg bg-neutral-950/60 border border-neutral-800/80 space-y-1">
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="font-semibold text-neutral-300">
-                                {language === 'vi' ? 'Độ Mờ (Blur)' : 'Blur'}
-                              </span>
-                              <span className="font-mono text-cyan-400 font-bold">
-                                {track.background.blur ?? 0}px
-                              </span>
-                            </div>
-                            <input
-                              type="range"
-                              min={0}
-                              max={30}
-                              step={1}
-                              value={track.background.blur ?? 0}
-                              onChange={(e) =>
-                                handleUpdateTrackBackgroundProp(track.id, { blur: parseInt(e.target.value) })
-                              }
-                              className="w-full h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-cyan-400"
-                            />
-                          </div>
-
-                          {/* Brightness slider */}
-                          <div className="p-2 rounded-lg bg-neutral-950/60 border border-neutral-800/80 space-y-1">
-                            <div className="flex items-center justify-between text-[10px]">
-                              <span className="font-semibold text-neutral-300">
-                                {language === 'vi' ? 'Độ Sáng' : 'Brightness'}
-                              </span>
-                              <span className="font-mono text-rose-400 font-bold">
-                                {track.background.brightness ?? 85}%
-                              </span>
-                            </div>
-                            <input
-                              type="range"
-                              min={20}
-                              max={200}
-                              step={5}
-                              value={track.background.brightness ?? 85}
-                              onChange={(e) =>
-                                handleUpdateTrackBackgroundProp(track.id, { brightness: parseInt(e.target.value) })
-                              }
-                              className="w-full h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-rose-500"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Beat Zoom Toggle & Intensity */}
-                        <div className="flex items-center justify-between p-2 rounded-lg bg-neutral-950/60 border border-neutral-800/80">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleUpdateTrackBackgroundProp(track.id, {
-                                  beatZoom: !(track.background?.beatZoom ?? true),
-                                })
-                              }
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all ${
-                                (track.background.beatZoom ?? true)
-                                  ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40'
-                                  : 'bg-neutral-800 text-neutral-400'
-                              }`}
-                            >
-                              {(track.background.beatZoom ?? true) ? 'ON' : 'OFF'}
-                            </button>
-                            <span className="text-[10px] font-semibold text-neutral-300">
-                              {language === 'vi' ? 'Beat Zoom (Giật Nhịp)' : 'Beat Zoom'}
-                            </span>
-                          </div>
-
-                          {(track.background.beatZoom ?? true) && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-[9px] font-mono text-purple-300">
-                                +{Math.round((track.background.zoomIntensity ?? 0.05) * 100)}%
-                              </span>
-                              <input
-                                type="range"
-                                min={0.01}
-                                max={0.15}
-                                step={0.01}
-                                value={track.background.zoomIntensity ?? 0.05}
-                                onChange={(e) =>
-                                  handleUpdateTrackBackgroundProp(track.id, {
-                                    zoomIntensity: parseFloat(e.target.value),
-                                  })
-                                }
-                                className="w-16 h-1 bg-neutral-800 rounded appearance-none cursor-pointer accent-purple-500"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   {/* Track Lyrics Customization Section */}

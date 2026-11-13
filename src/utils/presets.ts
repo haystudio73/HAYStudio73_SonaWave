@@ -1,4 +1,4 @@
-import { PresetTheme, BackgroundConfig, VisualizerConfig, LyricsConfig, ParticleConfig, TrackMetadata, TextBoxItem, FilmLightConfig, ColorGradingConfig, ColorGradingLUT, MasterEQConfig, MasterEQPreset, MasterEQBands, SceneTransitionsConfig, SlideImageItem, TimelineSceneItem } from '../types';
+import { PresetTheme, BackgroundConfig, VisualizerConfig, LyricsConfig, ParticleConfig, ParticleLayer, ParticleType, TrackMetadata, TextBoxItem, FilmLightConfig, ColorGradingConfig, ColorGradingLUT, MasterEQConfig, MasterEQPreset, MasterEQBands, SceneTransitionsConfig, SlideImageItem, TimelineSceneItem, LyricsPresetItem } from '../types';
 
 export const CURATED_SLIDE_PRESETS: SlideImageItem[] = [
   {
@@ -361,6 +361,22 @@ export const BACKGROUND_PRESETS: BackgroundPresetItem[] = [
     thumbnail: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=300&q=80',
   },
   {
+    id: 'bg-lofi-3',
+    name: 'Lofi Rainy Evening',
+    nameVi: 'Phố Lofi Hoàng Hôn Nhẹ',
+    category: 'lofi',
+    url: 'https://images.unsplash.com/photo-1559909751-4fb63f3b1452?auto=format&fit=crop&w=1920&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1559909751-4fb63f3b1452?auto=format&fit=crop&w=300&q=80',
+  },
+  {
+    id: 'bg-lofi-4',
+    name: 'Dreamy Chill Window',
+    nameVi: 'Không Gian Lofi Thư Giãn',
+    category: 'lofi',
+    url: 'https://images.unsplash.com/photo-1629255426578-4df5f90e4d51?auto=format&fit=crop&w=1920&q=80',
+    thumbnail: 'https://images.unsplash.com/photo-1629255426578-4df5f90e4d51?auto=format&fit=crop&w=300&q=80',
+  },
+  {
     id: 'bg-nature-1',
     name: 'Deep Pine Mist',
     nameVi: 'Rừng Thông Sương Mù',
@@ -623,7 +639,7 @@ export const DEFAULT_LYRICS: LyricsConfig = {
   enabled: true,
   fontFamily: 'Be Vietnam Pro',
   fontSize: 24,
-  color: 'rgba(255, 255, 255, 0.45)',
+  color: '#FFFFFF',
   activeColor: '#ffffff',
   glowColor: '#ec4899',
   glowIntensity: 15,
@@ -645,7 +661,161 @@ export const DEFAULT_LYRICS: LyricsConfig = {
   pillColor: 'rgba(0, 0, 0, 0.5)',
   pillOpacity: 0.6,
   pillBlur: 12,
+
+  // Karaoke 2 Dòng (Duo Line) defaults
+  duoLine1Y: 76,
+  duoLine1X: 50,
+  duoLine2Y: 86,
+  duoLine2X: 50,
+  duoLineGap: 38,
+  duoAlignMode: 'center',
+
+  // 3D Shadow defaults
+  threeDDepth: 6,
+  threeDAngle: 135,
+  threeDColor: '#000000',
+  threeDStroke: true,
+
+  // Gradient Fill Themes defaults
+  gradientTheme: 'sunset-gold',
+  gradientColor1: '#ff7e5f',
+  gradientColor2: '#feb47b',
+  gradientColor3: '#ffe066',
+  gradientAngle: 90,
+
+  // In / Out Transitions defaults
+  inEffect: 'fade',
+  outEffect: 'fade',
+  inOutDuration: 0.35,
+
+  // Minimalist Glow 2-Line Split for 9:16 Vertical Screens
+  minimalGlowAutoTwoLines: false,
+  minimalGlowLineGap: 36,
 };
+
+export interface LyricsGradientTheme {
+  id: string;
+  nameVi: string;
+  nameEn: string;
+  colors: [string, string, string];
+  angle: number;
+}
+
+export const LYRICS_GRADIENT_THEMES: LyricsGradientTheme[] = [
+  { id: 'sunset-gold', nameVi: 'Hoàng Hôn Vàng (Sunset Gold)', nameEn: 'Sunset Gold', colors: ['#ff7e5f', '#feb47b', '#ffe066'], angle: 90 },
+  { id: 'cyber-neon', nameVi: 'Cyber Neon (Cyan & Tím)', nameEn: 'Cyber Neon', colors: ['#00f2fe', '#4facfe', '#9b51e0'], angle: 90 },
+  { id: 'golden-luxury', nameVi: 'Hoàng Gia Vàng Kim (Gold)', nameEn: 'Golden Luxury', colors: ['#ffe066', '#f59e0b', '#b45309'], angle: 90 },
+  { id: 'emerald-aurora', nameVi: 'Cực Quang Ngọc Bích (Emerald)', nameEn: 'Emerald Aurora', colors: ['#00f5d4', '#10b981', '#064e3b'], angle: 90 },
+  { id: 'fire-ember', nameVi: 'Lửa Đỏ Rực (Fire Ember)', nameEn: 'Fire Ember', colors: ['#fef08a', '#f97316', '#dc2626'], angle: 90 },
+  { id: 'ocean-breeze', nameVi: 'Đại Dương Xanh (Ocean Breeze)', nameEn: 'Ocean Breeze', colors: ['#38bdf8', '#2563eb', '#1e1b4b'], angle: 90 },
+  { id: 'pastel-candy', nameVi: 'Kẹo Ngọt Pastel (Candy)', nameEn: 'Pastel Candy', colors: ['#c084fc', '#f472b6', '#fbcfe8'], angle: 90 },
+  { id: 'silver-chrome', nameVi: 'Bạch Kim Ánh Kim (Silver Chrome)', nameEn: 'Silver Chrome', colors: ['#ffffff', '#94a3b8', '#334155'], angle: 90 },
+  { id: 'rainbow', nameVi: 'Cầu Vồng Đa Sắc (Rainbow)', nameEn: 'Rainbow Flare', colors: ['#ef4444', '#eab308', '#06b6d4'], angle: 90 },
+];
+
+export const BUILTIN_LYRICS_PRESETS: LyricsPresetItem[] = [
+  {
+    id: 'preset-karaoke-duo-studio',
+    name: 'Phòng Thu Karaoke 2 Dòng (Studio Duo)',
+    createdAt: 1700000000000,
+    config: {
+      ...DEFAULT_LYRICS,
+      style: 'karaoke-duo',
+      fontSize: 26,
+      color: '#FFFFFF',
+      activeColor: '#38bdf8',
+      glowColor: '#0284c7',
+      duoLine1Y: 76,
+      duoLine2Y: 86,
+      duoLineGap: 38,
+      duoAlignMode: 'center',
+      fontEffect: 'double-stroke',
+      fontEffectColor: '#0369a1',
+      strokeColor: '#000000',
+      strokeWidth: 3,
+      inEffect: 'fade',
+      outEffect: 'fade',
+    },
+  },
+  {
+    id: 'preset-3d-gold-luxury',
+    name: 'Hoàng Kim Đổ Bóng 3D (Gold Luxury 3D)',
+    createdAt: 1700000000001,
+    config: {
+      ...DEFAULT_LYRICS,
+      style: 'karaoke-single',
+      fontSize: 28,
+      color: '#FFFFFF',
+      activeColor: '#fbbf24',
+      glowColor: '#f59e0b',
+      fontEffect: '3d-shadow',
+      threeDDepth: 7,
+      threeDAngle: 135,
+      threeDColor: '#78350f',
+      threeDStroke: true,
+      inEffect: 'slide-up',
+      outEffect: 'slide-up',
+    },
+  },
+  {
+    id: 'preset-cyber-gradient-pop',
+    name: 'Cyberpunk Dải Màu Gradient (Neon Pop)',
+    createdAt: 1700000000002,
+    config: {
+      ...DEFAULT_LYRICS,
+      style: 'karaoke-duo',
+      fontSize: 26,
+      color: '#FFFFFF',
+      activeColor: '#00f2fe',
+      glowColor: '#9b51e0',
+      fontEffect: 'gradient-fill',
+      gradientTheme: 'cyber-neon',
+      gradientColor1: '#00f2fe',
+      gradientColor2: '#4facfe',
+      gradientColor3: '#9b51e0',
+      duoLine1Y: 75,
+      duoLine2Y: 85,
+      inEffect: 'char-drop',
+      outEffect: 'zoom-out',
+    },
+  },
+  {
+    id: 'preset-tiktok-minimal-pill',
+    name: 'TikTok Hot Reels (1 Dòng Nổi Bật)',
+    createdAt: 1700000000003,
+    config: {
+      ...DEFAULT_LYRICS,
+      style: 'karaoke-single',
+      fontSize: 25,
+      color: '#FFFFFF',
+      activeColor: '#f43f5e',
+      glowColor: '#fb7185',
+      karaokeSweepMode: 'star-flying',
+      showBackgroundPill: true,
+      pillColor: 'rgba(0, 0, 0, 0.65)',
+      inEffect: 'bounce',
+      outEffect: 'fade',
+    },
+  },
+  {
+    id: 'preset-cinema-subtitle-bar',
+    name: 'Phim Điện Ảnh Phụ Đề Kính Mờ (Cinema Bar)',
+    createdAt: 1700000000004,
+    config: {
+      ...DEFAULT_LYRICS,
+      style: 'subtitle-bar',
+      fontSize: 22,
+      color: '#e2e8f0',
+      activeColor: '#ffffff',
+      glowIntensity: 0,
+      fontEffect: 'none',
+      showBackgroundPill: true,
+      pillColor: 'rgba(15, 23, 42, 0.8)',
+      inEffect: 'dissolve',
+      outEffect: 'dissolve',
+    },
+  },
+];
 
 export const DEFAULT_BACKGROUND: BackgroundConfig = {
   mode: 'single',
@@ -720,7 +890,9 @@ export const DEFAULT_BACKGROUND: BackgroundConfig = {
   videoFadeColor: '#000000',
 };
 
-export const DEFAULT_PARTICLES: ParticleConfig = {
+export const DEFAULT_PARTICLE_LAYER: ParticleLayer = {
+  id: 'layer-dust-1',
+  name: 'Lofi Ambient Dust',
   enabled: true,
   type: 'dust',
   count: 45,
@@ -736,9 +908,6 @@ export const DEFAULT_PARTICLES: ParticleConfig = {
   dustRandomShape: true,
   randomSize: false,
   opacity: 0.85,
-  reactiveToBeat: true,
-  bassReactiveColor: true,
-  bassFlashBoost: 1.5,
   // Snow & Wind defaults
   snowWindAngle: 15,
   snowWindSpeed: 1.0,
@@ -774,12 +943,234 @@ export const DEFAULT_PARTICLES: ParticleConfig = {
   // Crisp 3D particles without blurry halo
   particleGlowRadius: 0,
   silkFluffGlow: false,
+  // Butterflies defaults
+  butterflySize: 22,
+  butterflyWingSpeed: 1.2,
+  butterflyColorVariant: 'neon-glow',
+  butterflyTrail: true,
+};
+
+export function createDefaultParticleLayer(type: ParticleType, layerIndex = 1): ParticleLayer {
+  const id = `layer-${type}-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`;
+  const base: ParticleLayer = {
+    ...DEFAULT_PARTICLE_LAYER,
+    id,
+    type,
+    enabled: true,
+  };
+
+  switch (type) {
+    case 'rain':
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}: Mưa Tự Nhiên`,
+        count: 65,
+        speed: 1.3,
+        color: '#93c5fd',
+        rainGlow: true,
+        rainLengthScale: 1.2,
+        rainSplash: true,
+        rainWindAngle: 10,
+      };
+    case 'snow':
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}: Tuyết Mùa Đông`,
+        count: 50,
+        speed: 0.9,
+        color: '#f8fafc',
+        snowFlakeType: 'mixed',
+        snowWindAngle: 15,
+        snowTurbulence: 40,
+      };
+    case 'speed-lines':
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}: Vệt Tốc Độ`,
+        count: 35,
+        speed: 1.4,
+        color: '#67e8f9',
+        speedLineWidth: 2.5,
+        speedLineLength: 150,
+        speedLineBlur: 5,
+      };
+    case 'spaghetti':
+    case 'silk-ribbon':
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}: Mưa Ruy Băng Lụa`,
+        count: 35,
+        speed: 0.85,
+        color: '#f472b6',
+        ribbonLength: 160,
+        ribbonThickness: 8,
+        ribbonTwist: 1.8,
+        ribbonGlow: 15,
+      };
+    case 'spinning-dashes':
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}: Đoạn Ngắn Xoay 360°`,
+        count: 45,
+        speed: 1.1,
+        color: '#c084fc',
+        shape: 'square',
+        sizePx: 3,
+      };
+    case 'rainbow-bubbles':
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}: Bong Bóng Cầu Vồng`,
+        count: 35,
+        speed: 0.7,
+        color: '#38bdf8',
+        colorMode: 'rainbow',
+        glowIntensity: 15,
+        sizePx: 12,
+        randomSize: true,
+      };
+    case 'hyperspace':
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}: Tăng Tốc Hyperspace 3D`,
+        count: 60,
+        speed: 1.5,
+        color: '#818cf8',
+        hyperspaceLength: 20,
+        hyperspaceGlow: 15,
+      };
+    case 'dust':
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}: Bụi Lofi Trôi`,
+        count: 45,
+        speed: 0.8,
+        color: '#ffffff',
+        dustMinSize: 1,
+        dustRandomShape: true,
+        sizePx: 2,
+      };
+    case 'stars':
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}: Sao Lấp Lánh`,
+        count: 40,
+        speed: 0.4,
+        color: '#fef08a',
+        starShape: '4-point',
+        starRandomFlare: true,
+        starFlareIntensity: 1.2,
+      };
+    case 'fire-embers':
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}: Những Hạt Lửa`,
+        count: 50,
+        speed: 1.1,
+        color: '#f97316',
+        secondaryColor: '#ef4444',
+        fireEmbersSpread: 1.2,
+        fireEmbersCooling: 1.0,
+      };
+    case 'butterflies':
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}: Đàn Bướm Phát Sáng`,
+        count: 16,
+        speed: 1.0,
+        color: '#06b6d4',
+        secondaryColor: '#ec4899',
+        butterflySize: 24,
+        butterflyWingSpeed: 1.2,
+        butterflyColorVariant: 'neon-glow',
+        butterflyTrail: true,
+        glowIntensity: 12,
+      };
+    default:
+      return {
+        ...base,
+        name: `Lớp ${layerIndex}`,
+      };
+  }
+}
+
+export const DEFAULT_PARTICLES: ParticleConfig = {
+  enabled: true,
+  type: 'dust',
+  count: 45,
+  speed: 1.0,
+  color: '#ffffff',
+  secondaryColor: '#ec4899',
+  shape: 'circle',
+  colorMode: 'custom',
+  glowIntensity: 0,
+  sizeScale: 1.0,
+  sizePx: 2,
+  dustMinSize: 1,
+  dustRandomShape: true,
+  randomSize: false,
+  opacity: 0.85,
+  reactiveToBeat: true,
+  bassReactiveColor: true,
+  bassFlashBoost: 1.5,
+  // Multi-layer particle overlays (Max 5 layers)
+  layers: [
+    { ...DEFAULT_PARTICLE_LAYER }
+  ],
+  activeLayerId: 'layer-dust-1',
+  // Snow & Wind defaults
+  snowWindAngle: 15,
+  snowWindSpeed: 1.0,
+  snowTurbulence: 40,
+  snowFlakeType: 'mixed',
+  // Rain & Wind defaults
+  rainWindAngle: 10,
+  rainWindSpeed: 1.2,
+  rainTurbulence: 25,
+  rainDropType: 'mixed',
+  rainLengthScale: 1.2,
+  rainSplash: true,
+  rainRandomWind: false,
+  rainRandomWindSpeed: 1.0,
+  // Speed lines defaults
+  speedLineMode: 'horizontal',
+  speedLineDirection: 'right-to-left',
+  speedLineTilt: 0,
+  speedLineVerticalCenter: 'center',
+  speedLineCenterY: 50,
+  speedLineHorizontalCenter: 'center',
+  speedLineCenterX: 50,
+  speedLineSpeed: 1.0,
+  speedLineLength: 140,
+  speedLineRandomLength: 55,
+  speedLineWidth: 2.5,
+  speedLineBlur: 5,
+  // Silk ribbon defaults
+  ribbonLength: 160,
+  ribbonThickness: 8,
+  ribbonTwist: 1.8,
+  ribbonGlow: 15,
+  // Crisp 3D particles without blurry halo
+  particleGlowRadius: 0,
+  silkFluffGlow: false,
+  // Butterflies defaults
+  butterflySize: 22,
+  butterflyWingSpeed: 1.2,
+  butterflyColorVariant: 'neon-glow',
+  butterflyTrail: true,
 };
 
 export const DEFAULT_LOW_HARDWARE_PARTICLES: ParticleConfig = {
   ...DEFAULT_PARTICLES,
   count: 20, // Light particle load for mobile and integrated graphics
   glowIntensity: 0, // Avoid expensive shadow blurs
+  layers: [
+    {
+      ...DEFAULT_PARTICLE_LAYER,
+      count: 20,
+      glowIntensity: 0,
+    }
+  ],
 };
 
 export const DEFAULT_FILM_LIGHT: FilmLightConfig = {
@@ -1325,7 +1716,8 @@ export const DEFAULT_TRACK: TrackMetadata = {
   logoAnimation: 'none',
   logoAnimationSpeed: 1.0,
   logoAnimationDirection: 'clockwise',
-  trackDetailsOrder: ['subtitle', 'title', 'artist'],
+  trackDetailsOrder: ['subtitle', 'title', 'artist', 'track-title'],
+  currentPlayingTrackTitle: 'Neon Synthwave Dream',
   badgeScale: 1.0,
   badgeOpacity: 1.0,
   badgeBorderColor: '#f97316',
@@ -1352,6 +1744,19 @@ export const DEFAULT_TRACK: TrackMetadata = {
   boxBackground: false,
   boxBgColor: 'rgba(0, 0, 0, 0.6)',
   boxOpacity: 0.7,
+  // Playlist active track title defaults
+  showTrackTitle: true,
+  trackTitleFontFamily: 'Be Vietnam Pro',
+  trackTitleFontSize: 18,
+  trackTitleFontStyle: 'bold',
+  trackTitleFontWeight: 'bold',
+  trackTitleFontEffect: 'none',
+  trackTitleItalic: false,
+  trackTitleUppercase: false,
+  trackTitleColor: '#ffffff',
+  trackTitleCustomPosition: false,
+  trackTitlePositionX: 50,
+  trackTitlePositionY: 44,
 };
 
 export const PRESET_THEMES: PresetTheme[] = [

@@ -62,7 +62,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [hardwareAcceleration, setHardwareAcceleration] = useState<'prefer-hardware' | 'auto' | 'software'>('prefer-hardware');
   const [exportAudioTarget, setExportAudioTarget] = useState<ExportAudioTarget>('current-track');
   const [fullSong, setFullSong] = useState(true);
-  const [rangeDuration, setRangeDuration] = useState<number>(30); // 15, 30, 60
+  const [rangeDuration, setRangeDuration] = useState<number>(30); // 15, 30, 60, 90, 120, 180
   const [startTime, setStartTime] = useState<number>(0);
   const [showWarningConfirm, setShowWarningConfirm] = useState<boolean>(false);
 
@@ -98,12 +98,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     }
   }, [exportedBlob, isExporting]);
 
-  if (!isOpen) return null;
+  const totalPlaylistSec = playlist?.tracks.reduce((sum, t) => sum + (t.duration || 0), 0) || duration;
+  const activeMaxDuration = exportAudioTarget === 'full-playlist' ? totalPlaylistSec : (duration || 30);
 
   const getEffectiveSettings = (): ExportSettings => {
-    const totalPlaylistSec = playlist?.tracks.reduce((sum, t) => sum + (t.duration || 0), 0) || duration;
-    const effDuration = exportAudioTarget === 'full-playlist' ? totalPlaylistSec : (duration || 30);
-    const songDuration = effDuration > 0 ? effDuration : 30;
+    const songDuration = activeMaxDuration > 0 ? activeMaxDuration : 30;
     const start = fullSong ? 0 : Math.min(startTime, Math.max(0, songDuration - 1));
     const end = fullSong ? songDuration : Math.min(start + rangeDuration, songDuration);
 
@@ -153,6 +152,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         return resolution === '1080p' ? '1080 × 1350 (IG Portrait)' : resolution === '720p' ? '720 × 900' : '2160 × 2700';
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
@@ -563,48 +564,71 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <button
+                  type="button"
                   onClick={() => setFullSong(true)}
                   className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                     fullSong
                       ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500/40 font-semibold'
-                      : 'bg-neutral-950 border-neutral-800 text-neutral-400'
+                      : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-neutral-200'
                   }`}
                 >
-                  <span className="text-xs block">Toàn Bộ Bài Hát</span>
+                  <span className="text-xs block">
+                    {exportAudioTarget === 'full-playlist' ? 'Toàn Bộ Playlist' : 'Toàn Bộ Bài Hát'}
+                  </span>
                   <span className="text-[10px] text-neutral-500 font-mono">
-                    {formatTime(duration || 30)}
+                    {formatTime(activeMaxDuration || 30)}
                   </span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setFullSong(false)}
                   className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                     !fullSong
                       ? 'bg-purple-500/20 border-purple-500 text-white ring-1 ring-purple-500/40 font-semibold'
-                      : 'bg-neutral-950 border-neutral-800 text-neutral-400'
+                      : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-neutral-200'
                   }`}
                 >
-                  <span className="text-xs block">Đoạn Ngắn TikTok/Shorts</span>
-                  <span className="text-[10px] text-neutral-500">{rangeDuration}s clip</span>
+                  <span className="text-xs block">Đoạn Ngắn TikTok / Shorts</span>
+                  <span className="text-[10px] text-purple-400 font-medium">
+                    {rangeDuration}s {rangeDuration >= 60 ? `(${rangeDuration / 60}m)` : ''} clip
+                  </span>
                 </button>
               </div>
 
               {!fullSong && (
-                <div className="bg-neutral-950/80 border border-neutral-800 p-3 rounded-2xl space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-neutral-400">Thời lượng clip:</span>
-                    <div className="flex items-center gap-1">
-                      {[15, 30, 60].map((s) => (
+                <div className="bg-neutral-950/80 border border-neutral-800 p-3 rounded-2xl space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-neutral-400 font-medium">Thời lượng clip TikTok/Shorts:</span>
+                      <span className="text-purple-400 font-mono font-semibold">
+                        {rangeDuration}s {rangeDuration >= 60 ? `(${rangeDuration / 60}m)` : ''}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-6 gap-1.5">
+                      {[15, 30, 60, 90, 120, 180].map((s) => (
                         <button
                           key={s}
-                          onClick={() => setRangeDuration(s)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                          type="button"
+                          onClick={() => {
+                            setRangeDuration(s);
+                            const maxStart = Math.max(0, (activeMaxDuration || 30) - s);
+                            if (startTime > maxStart) {
+                              setStartTime(maxStart);
+                            }
+                          }}
+                          className={`py-2 px-1 rounded-xl text-xs font-semibold cursor-pointer transition-all text-center ${
                             rangeDuration === s
-                              ? 'bg-purple-600 text-white shadow-sm'
-                              : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm ring-1 ring-purple-400/50'
+                              : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-800'
                           }`}
                         >
-                          {s}s
+                          <span className="block leading-tight font-bold">{s}s</span>
+                          {s >= 60 && (
+                            <span className="text-[9px] block text-purple-200/80 font-normal leading-none mt-0.5">
+                              {s === 60 ? '1m' : s === 90 ? '1.5m' : s === 120 ? '2m' : '3m'}
+                            </span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -614,13 +638,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-neutral-400">Đoạn phát:</span>
                       <span className="text-purple-400 font-mono font-semibold">
-                        {formatTime(startTime)} → {formatTime(Math.min(startTime + rangeDuration, duration || 30))}
+                        {formatTime(startTime)} → {formatTime(Math.min(startTime + rangeDuration, activeMaxDuration || 30))}
                       </span>
                     </div>
                     <input
                       type="range"
                       min={0}
-                      max={Math.max(0, (duration || 30) - rangeDuration)}
+                      max={Math.max(0, (activeMaxDuration || 30) - rangeDuration)}
                       step={1}
                       value={startTime}
                       onChange={(e) => setStartTime(parseFloat(e.target.value))}

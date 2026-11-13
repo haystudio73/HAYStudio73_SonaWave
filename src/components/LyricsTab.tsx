@@ -1,5 +1,14 @@
 import React, { useRef, useState, useMemo } from 'react';
-import { LyricsConfig, LyricLine, LyricsStyle, LyricsFontEffect, KaraokeSweepMode } from '../types';
+import { 
+  LyricsConfig, 
+  LyricLine, 
+  LyricsStyle, 
+  LyricsFontEffect, 
+  KaraokeSweepMode,
+  LyricsInEffect,
+  LyricsOutEffect,
+  LyricsPresetItem 
+} from '../types';
 import { 
   parseAnyLyrics, 
   exportToSRT, 
@@ -7,9 +16,15 @@ import {
   validateLyricsTimings,
   autoFixLyricsOverlaps,
   splitLyricLineByChars,
-  splitAllLyricsByChars
+  splitAllLyricsByChars,
+  convertLyricsTo2LineKaraokeTiming,
+  restoreOriginalLyricsTiming
 } from '../utils/lyricsParser';
-import { AVAILABLE_FONTS } from '../utils/presets';
+import { 
+  AVAILABLE_FONTS, 
+  LYRICS_GRADIENT_THEMES, 
+  BUILTIN_LYRICS_PRESETS 
+} from '../utils/presets';
 import { Language, TRANSLATIONS } from '../utils/i18n';
 import { 
   FileText, 
@@ -44,6 +59,16 @@ import {
   ListMusic,
   ExternalLink,
   RefreshCw,
+  Save,
+  FileDown,
+  FolderDown,
+  Palette,
+  Layers,
+  Layers3,
+  Move,
+  RotateCw,
+  Bookmark,
+  Smartphone,
 } from 'lucide-react';
 import { PlaylistConfig, AudioTrackItem } from '../types';
 import { matchLyricsFilesToTracks } from '../utils/playlistManager';
@@ -66,11 +91,12 @@ interface LyricsTabProps {
 }
 
 const STYLES: { id: LyricsStyle; labelVi: string; labelEn: string; descVi: string; descEn: string; badge?: string }[] = [
+  { id: 'karaoke-duo', labelVi: 'Karaoke 2 Dòng (Song Ca / So Le)', labelEn: '2-Line Karaoke (Duo Alternating)', descVi: '2 dòng hiển thị rõ ràng, dòng này hát dòng kia chờ sẵn, vị trí tách biệt', descEn: '2 distinct alternating lines, clear preview of next line, separate line positioning', badge: 'Mới ⭐' },
   { id: 'karaoke-single', labelVi: 'Karaoke 1 Dòng', labelEn: '1-Line Karaoke', descVi: '1 dòng duy nhất quét màu mượt mà + hiệu ứng theo nhịp', descEn: 'Single line with smooth progressive highlight and cursor trail', badge: 'Hot Trend' },
   { id: 'teleprompter-4lines', labelVi: 'Karaoke 4 Dòng (Tự Cuộn)', labelEn: '4-Line Teleprompter', descVi: '4 dòng liên tục tự động cuộn mượt mà như máy nhắc chữ', descEn: '4 continuous auto-scrolling lines with focus on the active lyric', badge: 'Mới' },
   { id: 'karaoke', labelVi: 'Karaoke 3 Dòng', labelEn: '3-Line Classic Karaoke', descVi: '3 dòng kinh điển: dòng trước, dòng đang hát & dòng kế tiếp', descEn: 'Classic 3-line layout showing previous, active, and upcoming lines' },
   { id: 'subtitle-bar', labelVi: 'Thanh Phụ Đề Mờ', labelEn: 'Frosted Subtitle Bar', descVi: 'Hộp bo góc frosted glass tối giản hiện đại', descEn: 'Modern frosted glass bar with centered crisp subtitles' },
-  { id: 'minimal-glow', labelVi: 'Phát Sáng Tối Giản', labelEn: 'Minimalist Glow', descVi: 'Font chữ sắc nét phát sáng hào quang nhẹ nhàng', descEn: 'Clean floating lyrics with soft atmospheric glow' },
+  { id: 'minimal-glow', labelVi: 'Phát Sáng Tối Giản', labelEn: 'Minimalist Glow', descVi: 'Font chữ sắc nét phát sáng hào quang nhẹ nhàng, hỗ trợ tự ngắt 2 dòng cho video dọc 9:16', descEn: 'Clean floating lyrics with soft atmospheric glow, supports auto 2-line wrap for 9:16 vertical', badge: '9:16 Fit' },
 ];
 
 const KARAOKE_SWEEP_MODES: { id: KaraokeSweepMode; labelVi: string; labelEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }>; badgeVi?: string; badgeEn?: string }[] = [
@@ -112,6 +138,28 @@ const FONT_EFFECTS: { id: LyricsFontEffect; name: string; desc: string }[] = [
   { id: 'gradient-fill', name: '🌈 Dải Màu Gradient', desc: 'Tô màu chuyển sắc dọc êm dịu cao cấp' },
   { id: 'metallic-chrome', name: '💿 Kim Loại Chrome Ánh Kim', desc: 'Hiệu ứng phản chiếu kim loại bóng bẩy' },
   { id: 'comic-pop', name: '💥 Hoạt Hình Comic Pop', desc: 'Phong cách sticker hoạt họa viền đen cực nét' },
+];
+
+const IN_EFFECTS: { id: LyricsInEffect; labelVi: string; labelEn: string }[] = [
+  { id: 'none', labelVi: 'Không (Tức thì)', labelEn: 'None (Instant)' },
+  { id: 'fade', labelVi: 'Mờ dần (Fade In)', labelEn: 'Fade In' },
+  { id: 'slide-up', labelVi: 'Trượt từ dưới lên (Slide Up)', labelEn: 'Slide Up' },
+  { id: 'slide-down', labelVi: 'Trượt từ trên xuống (Slide Down)', labelEn: 'Slide Down' },
+  { id: 'slide-left', labelVi: 'Trượt từ trái sang (Slide Left)', labelEn: 'Slide Left' },
+  { id: 'slide-right', labelVi: 'Trượt từ phải sang (Slide Right)', labelEn: 'Slide Right' },
+  { id: 'zoom-in', labelVi: 'Phóng to từ tâm (Zoom In)', labelEn: 'Zoom In' },
+  { id: 'char-drop', labelVi: 'Rơi chữ (Char Drop)', labelEn: 'Char Drop' },
+  { id: 'dissolve', labelVi: 'Hòa tan biến hình (Dissolve)', labelEn: 'Dissolve' },
+  { id: 'bounce', labelVi: 'Nảy đàn hồi (Bounce)', labelEn: 'Bounce' },
+];
+
+const OUT_EFFECTS: { id: LyricsOutEffect; labelVi: string; labelEn: string }[] = [
+  { id: 'none', labelVi: 'Không (Tức thì)', labelEn: 'None (Instant)' },
+  { id: 'fade', labelVi: 'Mờ dần (Fade Out)', labelEn: 'Fade Out' },
+  { id: 'slide-up', labelVi: 'Trượt lên trên tan biến', labelEn: 'Slide Up' },
+  { id: 'slide-down', labelVi: 'Trượt xuống dưới tan biến', labelEn: 'Slide Down' },
+  { id: 'zoom-out', labelVi: 'Thu nhỏ dần (Zoom Out)', labelEn: 'Zoom Out' },
+  { id: 'dissolve', labelVi: 'Hòa tan biến mất (Dissolve)', labelEn: 'Dissolve' },
 ];
 
 export const LyricsTab: React.FC<LyricsTabProps> = ({
@@ -283,7 +331,187 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
     return lyrics[editingIndex + 1];
   }, [lyrics, editingIndex]);
 
-  const isKaraokeMode = config.style === 'karaoke' || config.style === 'karaoke-single' || config.style === 'teleprompter-4lines';
+  const isKaraokeMode = config.style === 'karaoke' || config.style === 'karaoke-single' || config.style === 'karaoke-duo' || config.style === 'teleprompter-4lines';
+
+  // Preset management state (max 10 presets)
+  const [customPresets, setCustomPresets] = useState<LyricsPresetItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('sonawave_custom_lyrics_presets_v1');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Failed to parse saved lyrics presets:', e);
+    }
+    return [];
+  });
+  const [newPresetName, setNewPresetName] = useState('');
+  const [isAddingPreset, setIsAddingPreset] = useState(false);
+  const presetImportInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSaveCurrentPreset = () => {
+    if (customPresets.length >= 10) {
+      showToast(language === 'vi' ? 'Đã đạt tối đa 10 presets! Vui lòng xóa bớt preset cũ.' : 'Max 10 presets reached! Please delete an existing preset.');
+      return;
+    }
+    const name = newPresetName.trim() || `Preset ${customPresets.length + 1}`;
+    const newPreset: LyricsPresetItem = {
+      id: 'preset_' + Date.now(),
+      name,
+      createdAt: Date.now(),
+      config: { ...config }
+    };
+    const updated = [newPreset, ...customPresets].slice(0, 10);
+    setCustomPresets(updated);
+    try {
+      localStorage.setItem('sonawave_custom_lyrics_presets_v1', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+    setNewPresetName('');
+    setIsAddingPreset(false);
+    showToast(language === 'vi' ? `Đã lưu preset "${name}"!` : `Preset "${name}" saved!`);
+  };
+
+  const handleDeletePreset = (id: string, name: string) => {
+    const updated = customPresets.filter(p => p.id !== id);
+    setCustomPresets(updated);
+    try {
+      localStorage.setItem('sonawave_custom_lyrics_presets_v1', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+    showToast(language === 'vi' ? `Đã xóa preset "${name}"!` : `Deleted preset "${name}"!`);
+  };
+
+  const handleStyleSelect = (newStyle: LyricsStyle) => {
+    if (newStyle === 'karaoke-duo' && config.style !== 'karaoke-duo') {
+      const converted = convertLyricsTo2LineKaraokeTiming(lyrics);
+      onLyricsChange(converted);
+      update({ style: newStyle });
+      showToast(
+        language === 'vi'
+          ? 'Đã tự động căn chỉnh timing Karaoke 2 dòng (hiện cùng lúc & chữ chờ)!'
+          : 'Auto-adapted lyrics timing for 2-line karaoke (display at once & cover text)!'
+      );
+    } else if (config.style === 'karaoke-duo' && newStyle !== 'karaoke-duo') {
+      const restored = restoreOriginalLyricsTiming(lyrics);
+      onLyricsChange(restored);
+      update({ style: newStyle });
+      showToast(
+        language === 'vi'
+          ? 'Đã khôi phục lại mốc timing lời bài hát gốc!'
+          : 'Restored original lyrics timing!'
+      );
+    } else {
+      update({ style: newStyle });
+    }
+  };
+
+  const handleApplyPreset = (presetConfig: Partial<LyricsConfig>, name: string) => {
+    if (presetConfig.style === 'karaoke-duo' && config.style !== 'karaoke-duo') {
+      const converted = convertLyricsTo2LineKaraokeTiming(lyrics);
+      onLyricsChange(converted);
+    } else if (config.style === 'karaoke-duo' && presetConfig.style && presetConfig.style !== 'karaoke-duo') {
+      const restored = restoreOriginalLyricsTiming(lyrics);
+      onLyricsChange(restored);
+    }
+    onChange({ ...config, ...presetConfig });
+    showToast(language === 'vi' ? `Đã áp dụng preset "${name}"!` : `Applied preset "${name}"!`);
+  };
+
+  const handleExportSinglePreset = (preset: LyricsPresetItem) => {
+    const data = JSON.stringify({
+      format: 'sonawave-lyrics-preset',
+      version: 1,
+      preset,
+    }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeName = preset.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    a.download = `${safeName || 'lyrics_style'}.lyrics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(language === 'vi' ? `Đã tải xuống file ${a.download}!` : `Downloaded ${a.download}!`);
+  };
+
+  const handleExportAllPresets = () => {
+    const data = JSON.stringify({
+      format: 'sonawave-lyrics-presets-bundle',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      presets: customPresets,
+    }, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sonawave_lyrics_presets_${Date.now()}.lyrics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(language === 'vi' ? `Đã xuất ${customPresets.length} presets ra file .lyrics!` : `Exported ${customPresets.length} presets to .lyrics!`);
+  };
+
+  const handleImportPresetFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const text = evt.target?.result as string;
+        const parsed = JSON.parse(text);
+        let imported: LyricsPresetItem[] = [];
+        if (parsed.format === 'sonawave-lyrics-presets-bundle' && Array.isArray(parsed.presets)) {
+          imported = parsed.presets;
+        } else if (parsed.format === 'sonawave-lyrics-preset' && parsed.preset) {
+          imported = [parsed.preset];
+        } else if (Array.isArray(parsed)) {
+          imported = parsed;
+        } else if (parsed.config) {
+          imported = [{
+            id: 'imported_' + Date.now(),
+            name: parsed.name || file.name.replace(/\.(lyrics|json)$/i, ''),
+            createdAt: Date.now(),
+            config: parsed.config
+          }];
+        } else if (parsed.style || parsed.fontFamily) {
+          imported = [{
+            id: 'imported_' + Date.now(),
+            name: file.name.replace(/\.(lyrics|json)$/i, '') || 'Custom Preset',
+            createdAt: Date.now(),
+            config: parsed
+          }];
+        }
+
+        if (imported.length > 0) {
+          const merged = [...imported, ...customPresets].slice(0, 10);
+          setCustomPresets(merged);
+          try {
+            localStorage.setItem('sonawave_custom_lyrics_presets_v1', JSON.stringify(merged));
+          } catch (err) {
+            console.error(err);
+          }
+          if (imported[0]?.config) {
+            handleApplyPreset(imported[0].config, imported[0].name);
+          }
+          showToast(language === 'vi' ? `Đã nạp ${imported.length} preset từ file .lyrics!` : `Imported ${imported.length} preset(s) from .lyrics!`);
+        } else {
+          showToast(language === 'vi' ? 'Không tìm thấy dữ liệu preset hợp lệ trong file .lyrics' : 'No valid preset found in .lyrics file');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast(language === 'vi' ? 'Lỗi phân tích file .lyrics / JSON' : 'Failed to parse .lyrics / JSON file');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -294,11 +522,14 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
       const content = evt.target?.result as string;
       if (content) {
         const parsed = parseAnyLyrics(content, duration || 60);
-        onLyricsChange(parsed);
+        const finalLyrics = config.style === 'karaoke-duo'
+          ? convertLyricsTo2LineKaraokeTiming(parsed)
+          : parsed;
+        onLyricsChange(finalLyrics);
         showToast(
           language === 'vi' 
-            ? `Đã nạp thành công ${parsed.length} câu lời bài hát!` 
-            : `Loaded ${parsed.length} lyric lines!`
+            ? `Đã nạp thành công ${finalLyrics.length} câu lời bài hát!` 
+            : `Loaded ${finalLyrics.length} lyric lines!`
         );
       }
     };
@@ -868,6 +1099,169 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
         </div>
       </div>
 
+      {/* 1.5 Lyrics Presets Manager (Max 10 Presets) */}
+      <div className="bg-neutral-900/90 border border-neutral-800 rounded-2xl p-4 space-y-3.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bookmark className="w-4 h-4 text-purple-400" />
+            <span className="text-xs font-bold text-neutral-200 uppercase tracking-wider">
+              {language === 'vi' ? 'Quản Lý Lyrics Presets' : 'Lyrics Presets Manager'}
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              {customPresets.length}/10
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <input
+              ref={presetImportInputRef}
+              type="file"
+              accept=".lyrics,.json"
+              className="hidden"
+              onChange={handleImportPresetFile}
+            />
+            <button
+              type="button"
+              onClick={() => presetImportInputRef.current?.click()}
+              title={language === 'vi' ? 'Nhập file preset (.lyrics hoặc .json)' : 'Import .lyrics or .json file'}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-[11px] font-medium border border-neutral-700 transition-colors cursor-pointer"
+            >
+              <Upload className="w-3 h-3 text-cyan-400" />
+              <span>{language === 'vi' ? 'Nạp .lyrics' : 'Import'}</span>
+            </button>
+
+            {customPresets.length > 0 && (
+              <button
+                type="button"
+                onClick={handleExportAllPresets}
+                title={language === 'vi' ? 'Xuất toàn bộ preset ra file .lyrics' : 'Export all presets as .lyrics'}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-[11px] font-medium border border-neutral-700 transition-colors cursor-pointer"
+              >
+                <FolderDown className="w-3 h-3 text-emerald-400" />
+                <span>{language === 'vi' ? 'Xuất hết .lyrics' : 'Export All'}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsAddingPreset(!isAddingPreset)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-semibold transition-colors cursor-pointer"
+            >
+              <Save className="w-3 h-3" />
+              <span>{language === 'vi' ? 'Lưu Preset' : 'Save Preset'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Inline save preset form */}
+        {isAddingPreset && (
+          <div className="p-3 bg-neutral-950/80 rounded-xl border border-purple-500/40 space-y-2 animate-fade-in">
+            <span className="text-[11px] text-neutral-300 block font-medium">
+              {language === 'vi' ? 'Đặt tên cho Style Lyrics hiện tại:' : 'Enter name for current style:'}
+            </span>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newPresetName}
+                onChange={(e) => setNewPresetName(e.target.value)}
+                placeholder={language === 'vi' ? 'Ví dụ: Karaoke Neon 3D Luxury' : 'e.g. Neon Karaoke Duo'}
+                className="flex-1 bg-neutral-900 border border-neutral-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveCurrentPreset();
+                  if (e.key === 'Escape') setIsAddingPreset(false);
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleSaveCurrentPreset}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer"
+              >
+                <Check className="w-3 h-3" />
+                <span>{language === 'vi' ? 'Lưu' : 'Save'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddingPreset(false)}
+                className="px-2 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-xs cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Built-in Presets */}
+        <div>
+          <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block mb-1.5">
+            {language === 'vi' ? 'Presets Có Sẵn (Studio Templates):' : 'Built-in Studio Presets:'}
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {BUILTIN_LYRICS_PRESETS.map((bp) => (
+              <button
+                key={bp.id}
+                type="button"
+                onClick={() => handleApplyPreset(bp.config, bp.name)}
+                className="px-2.5 py-1 rounded-xl bg-neutral-800/90 hover:bg-neutral-700 border border-neutral-700 text-[11px] text-neutral-200 hover:text-white transition-all flex items-center gap-1.5 group cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
+                <span>{bp.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom Presets List */}
+        {customPresets.length > 0 && (
+          <div className="pt-2 border-t border-neutral-800/60">
+            <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block mb-1.5">
+              {language === 'vi' ? `Presets Của Bạn (${customPresets.length}/10):` : `Your Presets (${customPresets.length}/10):`}
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {customPresets.map((cp) => (
+                <div
+                  key={cp.id}
+                  className="flex items-center justify-between p-2 rounded-xl bg-neutral-950/60 border border-neutral-800/80 hover:border-purple-500/40 transition-colors"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset(cp.config, cp.name)}
+                    className="flex-1 text-left truncate mr-2 cursor-pointer"
+                    title={language === 'vi' ? 'Nhấn để áp dụng preset này' : 'Click to apply preset'}
+                  >
+                    <span className="text-xs font-semibold text-neutral-200 block truncate hover:text-purple-300">
+                      {cp.name}
+                    </span>
+                    <span className="text-[9px] text-neutral-500">
+                      {new Date(cp.createdAt).toLocaleDateString()}
+                    </span>
+                  </button>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleExportSinglePreset(cp)}
+                      title={language === 'vi' ? 'Tải file .lyrics về máy' : 'Download .lyrics file'}
+                      className="p-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-cyan-300 transition-colors cursor-pointer"
+                    >
+                      <FileDown className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePreset(cp.id, cp.name)}
+                      title={language === 'vi' ? 'Xóa preset này' : 'Delete preset'}
+                      className="p-1 rounded-lg bg-neutral-800 hover:bg-rose-950/50 text-neutral-400 hover:text-rose-400 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* 2. Lyrics Display Style */}
       <div className="space-y-2.5">
         <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
@@ -877,7 +1271,7 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
           {STYLES.map((st) => (
             <button
               key={st.id}
-              onClick={() => update({ style: st.id })}
+              onClick={() => handleStyleSelect(st.id)}
               className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer relative ${
                 config.style === st.id
                   ? 'bg-purple-500/15 border-purple-500 text-white shadow-md ring-1 ring-purple-500/30'
@@ -902,8 +1296,302 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
         </div>
       </div>
 
+      {/* 2.4 DEDICATED 2-LINE KARAOKE SETTINGS */}
+      {config.style === 'karaoke-duo' && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-950/40 via-neutral-900 to-purple-950/30 border border-indigo-500/40 space-y-3.5 shadow-sm animate-fade-in">
+          <div className="flex items-center justify-between pb-2 border-b border-indigo-500/20">
+            <div className="flex items-center gap-2">
+              <Mic2 className="w-4 h-4 text-indigo-400" />
+              <span className="text-xs font-bold text-indigo-200 uppercase tracking-wider">
+                {language === 'vi' ? 'Cài Đặt Karaoke 2 Dòng (Duo Line Controls)' : '2-Line Karaoke Layout & Controls'}
+              </span>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              {language === 'vi' ? 'Dòng 1 Hát - Dòng 2 Chờ' : 'Alternating Lines'}
+            </span>
+          </div>
+
+          <p className="text-[11px] text-neutral-400 leading-relaxed">
+            {language === 'vi'
+              ? 'Dòng 1 và Dòng 2 hiển thị rõ nét, đầy đủ. Dòng này đang hát quét màu thì dòng kia hiện trước câu kế tiếp ở dạng chữ mờ (màu mặc định #FFFFFF) để chuẩn bị sẵn, không lo trễ nhịp.'
+              : 'Both lines are displayed clearly. While one line is singing with progressive highlight, the other line previews the next lyric in base color (#FFFFFF).'}
+          </p>
+
+          {/* Quick Timing Alignment Actions for Duo */}
+          <div className="p-2.5 rounded-xl bg-indigo-950/50 border border-indigo-500/30 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-indigo-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                {language === 'vi' ? 'Đồng bộ Timing 2 Dòng (Hiện đồng thời & Chữ chờ):' : '2-Line Timing Sync (Simultaneous & Cover Text):'}
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-neutral-900 text-indigo-300 border border-indigo-500/30">
+                {lyrics.some(l => l.originalStartTime !== undefined)
+                  ? (language === 'vi' ? '✓ Đang bật 2 dòng' : '✓ 2-Line Active')
+                  : (language === 'vi' ? 'Timing chuẩn' : 'Standard')}
+              </span>
+            </div>
+            <p className="text-[10px] text-neutral-400 leading-normal">
+              {language === 'vi'
+                ? 'Khi chọn Karaoke 2 dòng, hệ thống tự động căn thời gian để 2 dòng xuất hiện cùng lúc ngay từ đầu, dòng kế tiếp đóng vai trò chữ mờ (#FFFFFF) chờ sẵn. Khi chuyển lại kiểu 1/3/4 dòng, timing ban đầu sẽ tự động được khôi phục.'
+                : 'When 2-Line Karaoke is selected, timing automatically adapts so both lines show at once with next line acting as cover text (#FFFFFF). Switching back restores original timing.'}
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const converted = convertLyricsTo2LineKaraokeTiming(lyrics);
+                  onLyricsChange(converted);
+                  showToast(language === 'vi' ? 'Đã căn lại timing 2 dòng hiển thị đồng thời!' : 'Re-aligned 2-line simultaneous timing!');
+                }}
+                className="flex-1 py-1.5 px-2.5 rounded-lg bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {language === 'vi' ? 'Căn lại Timing 2 Dòng' : 'Re-align 2-Line Timing'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const restored = restoreOriginalLyricsTiming(lyrics);
+                  onLyricsChange(restored);
+                  showToast(language === 'vi' ? 'Đã khôi phục timing gốc ban đầu!' : 'Restored original timing!');
+                }}
+                className="py-1.5 px-2.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-neutral-700"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                {language === 'vi' ? 'Khôi phục Timing Gốc' : 'Restore Original'}
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Layout Presets for Duo */}
+          <div>
+            <span className="text-[11px] text-neutral-400 block mb-1.5 font-medium">
+              {language === 'vi' ? 'Bố cục mẫu nhanh:' : 'Quick Layout Presets:'}
+            </span>
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => update({ duoLine1Y: 78, duoLine1X: 50, duoLine2Y: 86, duoLine2X: 50, duoAlignMode: 'center', duoLineGap: 32 })}
+                className="p-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-[11px] text-neutral-300 hover:text-white text-center transition-colors cursor-pointer"
+              >
+                {language === 'vi' ? 'Căn Giữa Chuẩn' : 'Standard Centered'}
+              </button>
+              <button
+                type="button"
+                onClick={() => update({ duoLine1Y: 76, duoLine1X: 38, duoLine2Y: 85, duoLine2X: 62, duoAlignMode: 'left-right', duoLineGap: 34 })}
+                className="p-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-[11px] text-neutral-300 hover:text-white text-center transition-colors cursor-pointer"
+              >
+                {language === 'vi' ? 'So Le Trái - Phải' : 'Staggered Duo'}
+              </button>
+              <button
+                type="button"
+                onClick={() => update({ duoLine1Y: 82, duoLine1X: 50, duoLine2Y: 89, duoLine2X: 50, duoAlignMode: 'center', duoLineGap: 26 })}
+                className="p-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-[11px] text-neutral-300 hover:text-white text-center transition-colors cursor-pointer"
+              >
+                {language === 'vi' ? 'Cận Đáy Video' : 'Bottom Close'}
+              </button>
+            </div>
+          </div>
+
+          {/* Alignment Mode */}
+          <div>
+            <span className="text-[11px] text-neutral-400 block mb-1 font-medium">
+              {language === 'vi' ? 'Chế độ canh lề (Alignment Mode):' : 'Alignment Mode:'}
+            </span>
+            <div className="grid grid-cols-4 gap-1.5">
+              {([
+                { id: 'center', labelVi: 'Căn giữa', labelEn: 'Center' },
+                { id: 'left-right', labelVi: 'So le (T-P)', labelEn: 'Staggered' },
+                { id: 'left', labelVi: 'Căn trái', labelEn: 'Left' },
+                { id: 'right', labelVi: 'Căn phải', labelEn: 'Right' }
+              ] as const).map(mode => (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => update({ duoAlignMode: mode.id })}
+                  className={`py-1 px-2 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+                    (config.duoAlignMode || 'center') === mode.id
+                      ? 'bg-indigo-600 border-indigo-400 text-white shadow-sm'
+                      : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {language === 'vi' ? mode.labelVi : mode.labelEn}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Position Line 1 and Line 2 Sliders */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-neutral-950/70 p-3 rounded-xl border border-neutral-800">
+            {/* Line 1 */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-indigo-300 block">
+                {language === 'vi' ? 'Dòng 1 (Câu Chẵn 0, 2, 4...):' : 'Line 1 (Even Lines):'}
+              </span>
+              <div>
+                <div className="flex justify-between text-[11px] mb-1">
+                  <span className="text-neutral-400">Vị trí dọc (Y)</span>
+                  <span className="text-indigo-400 font-mono">{config.duoLine1Y ?? 78}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={15}
+                  max={90}
+                  value={config.duoLine1Y ?? 78}
+                  onChange={(e) => update({ duoLine1Y: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-[11px] mb-1">
+                  <span className="text-neutral-400">Vị trí ngang (X)</span>
+                  <span className="text-indigo-400 font-mono">{config.duoLine1X ?? 50}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={90}
+                  value={config.duoLine1X ?? 50}
+                  onChange={(e) => update({ duoLine1X: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Line 2 */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-purple-300 block">
+                {language === 'vi' ? 'Dòng 2 (Câu Lẻ 1, 3, 5...):' : 'Line 2 (Odd Lines):'}
+              </span>
+              <div>
+                <div className="flex justify-between text-[11px] mb-1">
+                  <span className="text-neutral-400">Vị trí dọc (Y)</span>
+                  <span className="text-purple-400 font-mono">{config.duoLine2Y ?? 86}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={15}
+                  max={92}
+                  value={config.duoLine2Y ?? 86}
+                  onChange={(e) => update({ duoLine2Y: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex justify-between text-[11px] mb-1">
+                  <span className="text-neutral-400">Vị trí ngang (X)</span>
+                  <span className="text-purple-400 font-mono">{config.duoLine2X ?? 50}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={90}
+                  value={config.duoLine2X ?? 50}
+                  onChange={(e) => update({ duoLine2X: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Line Gap */}
+          <div>
+            <div className="flex justify-between text-[11px] mb-1">
+              <span className="text-neutral-400">{language === 'vi' ? 'Khoảng cách giữa 2 dòng' : 'Line Gap'}</span>
+              <span className="text-indigo-400 font-mono">{config.duoLineGap ?? 32}px</span>
+            </div>
+            <input
+              type="range"
+              min={10}
+              max={80}
+              value={config.duoLineGap ?? 32}
+              onChange={(e) => update({ duoLineGap: parseInt(e.target.value) })}
+              className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 2.4.1 DEDICATED MINIMALIST GLOW SETTINGS (Auto 2 lines for 9:16 vertical screens) */}
+      {config.style === 'minimal-glow' && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-br from-purple-950/40 via-neutral-900 to-sky-950/30 border border-purple-500/40 space-y-3.5 shadow-sm animate-fade-in">
+          <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span className="text-xs font-bold text-purple-200 uppercase tracking-wider">
+                {language === 'vi' ? 'Cài Đặt Phát Sáng Tối Giản (Minimalist Glow)' : 'Minimalist Glow Settings'}
+              </span>
+            </div>
+            <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              <Smartphone className="w-3 h-3 text-purple-300" />
+              {language === 'vi' ? 'Tối Ưu 9:16 TikTok / Shorts' : '9:16 Video Fit'}
+            </span>
+          </div>
+
+          {/* Checkbox Auto Turn 1 Line into 2 Lines */}
+          <label className="flex items-start gap-3 p-3 rounded-xl bg-neutral-900/80 border border-neutral-800 hover:border-purple-500/40 cursor-pointer transition-colors group">
+            <input
+              type="checkbox"
+              checked={!!config.minimalGlowAutoTwoLines}
+              onChange={(e) => update({ minimalGlowAutoTwoLines: e.target.checked })}
+              className="mt-0.5 w-4 h-4 rounded text-purple-500 border-neutral-700 bg-neutral-800 focus:ring-purple-500 focus:ring-offset-0 cursor-pointer"
+            />
+            <div className="space-y-1 select-none flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white group-hover:text-purple-300 transition-colors">
+                  {language === 'vi'
+                    ? 'Tự động chia 1 câu thành 2 dòng (Tối ưu màn hình dọc 9:16)'
+                    : 'Auto wrap 1 line into two lines on screen (Best fit for 9:16 vertical)'}
+                </span>
+                {config.minimalGlowAutoTwoLines && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold bg-purple-500/30 text-purple-200 border border-purple-400/30">
+                    ON
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
+                {language === 'vi'
+                  ? 'Tự động cân đối và ngắt 1 câu lời bài hát thành 2 dòng ngắn hiển thị cùng lúc (dòng trên & dòng dưới), giúp chữ to rõ, không bị tràn mép màn hình khi dựng video khung dọc 9:16 (TikTok, YouTube Shorts, Reels).'
+                  : 'Automatically balances and splits a long lyric line into two clean lines on screen, preventing edge overflow and keeping fonts large & readable on 9:16 vertical videos (TikTok, Shorts, Reels).'}
+              </p>
+            </div>
+          </label>
+
+          {/* Line gap setting when enabled */}
+          {config.minimalGlowAutoTwoLines && (
+            <div className="p-2.5 rounded-xl bg-neutral-900/60 border border-neutral-800 space-y-2 animate-fade-in">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-neutral-300 font-medium flex items-center gap-1.5">
+                  <Move className="w-3.5 h-3.5 text-purple-400" />
+                  {language === 'vi' ? 'Khoảng cách giữa 2 dòng (Line Gap):' : 'Gap between 2 lines:'}
+                </span>
+                <span className="font-mono text-purple-400 font-bold">
+                  {config.minimalGlowLineGap ?? Math.round((config.fontSize || 24) * 1.35)}px
+                </span>
+              </div>
+              <input
+                type="range"
+                min="18"
+                max="80"
+                step="2"
+                value={config.minimalGlowLineGap ?? Math.round((config.fontSize || 24) * 1.35)}
+                onChange={(e) => update({ minimalGlowLineGap: Number(e.target.value) })}
+                className="w-full accent-purple-500 h-1.5 bg-neutral-800 rounded-lg cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-neutral-500 font-mono">
+                <span>18px ({language === 'vi' ? 'Sát' : 'Tight'})</span>
+                <span>36px ({language === 'vi' ? 'Chuẩn' : 'Normal'})</span>
+                <span>80px ({language === 'vi' ? 'Rộng' : 'Spaced'})</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 2.5 DEDICATED KARAOKE SWEEP & FLYING EFFECT MODE */}
-      {(config.style === 'karaoke-single' || config.style === 'teleprompter-4lines' || config.style === 'karaoke') && (
+      {(config.style === 'karaoke-single' || config.style === 'karaoke-duo' || config.style === 'teleprompter-4lines' || config.style === 'karaoke') && (
         <div className="p-3.5 rounded-2xl bg-gradient-to-br from-purple-950/40 via-neutral-900 to-amber-950/30 border border-purple-500/30 space-y-3 shadow-sm animate-fade-in">
           <div className="flex items-center justify-between pb-2 border-b border-purple-500/20">
             <div className="flex items-center gap-2">
@@ -987,34 +1675,243 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
         </select>
 
         {config.fontEffect && config.fontEffect !== 'none' && (
-          <div className="grid grid-cols-2 gap-2 bg-neutral-900/60 p-3 rounded-xl border border-neutral-800">
-            <div>
-              <span className="text-[11px] text-neutral-400 block mb-1">Màu hiệu ứng / viền</span>
-              <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 rounded-xl p-1.5">
-                <input
-                  type="color"
-                  value={config.fontEffectColor || config.glowColor || '#ec4899'}
-                  onChange={(e) => update({ fontEffectColor: e.target.value })}
-                  className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
-                />
-                <span className="text-xs font-mono uppercase">{config.fontEffectColor || config.glowColor}</span>
-              </div>
-            </div>
+          <div className="space-y-3">
+            {/* 3D Shadow Specialized Controls */}
+            {config.fontEffect === '3d-shadow' && (
+              <div className="p-3 bg-neutral-900/80 rounded-xl border border-rose-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-rose-400" />
+                    {language === 'vi' ? 'Tùy Chỉnh Đổ Bóng Nổi 3D' : '3D Extrusion Shadow Settings'}
+                  </span>
+                  <span className="text-[10px] text-neutral-400 font-mono">
+                    {config.threeDDepth || 6}px • {config.threeDAngle ?? 135}°
+                  </span>
+                </div>
 
-            <div>
-              <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-neutral-400">{t.strokeWidth || 'Độ dày viền'}</span>
-                <span className="text-purple-400 font-mono">{config.strokeWidth || 2}px</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="text-neutral-400">{language === 'vi' ? 'Độ sâu khối 3D (Depth)' : '3D Depth'}</span>
+                      <span className="text-rose-400 font-mono">{config.threeDDepth || 6}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={25}
+                      value={config.threeDDepth || 6}
+                      onChange={(e) => update({ threeDDepth: parseInt(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                    />
+                  </div>
+
+                  <div>
+                    <span className="text-[11px] text-neutral-400 block mb-1">
+                      {language === 'vi' ? 'Màu bóng khối 3D' : '3D Extrusion Color'}
+                    </span>
+                    <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 rounded-xl p-1.5">
+                      <input
+                        type="color"
+                        value={config.threeDColor || '#1a0033'}
+                        onChange={(e) => update({ threeDColor: e.target.value })}
+                        className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
+                      />
+                      <span className="text-xs font-mono uppercase">{config.threeDColor || '#1a0033'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Angle Controls */}
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-neutral-400">{language === 'vi' ? 'Góc đổ bóng 3D' : 'Shadow Angle'}</span>
+                    <span className="text-rose-400 font-mono">{config.threeDAngle ?? 135}°</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={360}
+                    value={config.threeDAngle ?? 135}
+                    onChange={(e) => update({ threeDAngle: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                  />
+                  <div className="grid grid-cols-4 gap-1.5 mt-2">
+                    {[
+                      { angle: 135, label: '↘ Dưới-Phải' },
+                      { angle: 90, label: '↓ Thẳng Dưới' },
+                      { angle: 45, label: '↙ Dưới-Trái' },
+                      { angle: 225, label: '↗ Trên-Phải' },
+                    ].map(btn => (
+                      <button
+                        key={btn.angle}
+                        type="button"
+                        onClick={() => update({ threeDAngle: btn.angle })}
+                        className={`py-1 px-1.5 rounded-lg text-[10px] font-medium border text-center transition-all cursor-pointer ${
+                          (config.threeDAngle ?? 135) === btn.angle
+                            ? 'bg-rose-500/20 border-rose-500 text-rose-300'
+                            : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={config.threeDStroke ?? true}
+                    onChange={(e) => update({ threeDStroke: e.target.checked })}
+                    className="rounded text-rose-500 focus:ring-rose-500 bg-neutral-800 border-neutral-700"
+                  />
+                  <span>{language === 'vi' ? 'Viền ngoài nổi khối sắc nét (Bevel Edge)' : 'Outer Bevel Outline'}</span>
+                </label>
               </div>
-              <input
-                type="range"
-                min={1}
-                max={8}
-                value={config.strokeWidth || 2}
-                onChange={(e) => update({ strokeWidth: parseInt(e.target.value) })}
-                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500 mt-2"
-              />
-            </div>
+            )}
+
+            {/* Gradient Fill Specialized Controls */}
+            {config.fontEffect === 'gradient-fill' && (
+              <div className="p-3 bg-neutral-900/80 rounded-xl border border-purple-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Palette className="w-3.5 h-3.5 text-purple-400" />
+                    {language === 'vi' ? 'Dải Màu Gradient & Chủ Đề Sắc Màu' : 'Gradient Themes & Color Stops'}
+                  </span>
+                  <span className="text-[10px] text-neutral-400 font-mono">
+                    {config.gradientAngle ?? 90}°
+                  </span>
+                </div>
+
+                {/* Color Themes List */}
+                <div>
+                  <span className="text-[11px] text-neutral-400 block mb-1.5 font-medium">
+                    {language === 'vi' ? 'Chọn nhanh Color Theme:' : 'Preset Color Themes:'}
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {LYRICS_GRADIENT_THEMES.map(theme => (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        onClick={() => update({
+                          gradientTheme: theme.id,
+                          gradientColor1: theme.colors[0],
+                          gradientColor2: theme.colors[1],
+                          gradientColor3: theme.colors[2] || theme.colors[1],
+                          gradientAngle: theme.angle ?? 90
+                        })}
+                        className={`p-1.5 rounded-xl border text-left flex items-center gap-2 transition-all cursor-pointer ${
+                          (config.gradientTheme || 'cyber-neon') === theme.id
+                            ? 'bg-purple-500/20 border-purple-500 text-white shadow-sm ring-1 ring-purple-500/30'
+                            : 'bg-neutral-950/70 border-neutral-800 text-neutral-300 hover:text-white'
+                        }`}
+                      >
+                        <div 
+                          className="w-4 h-4 rounded-full shrink-0 border border-white/20"
+                          style={{
+                            background: `linear-gradient(135deg, ${theme.colors[0]}, ${theme.colors[1]}${theme.colors[2] ? `, ${theme.colors[2]}` : ''})`
+                          }}
+                        />
+                        <span className="text-[10px] font-semibold truncate">
+                          {language === 'vi' ? theme.nameVi : theme.nameEn}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3 Color Pickers */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <span className="text-[10px] text-neutral-400 block mb-1">Màu 1 (Đầu)</span>
+                    <div className="flex items-center gap-1.5 bg-neutral-950 border border-neutral-800 rounded-xl p-1">
+                      <input
+                        type="color"
+                        value={config.gradientColor1 || '#38bdf8'}
+                        onChange={(e) => update({ gradientColor1: e.target.value, gradientTheme: 'custom' })}
+                        className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
+                      />
+                      <span className="text-[10px] font-mono uppercase">{config.gradientColor1 || '#38bdf8'}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-neutral-400 block mb-1">Màu 2 (Giữa)</span>
+                    <div className="flex items-center gap-1.5 bg-neutral-950 border border-neutral-800 rounded-xl p-1">
+                      <input
+                        type="color"
+                        value={config.gradientColor2 || '#c084fc'}
+                        onChange={(e) => update({ gradientColor2: e.target.value, gradientTheme: 'custom' })}
+                        className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
+                      />
+                      <span className="text-[10px] font-mono uppercase">{config.gradientColor2 || '#c084fc'}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] text-neutral-400 block mb-1">Màu 3 (Cuối)</span>
+                    <div className="flex items-center gap-1.5 bg-neutral-950 border border-neutral-800 rounded-xl p-1">
+                      <input
+                        type="color"
+                        value={config.gradientColor3 || '#f43f5e'}
+                        onChange={(e) => update({ gradientColor3: e.target.value, gradientTheme: 'custom' })}
+                        className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
+                      />
+                      <span className="text-[10px] font-mono uppercase">{config.gradientColor3 || '#f43f5e'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Gradient Angle Slider */}
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-neutral-400">{language === 'vi' ? 'Góc xoay gradient' : 'Gradient Angle'}</span>
+                    <span className="text-purple-400 font-mono">{config.gradientAngle ?? 90}°</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={360}
+                    value={config.gradientAngle ?? 90}
+                    onChange={(e) => update({ gradientAngle: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* General Effect Color & Stroke for other styles */}
+            {config.fontEffect !== '3d-shadow' && config.fontEffect !== 'gradient-fill' && (
+              <div className="grid grid-cols-2 gap-2 bg-neutral-900/60 p-3 rounded-xl border border-neutral-800">
+                <div>
+                  <span className="text-[11px] text-neutral-400 block mb-1">Màu hiệu ứng / viền</span>
+                  <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 rounded-xl p-1.5">
+                    <input
+                      type="color"
+                      value={config.fontEffectColor || config.glowColor || '#ec4899'}
+                      onChange={(e) => update({ fontEffectColor: e.target.value })}
+                      className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
+                    />
+                    <span className="text-xs font-mono uppercase">{config.fontEffectColor || config.glowColor}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-neutral-400">{t.strokeWidth || 'Độ dày viền'}</span>
+                    <span className="text-purple-400 font-mono">{config.strokeWidth || 2}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1}
+                    max={8}
+                    value={config.strokeWidth || 2}
+                    onChange={(e) => update({ strokeWidth: parseInt(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500 mt-2"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1119,10 +2016,27 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
           </div>
         </div>
 
-        {/* Color Pickers */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* Color Pickers (3 columns: Base Text Color, Active Color, Glow Tint) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <div>
-            <span className="text-[11px] text-neutral-400 block mb-1">{t.activeTextColor || 'Màu câu đang hát'}</span>
+            <span className="text-[11px] text-neutral-400 block mb-1">
+              {language === 'vi' ? 'Màu chữ gốc (Chờ hát)' : 'Lyric text color'}
+            </span>
+            <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 rounded-xl p-1.5">
+              <input
+                type="color"
+                value={config.color || '#ffffff'}
+                onChange={(e) => update({ color: e.target.value })}
+                className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
+              />
+              <span className="text-xs font-mono uppercase">{config.color || '#ffffff'}</span>
+            </div>
+          </div>
+
+          <div>
+            <span className="text-[11px] text-neutral-400 block mb-1">
+              {t.activeTextColor || 'Màu câu đang hát'}
+            </span>
             <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 rounded-xl p-1.5">
               <input
                 type="color"
@@ -1135,7 +2049,9 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
           </div>
 
           <div>
-            <span className="text-[11px] text-neutral-400 block mb-1">{t.textGlowColor || 'Màu hào quang (Glow)'}</span>
+            <span className="text-[11px] text-neutral-400 block mb-1">
+              {t.textGlowColor || 'Màu hào quang (Glow)'}
+            </span>
             <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 rounded-xl p-1.5">
               <input
                 type="color"
@@ -1178,7 +2094,7 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
               <button
                 key={align}
                 onClick={() => update({ alignment: align })}
-                className={`p-1.5 rounded-lg transition-all ${
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                   config.alignment === align ? 'bg-purple-600 text-white' : 'text-neutral-400 hover:text-white'
                 }`}
               >
@@ -1201,7 +2117,81 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
         </div>
       </div>
 
-      {/* 5. Clean Lyrics List with Compact Time Badges & Edit Popup Button */}
+      {/* 5. In / Out Transitions for Lyrics */}
+      <div className="space-y-3 pt-2 border-t border-neutral-800/80">
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-1.5 text-xs font-bold text-neutral-300 uppercase tracking-wider">
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            {language === 'vi' ? 'Hiệu Ứng Xuất Hiện & Biến Mất (In / Out FX)' : 'In / Out Lyrics Transitions'}
+          </label>
+          {((config.inEffect && config.inEffect !== 'none') || (config.outEffect && config.outEffect !== 'none')) && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+              {language === 'vi' ? 'Đang bật FX' : 'Active'}
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {/* In Effect */}
+          <div>
+            <span className="text-xs text-neutral-400 block mb-1">
+              {language === 'vi' ? 'Hiệu ứng xuất hiện (In-Effect):' : 'In-Effect:'}
+            </span>
+            <select
+              value={config.inEffect || 'fade'}
+              onChange={(e) => update({ inEffect: e.target.value as LyricsInEffect })}
+              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-amber-500"
+            >
+              {IN_EFFECTS.map((eff) => (
+                <option key={eff.id} value={eff.id}>
+                  {language === 'vi' ? eff.labelVi : eff.labelEn}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Out Effect */}
+          <div>
+            <span className="text-xs text-neutral-400 block mb-1">
+              {language === 'vi' ? 'Hiệu ứng biến mất (Out-Effect):' : 'Out-Effect:'}
+            </span>
+            <select
+              value={config.outEffect || 'fade'}
+              onChange={(e) => update({ outEffect: e.target.value as LyricsOutEffect })}
+              className="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-amber-500"
+            >
+              {OUT_EFFECTS.map((eff) => (
+                <option key={eff.id} value={eff.id}>
+                  {language === 'vi' ? eff.labelVi : eff.labelEn}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Transition Duration Slider */}
+        <div>
+          <div className="flex justify-between text-[11px] mb-1">
+            <span className="text-neutral-400">
+              {language === 'vi' ? 'Thời gian chuyển cảnh (Transition Duration)' : 'Transition Duration'}
+            </span>
+            <span className="text-amber-400 font-mono">
+              {(config.inOutDuration ?? 0.35).toFixed(2)}s
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0.1}
+            max={1.0}
+            step={0.05}
+            value={config.inOutDuration ?? 0.35}
+            onChange={(e) => update({ inOutDuration: parseFloat(e.target.value) })}
+            className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+          />
+        </div>
+      </div>
+
+      {/* 6. Clean Lyrics List with Compact Time Badges & Edit Popup Button */}
       <div className="space-y-4 pt-3 border-t border-neutral-800/80">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>

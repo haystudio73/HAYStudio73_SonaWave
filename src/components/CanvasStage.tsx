@@ -28,7 +28,7 @@ import {
   Flame
 } from 'lucide-react';
 import { formatTime } from '../utils/lyricsParser';
-import { LottieItem } from '../types';
+import { LottieItem, TrackMetadata, VisualizerConfig } from '../types';
 
 interface CanvasStageProps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -71,6 +71,11 @@ interface CanvasStageProps {
   selectedLottie?: LottieItem | null;
   onSelectLottieId?: (id: string | null) => void;
   onUpdateLottie?: (id: string, partial: Partial<LottieItem>) => void;
+  track?: TrackMetadata;
+  onUpdateTrack?: (partial: Partial<TrackMetadata>) => void;
+  visualizer?: VisualizerConfig;
+  onUpdateVisualizer?: (partial: Partial<VisualizerConfig>) => void;
+  activeTab?: string;
 }
 
 export const CanvasStage: React.FC<CanvasStageProps> = ({
@@ -114,11 +119,18 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
   selectedLottie,
   onSelectLottieId,
   onUpdateLottie,
+  track,
+  onUpdateTrack,
+  visualizer,
+  onUpdateVisualizer,
+  activeTab,
 }) => {
   const t = TRANSLATIONS[language] || TRANSLATIONS['vi'];
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasViewportRef = useRef<HTMLDivElement>(null);
   const [isDraggingLottie, setIsDraggingLottie] = useState(false);
+  const [activeDragElement, setActiveDragElement] = useState<'lottie' | 'badge' | 'logo' | 'visualizer' | 'track-details' | 'track-title' | null>(null);
+  const [showDirectDragOverlays, setShowDirectDragOverlays] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -294,14 +306,15 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
     });
   };
 
-  // Drag and drop to move selected Lottie freely on canvas
+  // Drag and drop to move selected Lottie or elements freely on canvas
   const handleLottieMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsDraggingLottie(true);
+    setActiveDragElement('lottie');
   };
 
   useEffect(() => {
-    if (!isDraggingLottie || !selectedLottie || !onUpdateLottie) return;
+    if (!activeDragElement) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!canvasViewportRef.current) return;
@@ -310,13 +323,46 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       const yPx = e.clientY - rect.top;
       const xPercent = Math.max(0, Math.min(100, (xPx / rect.width) * 100));
       const yPercent = Math.max(0, Math.min(100, (yPx / rect.height) * 100));
-      onUpdateLottie(selectedLottie.id, {
-        x: Math.round(xPercent * 10) / 10,
-        y: Math.round(yPercent * 10) / 10,
-      });
+      const roundedX = Math.round(xPercent);
+      const roundedY = Math.round(yPercent);
+
+      if (activeDragElement === 'lottie' && selectedLottie && onUpdateLottie) {
+        onUpdateLottie(selectedLottie.id, {
+          x: Math.round(xPercent * 10) / 10,
+          y: Math.round(yPercent * 10) / 10,
+        });
+      } else if (activeDragElement === 'badge' && onUpdateTrack) {
+        onUpdateTrack({
+          positionX: roundedX,
+          positionY: roundedY,
+        });
+      } else if (activeDragElement === 'logo' && onUpdateTrack) {
+        onUpdateTrack({
+          logoPosition: 'custom',
+          logoPositionX: roundedX,
+          logoPositionY: roundedY,
+        });
+      } else if (activeDragElement === 'track-details' && onUpdateTrack) {
+        onUpdateTrack({
+          positionX: roundedX,
+          positionY: roundedY,
+        });
+      } else if (activeDragElement === 'track-title' && onUpdateTrack) {
+        onUpdateTrack({
+          trackTitleCustomPosition: true,
+          trackTitlePositionX: roundedX,
+          trackTitlePositionY: roundedY,
+        });
+      } else if (activeDragElement === 'visualizer' && onUpdateVisualizer) {
+        onUpdateVisualizer({
+          positionX: roundedX,
+          positionY: roundedY,
+        });
+      }
     };
 
     const handleMouseUp = () => {
+      setActiveDragElement(null);
       setIsDraggingLottie(false);
     };
 
@@ -326,7 +372,7 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDraggingLottie, selectedLottie, onUpdateLottie]);
+  }, [activeDragElement, selectedLottie, onUpdateLottie, onUpdateTrack, onUpdateVisualizer]);
 
   return (
     <div 
@@ -441,6 +487,152 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
             >
               <Flame className="w-4 h-4" />
             </button>
+          )}
+
+          {/* Quick Toggle Direct Drag & Drop Overlays */}
+          <button
+            type="button"
+            onClick={() => setShowDirectDragOverlays(!showDirectDragOverlays)}
+            title={
+              showDirectDragOverlays
+                ? (language === 'vi' ? 'Đang bật khung Kéo Thả trực tiếp (Click để ẩn)' : 'Direct Drag & Drop active (Click to hide)')
+                : (language === 'vi' ? 'Bật khung Kéo Thả trực tiếp trên màn hình' : 'Show Direct Drag & Drop handles')
+            }
+            className={`absolute top-3 left-[142px] p-2 rounded-xl backdrop-blur-md border transition-all cursor-pointer z-10 ${
+              showDirectDragOverlays
+                ? 'bg-black/60 hover:bg-black/80 border-cyan-500/60 text-cyan-400 hover:text-cyan-300 shadow-md shadow-cyan-950/40 ring-1 ring-cyan-500/30'
+                : 'bg-neutral-900/90 border-neutral-700 text-neutral-500 hover:text-neutral-300'
+            }`}
+          >
+            <Move className="w-4 h-4" />
+          </button>
+
+          {/* 1. Direct Drag Handle for Badge */}
+          {showDirectDragOverlays && track && track.showTrackCard && track.cardStyle !== 'hidden' && (
+            <div
+              style={{
+                left: `${track.positionX !== undefined ? track.positionX : 50}%`,
+                top: `${track.positionY !== undefined ? track.positionY : 28}%`,
+                width: `${Math.max(90, 160 * (track.scale || 1.0) * (track.badgeScale || 1.0) * 0.75)}px`,
+                height: `${Math.max(90, 160 * (track.scale || 1.0) * (track.badgeScale || 1.0) * 0.75)}px`,
+                transform: 'translate(-50%, -50%)',
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                setActiveDragElement('badge');
+              }}
+              className={`absolute border-2 border-dashed rounded-full transition-all cursor-grab active:cursor-grabbing z-20 group pointer-events-auto select-none ${
+                activeDragElement === 'badge'
+                  ? 'border-rose-400 bg-rose-950/35 shadow-lg shadow-rose-500/40 ring-2 ring-rose-400/50'
+                  : 'border-rose-500/60 hover:border-rose-400 bg-rose-950/15 hover:bg-rose-950/25'
+              }`}
+            >
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-rose-950/40 backdrop-blur-[1px]">
+                <div className="p-1.5 rounded-lg bg-rose-600 text-white shadow-md">
+                  <Move className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-neutral-900/95 border border-rose-500/60 text-[10px] text-rose-200 whitespace-nowrap shadow pointer-events-none flex items-center gap-1 font-mono">
+                <span>{language === 'vi' ? 'Huy Hiệu (Badge)' : 'Badge'}</span>
+                <span className="text-rose-400">X:{Math.round(track.positionX !== undefined ? track.positionX : 50)}% Y:{Math.round(track.positionY !== undefined ? track.positionY : 28)}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* 2. Direct Drag Handle for Logo PNG Watermark */}
+          {showDirectDragOverlays && track && track.logoUrl && track.showLogo !== false && (
+            <div
+              style={{
+                left: `${track.logoPositionX !== undefined ? track.logoPositionX : 6}%`,
+                top: `${track.logoPositionY !== undefined ? track.logoPositionY : 6}%`,
+                width: `${Math.max(50, 75 * (track.logoScale || 1.0))}px`,
+                height: `${Math.max(50, 75 * (track.logoScale || 1.0))}px`,
+                transform: 'translate(-50%, -50%)',
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                setActiveDragElement('logo');
+              }}
+              className={`absolute border-2 border-dashed rounded-xl transition-all cursor-grab active:cursor-grabbing z-20 group pointer-events-auto select-none ${
+                activeDragElement === 'logo'
+                  ? 'border-cyan-400 bg-cyan-950/35 shadow-lg shadow-cyan-500/40 ring-2 ring-cyan-400/50'
+                  : 'border-cyan-500/60 hover:border-cyan-400 bg-cyan-950/15 hover:bg-cyan-950/25'
+              }`}
+            >
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl bg-cyan-950/40 backdrop-blur-[1px]">
+                <div className="p-1 rounded-md bg-cyan-600 text-white shadow">
+                  <Move className="w-3 h-3" />
+                </div>
+              </div>
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-neutral-900/95 border border-cyan-500/60 text-[10px] text-cyan-200 whitespace-nowrap shadow pointer-events-none flex items-center gap-1 font-mono">
+                <span>Logo</span>
+                <span className="text-cyan-400">X:{Math.round(track.logoPositionX !== undefined ? track.logoPositionX : 6)}% Y:{Math.round(track.logoPositionY !== undefined ? track.logoPositionY : 6)}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* 3. Direct Drag Handle for Custom Track Title or Track Details */}
+          {showDirectDragOverlays && track && track.trackTitleCustomPosition && track.showTrackTitle !== false && (
+            <div
+              style={{
+                left: `${track.trackTitlePositionX !== undefined ? track.trackTitlePositionX : 50}%`,
+                top: `${track.trackTitlePositionY !== undefined ? track.trackTitlePositionY : 42}%`,
+                width: '180px',
+                height: '42px',
+                transform: 'translate(-50%, -50%)',
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                setActiveDragElement('track-title');
+              }}
+              className={`absolute border-2 border-dashed rounded-xl transition-all cursor-grab active:cursor-grabbing z-20 group pointer-events-auto select-none ${
+                activeDragElement === 'track-title'
+                  ? 'border-amber-400 bg-amber-950/35 shadow-lg shadow-amber-500/40 ring-2 ring-amber-400/50'
+                  : 'border-amber-500/60 hover:border-amber-400 bg-amber-950/15 hover:bg-amber-950/25'
+              }`}
+            >
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl bg-amber-950/40 backdrop-blur-[1px]">
+                <div className="p-1 rounded-md bg-amber-600 text-white shadow">
+                  <Move className="w-3 h-3" />
+                </div>
+              </div>
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-neutral-900/95 border border-amber-500/60 text-[10px] text-amber-200 whitespace-nowrap shadow pointer-events-none flex items-center gap-1 font-mono">
+                <span>{language === 'vi' ? 'Tên Bài Hát (Track Title)' : 'Track Title'}</span>
+                <span className="text-amber-400">X:{Math.round(track.trackTitlePositionX !== undefined ? track.trackTitlePositionX : 50)}% Y:{Math.round(track.trackTitlePositionY !== undefined ? track.trackTitlePositionY : 42)}%</span>
+              </div>
+            </div>
+          )}
+
+          {/* 4. Direct Drag Handle for Visualizer Waveform */}
+          {showDirectDragOverlays && visualizer && isVisualizerVisible && (
+            <div
+              style={{
+                left: `${visualizer.positionX !== undefined ? visualizer.positionX : 50}%`,
+                top: `${visualizer.positionY !== undefined ? visualizer.positionY : 72}%`,
+                width: '240px',
+                height: '52px',
+                transform: 'translate(-50%, -50%)',
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                setActiveDragElement('visualizer');
+              }}
+              className={`absolute border-2 border-dashed rounded-2xl transition-all cursor-grab active:cursor-grabbing z-20 group pointer-events-auto select-none ${
+                activeDragElement === 'visualizer'
+                  ? 'border-purple-400 bg-purple-950/35 shadow-lg shadow-purple-500/40 ring-2 ring-purple-400/50'
+                  : 'border-purple-500/60 hover:border-purple-400 bg-purple-950/15 hover:bg-purple-950/25'
+              }`}
+            >
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl bg-purple-950/40 backdrop-blur-[1px]">
+                <div className="p-1.5 rounded-lg bg-purple-600 text-white shadow">
+                  <Move className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-neutral-900/95 border border-purple-500/60 text-[10px] text-purple-200 whitespace-nowrap shadow pointer-events-none flex items-center gap-1 font-mono">
+                <span>{language === 'vi' ? 'Sóng Âm (Visualizer)' : 'Visualizer'}</span>
+                <span className="text-purple-400">X:{Math.round(visualizer.positionX !== undefined ? visualizer.positionX : 50)}% Y:{Math.round(visualizer.positionY !== undefined ? visualizer.positionY : 72)}%</span>
+              </div>
+            </div>
           )}
 
           {/* Interactive Bounding Box for Moving Selected Lottie */}
@@ -580,12 +772,12 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
                 {/* Continuous Playlist Timeline Indicator */}
                 {hasMultipleTracks && (
                   <div
-                    title="Thanh tiến trình hiển thị liền mạch toàn bộ danh sách phát - Kết thúc mỗi bài vẫn tiếp tục chạy tiếp toàn bộ thanh bar"
+                    title={language === 'vi' ? 'Thanh tiến trình hiển thị liền mạch toàn bộ danh sách phát - Kết thúc mỗi bài vẫn tiếp tục chạy tiếp toàn bộ thanh bar' : 'Continuous playlist timeline bar across all songs'}
                     className="px-2.5 py-0.5 rounded-md text-[10px] font-semibold flex items-center gap-1.5 bg-rose-500/15 text-rose-300 border border-rose-500/30 shadow-sm shrink-0"
                   >
                     <Clock className="w-3 h-3 text-rose-400 shrink-0" />
                     <span className="font-mono">
-                      Toàn Playlist ({formatTime(totalPlaylistDuration || 0)})
+                      {language === 'vi' ? 'Toàn Playlist' : 'Playlist Total'} ({formatTime(totalPlaylistDuration || 0)})
                     </span>
                   </div>
                 )}

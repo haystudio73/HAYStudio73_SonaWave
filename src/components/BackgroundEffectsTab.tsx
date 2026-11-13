@@ -2,6 +2,7 @@ import React from 'react';
 import { 
   BackgroundConfig, 
   ParticleConfig, 
+  ParticleLayer,
   ParticleType, 
   ParticleShape, 
   ParticleColorMode, 
@@ -12,12 +13,14 @@ import {
   BackgroundGlitchTrigger,
   BackgroundGlitchStyle,
 } from '../types';
+import { createDefaultParticleLayer } from '../utils/presets';
 import { Language } from '../utils/i18n';
 import { 
   Sparkles, 
   Sliders, 
   CloudRain, 
   Eye, 
+  EyeOff,
   Sun, 
   Maximize, 
   CircleDot, 
@@ -43,7 +46,9 @@ import {
   Check,
   RotateCw,
   Shuffle,
-  Feather
+  Feather,
+  Plus,
+  Trash2
 } from 'lucide-react';
 
 interface BackgroundEffectsTabProps {
@@ -93,6 +98,7 @@ const PARTICLE_TYPES: { id: ParticleType; nameVi: string; nameEn: string; icon: 
   { id: 'dust', nameVi: 'Bụi lofi trôi', nameEn: 'Lofi Ambient Dust', icon: Sparkles, badgeVi: 'Bóng Tơ ✨', badgeEn: 'Soft Fluff ✨' },
   { id: 'stars', nameVi: 'Sao lấp lánh', nameEn: 'Twinkling Stars', icon: Star, badgeVi: 'Lấp Lánh ⭐', badgeEn: 'Static Twinkle ⭐' },
   { id: 'fire-embers', nameVi: 'Những hạt lửa', nameEn: 'Fire Embers & Sparks', icon: Sun, badgeVi: 'Lửa & Tro 🔥', badgeEn: 'Embers 🔥' },
+  { id: 'butterflies', nameVi: 'Đàn bướm phát sáng', nameEn: 'Butterflies', icon: Feather, badgeVi: 'Mới 🦋', badgeEn: 'Butterflies 🦋' },
 ];
 
 const PARTICLE_COLOR_GROUPS = [
@@ -177,6 +183,160 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
 
   const updatePt = (partial: Partial<ParticleConfig>) => {
     onParticlesChange({ ...particles, ...partial });
+  };
+
+  // Multi-layer particle system (Max 5 layers)
+  const effectiveLayers: ParticleLayer[] = (particles.layers && particles.layers.length > 0)
+    ? particles.layers
+    : [
+        {
+          id: 'layer-1',
+          name: isVi ? 'Lớp 1: Bụi Lofi' : 'Layer 1: Lofi Dust',
+          enabled: particles.enabled !== false,
+          type: particles.type,
+          count: particles.count,
+          speed: particles.speed,
+          color: particles.color,
+          secondaryColor: particles.secondaryColor,
+          shape: particles.shape,
+          colorMode: particles.colorMode,
+          glowIntensity: particles.glowIntensity,
+          sizeScale: particles.sizeScale,
+          sizePx: particles.sizePx,
+          randomSize: particles.randomSize,
+          opacity: particles.opacity,
+          rainGlow: particles.rainGlow,
+          rainWindAngle: particles.rainWindAngle,
+          rainWindSpeed: particles.rainWindSpeed,
+          rainTurbulence: particles.rainTurbulence,
+          rainDropType: particles.rainDropType,
+          rainLengthScale: particles.rainLengthScale,
+          rainSplash: particles.rainSplash,
+          rainRandomWind: particles.rainRandomWind,
+          rainRandomWindSpeed: particles.rainRandomWindSpeed,
+          waterOnGlass: particles.waterOnGlass,
+          snowShape: particles.snowShape,
+          snowRandomShape: particles.snowRandomShape,
+          snowWindAngle: particles.snowWindAngle,
+          snowWindSpeed: particles.snowWindSpeed,
+          snowTurbulence: particles.snowTurbulence,
+          snowFlakeType: particles.snowFlakeType,
+          speedLineOrientation: particles.speedLineOrientation,
+          speedLineReverse: particles.speedLineReverse,
+          speedLineMode: particles.speedLineMode,
+          speedLineLength: particles.speedLineLength,
+          speedLineRandomLength: particles.speedLineRandomLength,
+          speedLineWidth: particles.speedLineWidth,
+          speedLineBlur: particles.speedLineBlur,
+          speedLineDirection: particles.speedLineDirection,
+          speedLineTilt: particles.speedLineTilt,
+          speedLineVerticalCenter: particles.speedLineVerticalCenter,
+          speedLineCenterY: particles.speedLineCenterY,
+          speedLineHorizontalCenter: particles.speedLineHorizontalCenter,
+          speedLineCenterX: particles.speedLineCenterX,
+          speedLineSpeed: particles.speedLineSpeed,
+          ribbonWavy: particles.ribbonWavy,
+          ribbonLength: particles.ribbonLength,
+          ribbonThickness: particles.ribbonThickness,
+          ribbonTwist: particles.ribbonTwist,
+          ribbonGlow: particles.ribbonGlow,
+          dustShape: particles.dustShape,
+          dustRandomShape: particles.dustRandomShape,
+          dustMinSize: particles.dustMinSize,
+          silkFluffGlow: particles.silkFluffGlow,
+          particleGlowRadius: particles.particleGlowRadius,
+          hyperspaceLength: particles.hyperspaceLength,
+          hyperspaceGlow: particles.hyperspaceGlow,
+          starStatic: particles.starStatic,
+          starShape: particles.starShape,
+          starRandomFlare: particles.starRandomFlare,
+          starFlareIntensity: particles.starFlareIntensity,
+          fireEmbersShape: particles.fireEmbersShape,
+          fireEmbersSpread: particles.fireEmbersSpread,
+          fireEmbersCooling: particles.fireEmbersCooling,
+          butterflySize: particles.butterflySize,
+          butterflyWingSpeed: particles.butterflyWingSpeed,
+          butterflyColorVariant: particles.butterflyColorVariant,
+          butterflyTrail: particles.butterflyTrail,
+        }
+      ];
+
+  const activeLayerId = particles.activeLayerId || effectiveLayers[0]?.id || 'layer-1';
+  const activeLayer = effectiveLayers.find(l => l.id === activeLayerId) || effectiveLayers[0];
+
+  const updateActiveLayer = (partial: Partial<ParticleLayer>) => {
+    const updatedLayers = effectiveLayers.map(l => {
+      if (l.id === activeLayer.id) {
+        return { ...l, ...partial };
+      }
+      return l;
+    });
+
+    const updatedActive = { ...activeLayer, ...partial };
+    onParticlesChange({
+      ...particles,
+      layers: updatedLayers,
+      activeLayerId: activeLayer.id,
+      type: updatedActive.type,
+      count: updatedActive.count,
+      speed: updatedActive.speed,
+      color: updatedActive.color,
+      secondaryColor: updatedActive.secondaryColor,
+      shape: updatedActive.shape,
+      colorMode: updatedActive.colorMode,
+      glowIntensity: updatedActive.glowIntensity,
+      sizeScale: updatedActive.sizeScale,
+      sizePx: updatedActive.sizePx,
+      randomSize: updatedActive.randomSize,
+      opacity: updatedActive.opacity,
+      ...partial,
+    });
+  };
+
+  const handleAddLayer = () => {
+    if (effectiveLayers.length >= 5) return;
+    const usedTypes = effectiveLayers.map(l => l.type);
+    const candidateTypes: ParticleType[] = ['butterflies', 'fire-embers', 'stars', 'dust', 'snow', 'rain', 'rainbow-bubbles', 'hyperspace', 'speed-lines', 'spaghetti', 'spinning-dashes'];
+    const nextType = candidateTypes.find(t => !usedTypes.includes(t)) || 'butterflies';
+    const newLayer = createDefaultParticleLayer(nextType, effectiveLayers.length + 1);
+    const updatedLayers = [...effectiveLayers, newLayer];
+    onParticlesChange({
+      ...particles,
+      layers: updatedLayers,
+      activeLayerId: newLayer.id,
+    });
+  };
+
+  const handleDeleteLayer = (layerId: string) => {
+    if (effectiveLayers.length <= 1) return;
+    const updatedLayers = effectiveLayers.filter(l => l.id !== layerId);
+    const nextActiveId = activeLayerId === layerId ? (updatedLayers[0]?.id || 'layer-1') : activeLayerId;
+    onParticlesChange({
+      ...particles,
+      layers: updatedLayers,
+      activeLayerId: nextActiveId,
+    });
+  };
+
+  const handleToggleLayerEnabled = (layerId: string) => {
+    const updatedLayers = effectiveLayers.map(l => {
+      if (l.id === layerId) {
+        return { ...l, enabled: !l.enabled };
+      }
+      return l;
+    });
+    onParticlesChange({
+      ...particles,
+      layers: updatedLayers,
+    });
+  };
+
+  const setActiveLayer = (id: string) => {
+    onParticlesChange({
+      ...particles,
+      layers: effectiveLayers,
+      activeLayerId: id,
+    });
   };
 
   return (
@@ -775,56 +935,255 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
 
         {particles.enabled && (
           <div className="space-y-4 pt-1">
-            {/* Particle Types Selection Grid */}
-            <div>
-              <span className="text-xs text-neutral-300 font-medium block mb-1.5">
-                {isVi ? 'Kiểu hiệu ứng hạt (Particle Type)' : 'Particle Visual Type'}
-              </span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {PARTICLE_TYPES.map((pt) => {
-                  const Icon = pt.icon;
-                  const isSelected = particles.type === pt.id;
+            {/* Global Particle Controls (Áp dụng cho toàn bộ các layer hạt) */}
+            <div className="bg-neutral-950/70 p-3.5 rounded-xl border border-neutral-800/90 space-y-3">
+              <div className="flex items-center gap-2 text-xs text-neutral-300 font-semibold">
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span>{isVi ? 'Cài Đặt Toàn Cục (Áp Dụng Cho Toàn Bộ Các Lớp Hạt)' : 'Global Audio Reactivity (Applies to All FX Layers)'}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="flex items-center gap-2 cursor-pointer bg-neutral-900/60 p-2.5 rounded-lg border border-neutral-800">
+                  <input
+                    type="checkbox"
+                    checked={particles.reactiveToBeat}
+                    onChange={(e) => updatePt({ reactiveToBeat: e.target.checked })}
+                    className="rounded text-amber-500 focus:ring-amber-500 bg-neutral-800 border-neutral-700 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-xs text-neutral-200 font-medium block">
+                      {isVi ? '⚡ Tăng tốc theo nhịp Beat' : '⚡ Accelerate on Beats'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tất cả các lớp hạt tăng tốc khi có nhịp phách' : 'All particle layers accelerate on beats'}
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer bg-neutral-900/60 p-2.5 rounded-lg border border-neutral-800">
+                  <input
+                    type="checkbox"
+                    checked={particles.bassReactiveColor}
+                    onChange={(e) => updatePt({ bassReactiveColor: e.target.checked })}
+                    className="rounded text-amber-500 focus:ring-amber-500 bg-neutral-800 border-neutral-700 cursor-pointer"
+                  />
+                  <div>
+                    <span className="text-xs text-neutral-200 font-medium block">
+                      {isVi ? '🔥 Bừng sáng theo Bass Drop' : '🔥 Flash Brighter on Bass Drop'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400">
+                      {isVi ? 'Tất cả các lớp hạt chớp sáng rực rỡ khi bass đập' : 'All particle layers flash luminous on bass kicks'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              {particles.bassReactiveColor && (
+                <div className="pt-1 px-1">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-neutral-400">{isVi ? 'Cường độ chớp sáng Bass Drop' : 'Bass Flash Boost'}</span>
+                    <span className="text-amber-400 font-mono font-bold">{(particles.bassFlashBoost ?? 1.5).toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={2.5}
+                    step={0.1}
+                    value={particles.bassFlashBoost ?? 1.5}
+                    onChange={(e) => updatePt({ bassFlashBoost: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Multi-Layer Management Toolbar (Max 5 Layers) */}
+            <div className="bg-neutral-950/70 p-3.5 rounded-xl border border-neutral-800/90 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    {isVi ? 'Danh Sách Lớp Hiệu Ứng (Particle Layers)' : 'Particle FX Layers'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    {effectiveLayers.length}/5 {isVi ? 'lớp (Max 5)' : 'layers (Max 5)'}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddLayer}
+                  disabled={effectiveLayers.length >= 5}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    effectiveLayers.length >= 5
+                      ? 'bg-neutral-800/60 text-neutral-500 border border-neutral-700/50 cursor-not-allowed'
+                      : 'bg-amber-500 hover:bg-amber-400 text-neutral-950 shadow-md shadow-amber-500/20 cursor-pointer active:scale-95'
+                  }`}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{isVi ? 'Thêm Lớp Hạt' : 'Add Layer'}</span>
+                </button>
+              </div>
+
+              {/* Layer Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                {effectiveLayers.map((layer, idx) => {
+                  const isSelected = layer.id === activeLayer.id;
+                  const ptInfo = PARTICLE_TYPES.find(t => t.id === layer.type) || PARTICLE_TYPES[1];
+                  const Icon = ptInfo.icon;
                   return (
-                    <button
-                      key={pt.id}
-                      type="button"
-                      onClick={() => updatePt({ type: pt.id })}
-                      className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer relative ${
-                        isSelected 
-                          ? 'bg-amber-500/20 border-amber-500/60 text-white' 
-                          : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                    <div
+                      key={layer.id}
+                      onClick={() => setActiveLayer(layer.id)}
+                      className={`group flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-amber-500/15 border-amber-500/70 shadow-sm shadow-amber-500/10'
+                          : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-amber-400' : 'text-neutral-500'}`} />
-                        <span className="text-xs font-semibold">{isVi ? pt.nameVi : pt.nameEn}</span>
+                      <div className="flex items-center gap-2 min-w-0 pr-1">
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                          isSelected ? 'bg-amber-500 text-neutral-950' : 'bg-neutral-800 text-neutral-400'
+                        }`}>
+                          <Icon className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-xs font-semibold truncate ${isSelected ? 'text-amber-300' : 'text-neutral-200'}`}>
+                              {layer.name || (isVi ? `Lớp ${idx + 1}` : `Layer ${idx + 1}`)}
+                            </span>
+                            {!layer.enabled && (
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-neutral-800 text-neutral-400">
+                                {isVi ? 'Ẩn' : 'Off'}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-neutral-400 block truncate">
+                            {isVi ? ptInfo.nameVi : ptInfo.nameEn}
+                          </span>
+                        </div>
                       </div>
-                      {(pt.badgeVi || pt.badgeEn) && (
-                        <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                          {isVi ? pt.badgeVi : pt.badgeEn}
-                        </span>
-                      )}
-                    </button>
+
+                      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLayerEnabled(layer.id)}
+                          title={layer.enabled ? (isVi ? 'Ẩn lớp này' : 'Hide layer') : (isVi ? 'Hiện lớp này' : 'Show layer')}
+                          className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                            layer.enabled
+                              ? 'text-amber-400 hover:bg-amber-500/20'
+                              : 'text-neutral-500 hover:bg-neutral-800'
+                          }`}
+                        >
+                          {layer.enabled ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLayer(layer.id)}
+                          disabled={effectiveLayers.length <= 1}
+                          title={effectiveLayers.length <= 1 ? (isVi ? 'Cần giữ ít nhất 1 lớp' : 'Keep at least 1 layer') : (isVi ? 'Xóa lớp này' : 'Delete layer')}
+                          className={`p-1 rounded-lg transition-colors ${
+                            effectiveLayers.length <= 1
+                              ? 'text-neutral-600 cursor-not-allowed'
+                              : 'text-neutral-400 hover:text-red-400 hover:bg-red-500/10 cursor-pointer'
+                          }`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
             </div>
 
-            {particles.type !== 'none' && (
+            {/* Currently Selected Layer Settings */}
+            <div className="bg-neutral-900/70 p-3.5 rounded-xl border border-neutral-800 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800/80 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wider">
+                    {isVi ? 'Đang chỉnh:' : 'Editing Layer:'}
+                  </span>
+                  <input
+                    type="text"
+                    value={activeLayer.name || ''}
+                    placeholder={isVi ? 'Tên lớp...' : 'Layer name...'}
+                    onChange={(e) => updateActiveLayer({ name: e.target.value })}
+                    className="text-xs font-semibold bg-neutral-950/80 border border-neutral-700/80 focus:border-amber-500 px-2.5 py-1 rounded-lg text-amber-300 outline-none max-w-[200px]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-neutral-400">{isVi ? 'Trạng thái lớp:' : 'Status:'}</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={activeLayer.enabled}
+                      onChange={(e) => updateActiveLayer({ enabled: e.target.checked })}
+                      className="rounded text-amber-500 focus:ring-amber-500 bg-neutral-800 border-neutral-700 cursor-pointer"
+                    />
+                    <span className={`font-semibold ${activeLayer.enabled ? 'text-green-400' : 'text-neutral-500'}`}>
+                      {activeLayer.enabled ? (isVi ? 'Đang bật' : 'Active') : (isVi ? 'Đang ẩn' : 'Hidden')}
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Particle Types Selection Grid for active layer */}
+              <div>
+                <span className="text-xs text-neutral-300 font-medium block mb-1.5">
+                  {isVi ? 'Kiểu hiệu ứng hạt của lớp này (11 Effects)' : 'Layer Visual Effect (11 Effects)'}
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {PARTICLE_TYPES.map((pt) => {
+                    const Icon = pt.icon;
+                    const isSelected = activeLayer.type === pt.id;
+                    return (
+                      <button
+                        key={pt.id}
+                        type="button"
+                        onClick={() => updateActiveLayer({ type: pt.id })}
+                        className={`p-2.5 rounded-xl text-left border transition-all cursor-pointer relative ${
+                          isSelected 
+                            ? 'bg-amber-500/20 border-amber-500/60 text-white' 
+                            : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-amber-400' : 'text-neutral-500'}`} />
+                          <span className="text-xs font-semibold">{isVi ? pt.nameVi : pt.nameEn}</span>
+                        </div>
+                        {(pt.badgeVi || pt.badgeEn) && (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            {isVi ? pt.badgeVi : pt.badgeEn}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+            {activeLayer.type !== 'none' && (() => {
+              const currentLayer = activeLayer;
+              const updateLayer = (partial: Partial<ParticleLayer>) => updateActiveLayer(partial);
+              return (
+
               <div className="space-y-4 pt-2 border-t border-neutral-800/80">
                 {/* Sliders: Count & Speed */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-neutral-400">{isVi ? 'Số lượng hạt' : 'Particle Count'}</span>
-                      <span className="text-amber-400 font-mono font-bold">{particles.count}</span>
+                      <span className="text-amber-400 font-mono font-bold">{currentLayer.count}</span>
                     </div>
                     <input
                       type="range"
                       min={10}
                       max={250}
-                      value={particles.count}
-                      onChange={(e) => updatePt({ count: parseInt(e.target.value) })}
+                      value={currentLayer.count}
+                      onChange={(e) => updateLayer({ count: parseInt(e.target.value) })}
                       className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                     />
                   </div>
@@ -833,15 +1192,15 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-neutral-400">{isVi ? 'Tốc độ bay' : 'Particle Speed'}</span>
-                      <span className="text-amber-400 font-mono font-bold">{particles.speed.toFixed(2)}x</span>
+                      <span className="text-amber-400 font-mono font-bold">{currentLayer.speed.toFixed(2)}x</span>
                     </div>
                     <input
                       type="range"
                       min={0.01}
                       max={3.0}
                       step={0.01}
-                      value={particles.speed}
-                      onChange={(e) => updatePt({ speed: parseFloat(e.target.value) })}
+                      value={currentLayer.speed}
+                      onChange={(e) => updateLayer({ speed: parseFloat(e.target.value) })}
                       className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                     />
                     <div className="flex items-center gap-1 mt-1.5">
@@ -849,9 +1208,9 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                         <button
                           key={spd}
                           type="button"
-                          onClick={() => updatePt({ speed: spd })}
+                          onClick={() => updateLayer({ speed: spd })}
                           className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors ${
-                            particles.speed === spd
+                            currentLayer.speed === spd
                               ? 'bg-amber-500 text-neutral-950 font-bold'
                               : 'bg-neutral-800 text-neutral-400 hover:text-white'
                           }`}
@@ -869,7 +1228,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-neutral-400">{isVi ? 'Độ trong suốt (Opacity)' : 'Opacity'}</span>
                       <span className="text-amber-400 font-mono font-bold">
-                        {Math.round((particles.opacity ?? 0.85) * 100)}%
+                        {Math.round((currentLayer.opacity ?? 0.85) * 100)}%
                       </span>
                     </div>
                     <input
@@ -877,8 +1236,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       min={0.1}
                       max={1.0}
                       step={0.05}
-                      value={particles.opacity ?? 0.85}
-                      onChange={(e) => updatePt({ opacity: parseFloat(e.target.value) })}
+                      value={currentLayer.opacity ?? 0.85}
+                      onChange={(e) => updateLayer({ opacity: parseFloat(e.target.value) })}
                       className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                     />
                   </div>
@@ -886,11 +1245,11 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                   <div>
                     {(() => {
                       const currentSizePx =
-                        particles.sizePx !== undefined
-                          ? Math.max(1, particles.sizePx)
-                          : particles.type === 'dust'
-                          ? Math.max(1, particles.dustMinSize ?? 2)
-                          : Math.max(1, Math.round((particles.sizeScale || 1.0) * 6));
+                        currentLayer.sizePx !== undefined
+                          ? Math.max(1, currentLayer.sizePx)
+                          : currentLayer.type === 'dust'
+                          ? Math.max(1, currentLayer.dustMinSize ?? 2)
+                          : Math.max(1, Math.round((currentLayer.sizeScale || 1.0) * 6));
                       return (
                         <>
                           <div className="flex justify-between text-xs mb-1">
@@ -909,10 +1268,10 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                             value={currentSizePx}
                             onChange={(e) => {
                               const px = Math.max(1, parseInt(e.target.value));
-                              updatePt({
+                              updateLayer({
                                 sizePx: px,
                                 sizeScale: Number((px / 6).toFixed(2)),
-                                ...(particles.type === 'dust' ? { dustMinSize: px, silkFluffGlow: false } : {}),
+                                ...(currentLayer.type === 'dust' ? { dustMinSize: px, silkFluffGlow: false } : {}),
                               });
                             }}
                             className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
@@ -923,10 +1282,10 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                                 key={px}
                                 type="button"
                                 onClick={() =>
-                                  updatePt({
+                                  updateLayer({
                                     sizePx: px,
                                     sizeScale: Number((px / 6).toFixed(2)),
-                                    ...(particles.type === 'dust' ? { dustMinSize: px, silkFluffGlow: false } : {}),
+                                    ...(currentLayer.type === 'dust' ? { dustMinSize: px, silkFluffGlow: false } : {}),
                                   })
                                 }
                                 className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
@@ -949,8 +1308,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                 <label className="flex items-center gap-2 cursor-pointer pt-1">
                   <input
                     type="checkbox"
-                    checked={particles.randomSize || false}
-                    onChange={(e) => updatePt({ randomSize: e.target.checked })}
+                    checked={currentLayer.randomSize || false}
+                    onChange={(e) => updateLayer({ randomSize: e.target.checked })}
                     className="rounded text-amber-500 focus:ring-amber-500 bg-neutral-800 border-neutral-700 cursor-pointer"
                   />
                   <div>
@@ -977,11 +1336,11 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {PARTICLE_COLOR_GROUPS.map((grp) => {
-                        const isActiveGroup = particles.color.toLowerCase() === grp.primary.toLowerCase();
+                        const isActiveGroup = currentLayer.color.toLowerCase() === grp.primary.toLowerCase();
                         return (
                           <div
                             key={grp.id}
-                            onClick={() => updatePt({ color: grp.primary, secondaryColor: grp.secondary, colorMode: 'custom' })}
+                            onClick={() => updateLayer({ color: grp.primary, secondaryColor: grp.secondary, colorMode: 'custom' })}
                             className={`p-2 rounded-xl border transition-all cursor-pointer ${
                               isActiveGroup
                                 ? 'bg-amber-500/15 border-amber-500/60 text-white'
@@ -998,11 +1357,11 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    updatePt({ color: hex, secondaryColor: grp.secondary, colorMode: 'custom' });
+                                    updateLayer({ color: hex, secondaryColor: grp.secondary, colorMode: 'custom' });
                                   }}
                                   style={{ backgroundColor: hex }}
                                   className={`w-4 h-4 rounded-full border transition-transform hover:scale-125 cursor-pointer ${
-                                    particles.color.toLowerCase() === hex.toLowerCase()
+                                    currentLayer.color.toLowerCase() === hex.toLowerCase()
                                       ? 'border-white ring-1 ring-amber-400 scale-110'
                                       : 'border-neutral-700'
                                   }`}
@@ -1025,11 +1384,11 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 p-2 rounded-xl">
                         <input
                           type="color"
-                          value={particles.color.startsWith('#') ? particles.color : '#ffffff'}
-                          onChange={(e) => updatePt({ color: e.target.value })}
+                          value={currentLayer.color.startsWith('#') ? currentLayer.color : '#ffffff'}
+                          onChange={(e) => updateLayer({ color: e.target.value })}
                           className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
                         />
-                        <span className="text-xs font-mono text-neutral-300">{particles.color}</span>
+                        <span className="text-xs font-mono text-neutral-300">{currentLayer.color}</span>
                       </div>
                     </div>
 
@@ -1040,11 +1399,11 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <div className="flex items-center gap-2 bg-neutral-950 border border-neutral-800 p-2 rounded-xl">
                         <input
                           type="color"
-                          value={particles.secondaryColor || '#ec4899'}
-                          onChange={(e) => updatePt({ secondaryColor: e.target.value })}
+                          value={currentLayer.secondaryColor || '#ec4899'}
+                          onChange={(e) => updateLayer({ secondaryColor: e.target.value })}
                           className="w-6 h-6 rounded cursor-pointer bg-transparent border-0"
                         />
-                        <span className="text-xs font-mono text-neutral-300">{particles.secondaryColor || '#ec4899'}</span>
+                        <span className="text-xs font-mono text-neutral-300">{currentLayer.secondaryColor || '#ec4899'}</span>
                       </div>
                     </div>
                   </div>
@@ -1055,7 +1414,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                 {/* ===================================================================== */}
 
                 {/* A. MƯA RƠI TỰ NHIÊN (RAIN) */}
-                {particles.type === 'rain' && (
+                {currentLayer.type === 'rain' && (
                   <div className="bg-cyan-950/20 border border-cyan-500/30 rounded-xl p-3.5 space-y-3.5">
                     <div className="flex items-center gap-2 text-cyan-300 font-bold text-xs uppercase tracking-wider">
                       <CloudRain className="w-4 h-4" />
@@ -1068,7 +1427,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Độ dài vệt mưa (px)' : 'Raindrop Streak Length (px)'}</span>
                           <span className="text-cyan-400 font-mono font-bold">
-                            {Math.round((particles.rainLengthScale ?? 1.2) * 24)}px
+                            {Math.round((currentLayer.rainLengthScale ?? 1.2) * 24)}px
                           </span>
                         </div>
                         <input
@@ -1076,8 +1435,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                           min={0.4}
                           max={3.5}
                           step={0.1}
-                          value={particles.rainLengthScale ?? 1.2}
-                          onChange={(e) => updatePt({ rainLengthScale: parseFloat(e.target.value) })}
+                          value={currentLayer.rainLengthScale ?? 1.2}
+                          onChange={(e) => updateLayer({ rainLengthScale: parseFloat(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                         />
                       </div>
@@ -1086,7 +1445,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Chiều gió thổi (Góc nghiêng)' : 'Wind Direction Angle'}</span>
                           <span className="text-cyan-400 font-mono font-bold">
-                            {particles.rainWindAngle ?? 10}°
+                            {currentLayer.rainWindAngle ?? 10}°
                           </span>
                         </div>
                         <input
@@ -1094,9 +1453,9 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                           min={-45}
                           max={45}
                           step={1}
-                          disabled={Boolean(particles.rainRandomWind)}
-                          value={particles.rainWindAngle ?? 10}
-                          onChange={(e) => updatePt({ rainWindAngle: parseInt(e.target.value) })}
+                          disabled={Boolean(currentLayer.rainRandomWind)}
+                          value={currentLayer.rainWindAngle ?? 10}
+                          onChange={(e) => updateLayer({ rainWindAngle: parseInt(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-cyan-500 disabled:opacity-40"
                         />
                         <div className="flex items-center gap-1.5 mt-1.5">
@@ -1108,9 +1467,9 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                             <button
                               key={w.val}
                               type="button"
-                              onClick={() => updatePt({ rainWindAngle: w.val, rainRandomWind: false })}
+                              onClick={() => updateLayer({ rainWindAngle: w.val, rainRandomWind: false })}
                               className={`px-2 py-0.5 rounded text-[10px] font-medium border transition-all cursor-pointer ${
-                                !particles.rainRandomWind && (particles.rainWindAngle ?? 10) === w.val
+                                !currentLayer.rainRandomWind && (currentLayer.rainWindAngle ?? 10) === w.val
                                   ? 'bg-cyan-500/30 border-cyan-400 text-white'
                                   : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'
                               }`}
@@ -1127,8 +1486,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <label className="flex items-start gap-2 bg-neutral-950/60 p-2.5 rounded-xl border border-neutral-800 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={particles.rainRandomWind || false}
-                          onChange={(e) => updatePt({ rainRandomWind: e.target.checked })}
+                          checked={currentLayer.rainRandomWind || false}
+                          onChange={(e) => updateLayer({ rainRandomWind: e.target.checked })}
                           className="mt-0.5 rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700 cursor-pointer"
                         />
                         <div>
@@ -1144,8 +1503,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <label className="flex items-start gap-2 bg-neutral-950/60 p-2.5 rounded-xl border border-neutral-800 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={particles.rainGlow !== false}
-                          onChange={(e) => updatePt({ rainGlow: e.target.checked })}
+                          checked={currentLayer.rainGlow !== false}
+                          onChange={(e) => updateLayer({ rainGlow: e.target.checked })}
                           className="mt-0.5 rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700 cursor-pointer"
                         />
                         <div>
@@ -1161,8 +1520,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <label className="flex items-start gap-2 bg-neutral-950/60 p-2.5 rounded-xl border border-neutral-800 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={particles.waterOnGlass || false}
-                          onChange={(e) => updatePt({ waterOnGlass: e.target.checked })}
+                          checked={currentLayer.waterOnGlass || false}
+                          onChange={(e) => updateLayer({ waterOnGlass: e.target.checked })}
                           className="mt-0.5 rounded text-cyan-500 focus:ring-cyan-500 bg-neutral-800 border-neutral-700 cursor-pointer"
                         />
                         <div>
@@ -1179,7 +1538,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                 )}
 
                 {/* B. TUYẾT RƠI MÙA ĐÔNG (SNOW) */}
-                {particles.type === 'snow' && (
+                {currentLayer.type === 'snow' && (
                   <div className="bg-sky-950/20 border border-sky-500/30 rounded-xl p-3.5 space-y-3.5">
                     <div className="flex items-center gap-2 text-sky-300 font-bold text-xs uppercase tracking-wider">
                       <Snowflake className="w-4 h-4" />
@@ -1201,9 +1560,9 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                           <button
                             key={sh.id}
                             type="button"
-                            onClick={() => updatePt({ snowShape: sh.id as any, snowRandomShape: false })}
+                            onClick={() => updateLayer({ snowShape: sh.id as any, snowRandomShape: false })}
                             className={`py-2 px-2.5 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
-                              !particles.snowRandomShape && (particles.snowShape || 'snowflake') === sh.id
+                              !currentLayer.snowRandomShape && (currentLayer.snowShape || 'snowflake') === sh.id
                                 ? 'bg-sky-500/25 border-sky-400 text-white'
                                 : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:border-neutral-700'
                             }`}
@@ -1217,8 +1576,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                     <label className="flex items-center gap-2.5 bg-neutral-950/60 p-2.5 rounded-xl border border-neutral-800 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={particles.snowRandomShape || false}
-                        onChange={(e) => updatePt({ snowRandomShape: e.target.checked })}
+                        checked={currentLayer.snowRandomShape || false}
+                        onChange={(e) => updateLayer({ snowRandomShape: e.target.checked })}
                         className="rounded text-sky-500 focus:ring-sky-500 bg-neutral-800 border-neutral-700 cursor-pointer"
                       />
                       <div>
@@ -1234,7 +1593,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                 )}
 
                 {/* C. VỆT TỐC ĐỘ / SPEED LINES */}
-                {particles.type === 'speed-lines' && (
+                {currentLayer.type === 'speed-lines' && (
                   <div className="bg-amber-950/20 border border-amber-500/30 rounded-xl p-3.5 space-y-3.5">
                     <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider">
                       <Zap className="w-4 h-4" />
@@ -1255,12 +1614,12 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                           { id: 'radial-top', labelVi: '⬆️ Từ Giữa (Nửa Trên)', labelEn: '⬆️ Upper-Half Center' },
                           { id: 'radial-bottom', labelVi: '⬇️ Từ Giữa (Nửa Dưới)', labelEn: '⬇️ Lower-Half Center' },
                         ].map((ort) => {
-                          const currentOrt = particles.speedLineOrientation || (particles.speedLineMode === 'converge-center' ? 'radial-center' : 'horizontal');
+                          const currentOrt = currentLayer.speedLineOrientation || (currentLayer.speedLineMode === 'converge-center' ? 'radial-center' : 'horizontal');
                           return (
                             <button
                               key={ort.id}
                               type="button"
-                              onClick={() => updatePt({ speedLineOrientation: ort.id as any })}
+                              onClick={() => updateLayer({ speedLineOrientation: ort.id as any })}
                               className={`py-2 px-2.5 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
                                 currentOrt === ort.id
                                   ? 'bg-amber-500/25 border-amber-400 text-white'
@@ -1283,13 +1642,13 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                         <button
                           type="button"
                           onClick={() =>
-                            updatePt({
+                            updateLayer({
                               speedLineReverse: false,
                               speedLineDirection: 'right-to-left',
                             })
                           }
                           className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                            !particles.speedLineReverse
+                            !currentLayer.speedLineReverse
                               ? 'bg-amber-500/25 border-amber-400 text-white shadow-sm'
                               : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:border-neutral-700'
                           }`}
@@ -1303,13 +1662,13 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                         <button
                           type="button"
                           onClick={() =>
-                            updatePt({
+                            updateLayer({
                               speedLineReverse: true,
                               speedLineDirection: 'left-to-right',
                             })
                           }
                           className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                            particles.speedLineReverse
+                            currentLayer.speedLineReverse
                               ? 'bg-amber-500/25 border-amber-400 text-white shadow-sm'
                               : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:border-neutral-700'
                           }`}
@@ -1326,15 +1685,15 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <div>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Độ dài vệt tốc độ' : 'Streak Length'}</span>
-                          <span className="text-amber-400 font-mono font-bold">{particles.speedLineLength ?? 140}px</span>
+                          <span className="text-amber-400 font-mono font-bold">{currentLayer.speedLineLength ?? 140}px</span>
                         </div>
                         <input
                           type="range"
                           min={40}
                           max={400}
                           step={10}
-                          value={particles.speedLineLength ?? 140}
-                          onChange={(e) => updatePt({ speedLineLength: parseInt(e.target.value) })}
+                          value={currentLayer.speedLineLength ?? 140}
+                          onChange={(e) => updateLayer({ speedLineLength: parseInt(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                         />
                       </div>
@@ -1342,15 +1701,15 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <div>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Vệt sáng nhòe (Glow Blur)' : 'Motion Glow Blur'}</span>
-                          <span className="text-amber-400 font-mono font-bold">{particles.speedLineBlur ?? 5}px</span>
+                          <span className="text-amber-400 font-mono font-bold">{currentLayer.speedLineBlur ?? 5}px</span>
                         </div>
                         <input
                           type="range"
                           min={0}
                           max={22}
                           step={1}
-                          value={particles.speedLineBlur ?? 5}
-                          onChange={(e) => updatePt({ speedLineBlur: parseInt(e.target.value) })}
+                          value={currentLayer.speedLineBlur ?? 5}
+                          onChange={(e) => updateLayer({ speedLineBlur: parseInt(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                         />
                       </div>
@@ -1359,7 +1718,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                 )}
 
                 {/* D. MƯA BĂNG LỤA (SILK RIBBON) */}
-                {(particles.type === 'spaghetti' || particles.type === 'silk-ribbon') && (
+                {(currentLayer.type === 'spaghetti' || currentLayer.type === 'silk-ribbon') && (
                   <div className="bg-pink-950/20 border border-pink-500/30 rounded-xl p-3.5 space-y-3.5">
                     <div className="flex items-center gap-2 text-pink-300 font-bold text-xs uppercase tracking-wider">
                       <Waves className="w-4 h-4" />
@@ -1369,8 +1728,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                     <label className="flex items-center gap-2.5 bg-neutral-950/60 p-2.5 rounded-xl border border-neutral-800 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={particles.ribbonWavy !== false}
-                        onChange={(e) => updatePt({ ribbonWavy: e.target.checked })}
+                        checked={currentLayer.ribbonWavy !== false}
+                        onChange={(e) => updateLayer({ ribbonWavy: e.target.checked })}
                         className="rounded text-pink-500 focus:ring-pink-500 bg-neutral-800 border-neutral-700 cursor-pointer"
                       />
                       <div>
@@ -1387,15 +1746,15 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <div>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Độ dài dải lụa' : 'Ribbon Length'}</span>
-                          <span className="text-pink-400 font-mono font-bold">{particles.ribbonLength ?? 160}px</span>
+                          <span className="text-pink-400 font-mono font-bold">{currentLayer.ribbonLength ?? 160}px</span>
                         </div>
                         <input
                           type="range"
                           min={50}
                           max={450}
                           step={10}
-                          value={particles.ribbonLength ?? 160}
-                          onChange={(e) => updatePt({ ribbonLength: parseInt(e.target.value) })}
+                          value={currentLayer.ribbonLength ?? 160}
+                          onChange={(e) => updateLayer({ ribbonLength: parseInt(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
                         />
                       </div>
@@ -1403,15 +1762,15 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <div>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Độ uốn xoắn 3D' : '3D Wave Twist'}</span>
-                          <span className="text-pink-400 font-mono font-bold">{(particles.ribbonTwist ?? 1.8).toFixed(1)}x</span>
+                          <span className="text-pink-400 font-mono font-bold">{(currentLayer.ribbonTwist ?? 1.8).toFixed(1)}x</span>
                         </div>
                         <input
                           type="range"
                           min={0.5}
                           max={4.5}
                           step={0.1}
-                          value={particles.ribbonTwist ?? 1.8}
-                          onChange={(e) => updatePt({ ribbonTwist: parseFloat(e.target.value) })}
+                          value={currentLayer.ribbonTwist ?? 1.8}
+                          onChange={(e) => updateLayer({ ribbonTwist: parseFloat(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
                         />
                       </div>
@@ -1419,15 +1778,15 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <div>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Độ rộng bản lụa' : 'Ribbon Width'}</span>
-                          <span className="text-pink-400 font-mono font-bold">{particles.ribbonThickness ?? 8}px</span>
+                          <span className="text-pink-400 font-mono font-bold">{currentLayer.ribbonThickness ?? 8}px</span>
                         </div>
                         <input
                           type="range"
                           min={2}
                           max={28}
                           step={1}
-                          value={particles.ribbonThickness ?? 8}
-                          onChange={(e) => updatePt({ ribbonThickness: parseInt(e.target.value) })}
+                          value={currentLayer.ribbonThickness ?? 8}
+                          onChange={(e) => updateLayer({ ribbonThickness: parseInt(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
                         />
                       </div>
@@ -1436,7 +1795,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                 )}
 
                 {/* E. BỤI LOFI TRÔI 2D (LOFI DUST 2D) */}
-                {particles.type === 'dust' && (
+                {currentLayer.type === 'dust' && (
                   <div className="bg-purple-950/20 border border-purple-500/30 rounded-xl p-3.5 space-y-3.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-purple-300 font-bold text-xs uppercase tracking-wider">
@@ -1460,14 +1819,14 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                           { id: 'star', labelVi: '⭐ Ngôi Sao', labelEn: '⭐ Star' },
                           { id: 'random', labelVi: '🎲 Ngẫu Nhiên', labelEn: '🎲 Random Mix' },
                         ].map((sh) => {
-                          const currentShape = particles.dustShape || (particles.dustRandomShape ? 'random' : 'circle');
+                          const currentShape = currentLayer.dustShape || (currentLayer.dustRandomShape ? 'random' : 'circle');
                           const isSelected = currentShape === sh.id;
                           return (
                             <button
                               key={sh.id}
                               type="button"
                               onClick={() =>
-                                updatePt({
+                                updateLayer({
                                   dustShape: sh.id as any,
                                   dustRandomShape: sh.id === 'random',
                                   shape: sh.id === 'random' ? undefined : (sh.id as any),
@@ -1491,9 +1850,9 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <label className="flex items-center gap-2.5 bg-neutral-950/60 p-2.5 rounded-xl border border-neutral-800 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={particles.dustRandomShape || particles.dustShape === 'random'}
+                          checked={currentLayer.dustRandomShape || currentLayer.dustShape === 'random'}
                           onChange={(e) =>
-                            updatePt({
+                            updateLayer({
                               dustRandomShape: e.target.checked,
                               dustShape: e.target.checked ? 'random' : 'circle',
                               silkFluffGlow: false,
@@ -1513,7 +1872,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
 
                       <div>
                         {(() => {
-                          const dustPx = Math.max(1, Math.round(particles.dustMinSize ?? particles.sizePx ?? 1));
+                          const dustPx = Math.max(1, Math.round(currentLayer.dustMinSize ?? currentLayer.sizePx ?? 1));
                           return (
                             <>
                               <div className="flex justify-between text-xs mb-1">
@@ -1530,7 +1889,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                                 value={dustPx}
                                 onChange={(e) => {
                                   const val = Math.max(1, parseInt(e.target.value));
-                                  updatePt({
+                                  updateLayer({
                                     dustMinSize: val,
                                     sizePx: val,
                                     sizeScale: Number((val / 6).toFixed(2)),
@@ -1545,7 +1904,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                                     key={px}
                                     type="button"
                                     onClick={() =>
-                                      updatePt({
+                                      updateLayer({
                                         dustMinSize: px,
                                         sizePx: px,
                                         sizeScale: Number((px / 6).toFixed(2)),
@@ -1571,7 +1930,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                 )}
 
                 {/* F. TĂNG TỐC HYPERSPACE */}
-                {particles.type === 'hyperspace' && (
+                {currentLayer.type === 'hyperspace' && (
                   <div className="bg-indigo-950/20 border border-indigo-500/30 rounded-xl p-3.5 space-y-3.5">
                     <div className="flex items-center gap-2 text-indigo-300 font-bold text-xs uppercase tracking-wider">
                       <Zap className="w-4 h-4" />
@@ -1582,15 +1941,15 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <div>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Độ dài vệt sáng (Warp Length)' : 'Warp Trail Length'}</span>
-                          <span className="text-indigo-400 font-mono font-bold">{particles.hyperspaceLength ?? 20}px</span>
+                          <span className="text-indigo-400 font-mono font-bold">{currentLayer.hyperspaceLength ?? 20}px</span>
                         </div>
                         <input
                           type="range"
                           min={5}
                           max={50}
                           step={1}
-                          value={particles.hyperspaceLength ?? 20}
-                          onChange={(e) => updatePt({ hyperspaceLength: parseInt(e.target.value) })}
+                          value={currentLayer.hyperspaceLength ?? 20}
+                          onChange={(e) => updateLayer({ hyperspaceLength: parseInt(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                         />
                       </div>
@@ -1598,15 +1957,15 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <div>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Cường độ vệt sáng (Warp Glow)' : 'Luminous Streak Glow'}</span>
-                          <span className="text-indigo-400 font-mono font-bold">{particles.hyperspaceGlow ?? 15}px</span>
+                          <span className="text-indigo-400 font-mono font-bold">{currentLayer.hyperspaceGlow ?? 15}px</span>
                         </div>
                         <input
                           type="range"
                           min={0}
                           max={40}
                           step={1}
-                          value={particles.hyperspaceGlow ?? 15}
-                          onChange={(e) => updatePt({ hyperspaceGlow: parseInt(e.target.value) })}
+                          value={currentLayer.hyperspaceGlow ?? 15}
+                          onChange={(e) => updateLayer({ hyperspaceGlow: parseInt(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                         />
                       </div>
@@ -1615,7 +1974,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                 )}
 
                 {/* G. SAO LẤP LÁNH (TWINKLING STARS) */}
-                {particles.type === 'stars' && (
+                {currentLayer.type === 'stars' && (
                   <div className="bg-yellow-950/20 border border-yellow-500/30 rounded-xl p-3.5 space-y-3.5">
                     <div className="flex items-center gap-2 text-yellow-300 font-bold text-xs uppercase tracking-wider">
                       <Star className="w-4 h-4" />
@@ -1626,8 +1985,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <label className="flex items-center gap-2.5 bg-neutral-950/60 p-2.5 rounded-xl border border-neutral-800 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={particles.starStatic !== false}
-                          onChange={(e) => updatePt({ starStatic: e.target.checked })}
+                          checked={currentLayer.starStatic !== false}
+                          onChange={(e) => updateLayer({ starStatic: e.target.checked })}
                           className="rounded text-yellow-500 focus:ring-yellow-500 bg-neutral-800 border-neutral-700 cursor-pointer"
                         />
                         <div>
@@ -1644,8 +2003,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                       <label className="flex items-center gap-2.5 bg-neutral-950/60 p-2.5 rounded-xl border border-neutral-800 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={particles.starRandomFlare !== false}
-                          onChange={(e) => updatePt({ starRandomFlare: e.target.checked })}
+                          checked={currentLayer.starRandomFlare !== false}
+                          onChange={(e) => updateLayer({ starRandomFlare: e.target.checked })}
                           className="rounded text-yellow-500 focus:ring-yellow-500 bg-neutral-800 border-neutral-700 cursor-pointer"
                         />
                         <div>
@@ -1660,12 +2019,12 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                     </div>
 
                     {/* Star Flare Intensity slider if enabled */}
-                    {particles.starRandomFlare !== false && (
+                    {currentLayer.starRandomFlare !== false && (
                       <div>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Độ dài tia lóe sáng (Flare Intensity)' : 'Flare Ray Length'}</span>
                           <span className="text-yellow-400 font-mono font-bold">
-                            {(particles.starFlareIntensity ?? 1.0).toFixed(1)}x
+                            {(currentLayer.starFlareIntensity ?? 1.0).toFixed(1)}x
                           </span>
                         </div>
                         <input
@@ -1673,8 +2032,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                           min={0.2}
                           max={2.5}
                           step={0.1}
-                          value={particles.starFlareIntensity ?? 1.0}
-                          onChange={(e) => updatePt({ starFlareIntensity: parseFloat(e.target.value) })}
+                          value={currentLayer.starFlareIntensity ?? 1.0}
+                          onChange={(e) => updateLayer({ starFlareIntensity: parseFloat(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-yellow-500"
                         />
                       </div>
@@ -1694,9 +2053,9 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                           <button
                             key={st.id}
                             type="button"
-                            onClick={() => updatePt({ starShape: st.id as any })}
+                            onClick={() => updateLayer({ starShape: st.id as any })}
                             className={`py-2 px-2.5 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
-                              (particles.starShape || '4-point') === st.id
+                              (currentLayer.starShape || '4-point') === st.id
                                 ? 'bg-yellow-500/25 border-yellow-400 text-white'
                                 : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:border-neutral-700'
                             }`}
@@ -1710,7 +2069,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                 )}
 
                 {/* H. NHỮNG HẠT LỬA BAY (FIRE EMBERS) */}
-                {particles.type === 'fire-embers' && (
+                {currentLayer.type === 'fire-embers' && (
                   <div className="bg-orange-950/20 border border-orange-500/30 rounded-xl p-3.5 space-y-3.5">
                     <div className="flex items-center gap-2 text-orange-300 font-bold text-xs uppercase tracking-wider">
                       <Sun className="w-4 h-4" />
@@ -1734,13 +2093,13 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                           { id: 'diamond', labelVi: '🔷 Hình Thoi', labelEn: '🔷 Diamond' },
                           { id: 'random', labelVi: '🎲 Ngẫu Nhiên', labelEn: '🎲 Random Mix' },
                         ].map((sh) => {
-                          const currentShape = particles.fireEmbersShape || 'random';
+                          const currentShape = currentLayer.fireEmbersShape || 'random';
                           const isSelected = currentShape === sh.id;
                           return (
                             <button
                               key={sh.id}
                               type="button"
-                              onClick={() => updatePt({ fireEmbersShape: sh.id as any })}
+                              onClick={() => updateLayer({ fireEmbersShape: sh.id as any })}
                               className={`py-2 px-2.5 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
                                 isSelected
                                   ? 'bg-orange-500/25 border-orange-400 text-white'
@@ -1759,7 +2118,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Độ tỏa rộng nhiều hướng' : 'Horizontal Scatter Spread'}</span>
                           <span className="text-orange-400 font-mono font-bold">
-                            {(particles.fireEmbersSpread ?? 1.2).toFixed(1)}x
+                            {(currentLayer.fireEmbersSpread ?? 1.2).toFixed(1)}x
                           </span>
                         </div>
                         <input
@@ -1767,8 +2126,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                           min={0.3}
                           max={3.0}
                           step={0.1}
-                          value={particles.fireEmbersSpread ?? 1.2}
-                          onChange={(e) => updatePt({ fireEmbersSpread: parseFloat(e.target.value) })}
+                          value={currentLayer.fireEmbersSpread ?? 1.2}
+                          onChange={(e) => updateLayer({ fireEmbersSpread: parseFloat(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
                         />
                       </div>
@@ -1777,7 +2136,7 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-neutral-300">{isVi ? 'Tốc độ nguội sang xám/đen' : 'Ash Cooling Rate'}</span>
                           <span className="text-orange-400 font-mono font-bold">
-                            {(particles.fireEmbersCooling ?? 1.0).toFixed(1)}x
+                            {(currentLayer.fireEmbersCooling ?? 1.0).toFixed(1)}x
                           </span>
                         </div>
                         <input
@@ -1785,8 +2144,8 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                           min={0.5}
                           max={2.5}
                           step={0.1}
-                          value={particles.fireEmbersCooling ?? 1.0}
-                          onChange={(e) => updatePt({ fireEmbersCooling: parseFloat(e.target.value) })}
+                          value={currentLayer.fireEmbersCooling ?? 1.0}
+                          onChange={(e) => updateLayer({ fireEmbersCooling: parseFloat(e.target.value) })}
                           className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
                         />
                       </div>
@@ -1794,34 +2153,148 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                   </div>
                 )}
 
-                {/* Beat reactivity */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={particles.reactiveToBeat}
-                      onChange={(e) => updatePt({ reactiveToBeat: e.target.checked })}
-                      className="rounded text-amber-500 focus:ring-amber-500 bg-neutral-800 border-neutral-700 cursor-pointer"
-                    />
-                    <span className="text-xs text-neutral-300 font-medium">
-                      {isVi ? 'Tăng tốc độ theo nhịp Beat' : 'Accelerate on Beats'}
-                    </span>
-                  </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={particles.bassReactiveColor}
-                      onChange={(e) => updatePt({ bassReactiveColor: e.target.checked })}
-                      className="rounded text-amber-500 focus:ring-amber-500 bg-neutral-800 border-neutral-700 cursor-pointer"
-                    />
-                    <span className="text-xs text-neutral-300 font-medium">
-                      {isVi ? 'Chớp sáng rực rỡ theo Bass' : 'Flash Brighter on Bass Drop'}
-                    </span>
-                  </label>
+                {/* I. ĐÀN BƯỚM PHÁT SÁNG (GLOWING BUTTERFLIES) */}
+                {currentLayer.type === 'butterflies' && (
+                  <div className="bg-pink-950/20 border border-pink-500/30 rounded-xl p-3.5 space-y-3.5">
+                    <div className="flex items-center gap-2 text-pink-300 font-bold text-xs uppercase tracking-wider">
+                      <Feather className="w-4 h-4 text-pink-400" />
+                      <span>{isVi ? 'Tùy Chỉnh Riêng: Đàn Bướm Phát Sáng (Butterflies)' : 'Butterflies Specific Settings'}</span>
+                    </div>
+                    <p className="text-[11px] text-neutral-400">
+                      {isVi
+                        ? 'Đàn bướm 2D bay dập dờn tự nhiên với đôi cánh co giãn theo góc nhìn, râu mềm mại và vệt bụi tiên lấp lánh.'
+                        : '2D glowing butterflies flying with organic fluttering wings, foreshortening physics, delicate antennae, and fairy sparkle trails.'}
+                    </p>
+
+                    {/* Butterfly Color Variant */}
+                    <div>
+                      <span className="text-xs text-neutral-300 font-medium block mb-1.5">
+                        {isVi ? 'Tông màu sắc bướm (Color Theme)' : 'Color Theme'}
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          { id: 'monarch', labelVi: '🦋 Cam Cổ Điển (Monarch)', labelEn: '🦋 Monarch Amber' },
+                          { id: 'neon-glow', labelVi: '⚡ Cyberpunk Neon', labelEn: '⚡ Cyberpunk Neon' },
+                          { id: 'emerald', labelVi: '🌿 Ngọc Lục Bảo (Emerald)', labelEn: '🌿 Emerald Glow' },
+                          { id: 'golden', labelVi: '✨ Hoàng Kim Ánh Dương', labelEn: '✨ Golden Sun' },
+                          { id: 'rainbow', labelVi: '🌈 Cầu Vồng Ngũ Sắc', labelEn: '🌈 Prismatic Rainbow' },
+                          { id: 'custom', labelVi: '🎨 Tùy Chỉnh Màu Riêng', labelEn: '🎨 Custom Palette' },
+                        ].map((cv) => {
+                          const isSelected = (currentLayer.butterflyColorVariant || 'neon-glow') === cv.id;
+                          return (
+                            <button
+                              key={cv.id}
+                              type="button"
+                              onClick={() => updateLayer({ butterflyColorVariant: cv.id as any })}
+                              className={`py-2 px-2.5 rounded-xl text-xs font-medium border text-center transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-pink-500/25 border-pink-400 text-white'
+                                  : 'bg-neutral-950/60 border-neutral-800 text-neutral-400 hover:border-neutral-700'
+                              }`}
+                            >
+                              {isVi ? cv.labelVi : cv.labelEn}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Butterfly Size & Wing Flap Speed */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-neutral-300">{isVi ? 'Kích thước bướm' : 'Butterfly Wingspan'}</span>
+                          <span className="text-pink-400 font-mono font-bold">
+                            {currentLayer.butterflySize ?? 24}px
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={12}
+                          max={56}
+                          step={1}
+                          value={currentLayer.butterflySize ?? 24}
+                          onChange={(e) => updateLayer({ butterflySize: parseInt(e.target.value) })}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                        />
+                        <div className="flex items-center gap-1 mt-1.5">
+                          {[16, 22, 28, 36, 48].map((sz) => (
+                            <button
+                              key={sz}
+                              type="button"
+                              onClick={() => updateLayer({ butterflySize: sz })}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors ${
+                                (currentLayer.butterflySize ?? 24) === sz
+                                  ? 'bg-pink-500 text-neutral-950 font-bold'
+                                  : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                              }`}
+                            >
+                              {sz}px
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-neutral-300">{isVi ? 'Tần số đập cánh' : 'Wing Flap Frequency'}</span>
+                          <span className="text-pink-400 font-mono font-bold">
+                            {(currentLayer.butterflyWingSpeed ?? 1.2).toFixed(1)}x
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0.5}
+                          max={3.0}
+                          step={0.1}
+                          value={currentLayer.butterflyWingSpeed ?? 1.2}
+                          onChange={(e) => updateLayer({ butterflyWingSpeed: parseFloat(e.target.value) })}
+                          className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                        />
+                        <div className="flex items-center gap-1 mt-1.5">
+                          {[0.8, 1.2, 1.8, 2.5].map((spd) => (
+                            <button
+                              key={spd}
+                              type="button"
+                              onClick={() => updateLayer({ butterflyWingSpeed: spd })}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors ${
+                                (currentLayer.butterflyWingSpeed ?? 1.2) === spd
+                                  ? 'bg-pink-500 text-neutral-950 font-bold'
+                                  : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                              }`}
+                            >
+                              {spd}x
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sparkle Dust Trail Toggle */}
+                    <label className="flex items-center gap-2.5 bg-neutral-950/60 p-2.5 rounded-xl border border-neutral-800 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={currentLayer.butterflyTrail !== false}
+                        onChange={(e) => updateLayer({ butterflyTrail: e.target.checked })}
+                        className="rounded text-pink-500 focus:ring-pink-500 bg-neutral-800 border-neutral-700 cursor-pointer"
+                      />
+                      <div>
+                        <span className="text-xs font-semibold text-neutral-200 block">
+                          {isVi ? 'Vệt bụi tiên lấp lánh (Sparkle Dust Trail)' : 'Fairy Sparkle Dust Trail'}
+                        </span>
+                        <span className="text-[10px] text-neutral-400">
+                          {isVi ? 'Tỏa ra những hạt lấp lánh nhỏ rơi phía sau đường bay của bướm' : 'Emits soft luminous particles along the flight path'}
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
                 </div>
-              </div>
-            )}
+              );
+            })()}
+            </div>
           </div>
         )}
       </div>

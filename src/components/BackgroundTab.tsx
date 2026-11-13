@@ -154,10 +154,16 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
 
   const updateSlides = (newSlides: BackgroundSlideItem[]) => {
     const first = newSlides[0];
-    update({
+    const newBg: BackgroundConfig = {
+      ...background,
+      mode: 'slides',
       slides: newSlides,
       ...(first && first.url ? { url: first.url } : {}),
-    });
+    };
+    update(newBg);
+    if (onApplyBackgroundToAllTracks) {
+      onApplyBackgroundToAllTracks(newBg);
+    }
   };
 
   // Add new Slide
@@ -386,14 +392,19 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
             type="button"
             onClick={() => {
               const firstSlide = slides[0];
-              update({
+              const slideBg: BackgroundConfig = {
+                ...background,
                 mode: 'slides',
                 slides: slides,
                 url: firstSlide?.url || background.url,
                 type: firstSlide?.type || 'preset',
                 isVideo: Boolean(firstSlide?.isVideo),
                 videoUrl: firstSlide?.videoUrl || '',
-              });
+              };
+              update(slideBg);
+              if (onApplyBackgroundToAllTracks) {
+                onApplyBackgroundToAllTracks(slideBg);
+              }
             }}
             className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
               mode === 'slides'

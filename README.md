@@ -6,6 +6,43 @@ Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">
 
 <img width="1914" height="892" alt="image" src="https://github.com/user-attachments/assets/2cf2be46-7b38-48ba-864d-4d6219e07591" />
 
+---
+
+## ⚡ Quick Install (Start Here)
+
+Get **Sona Wave Pro** running locally in under 1 minute:
+
+### 1. Prerequisites
+- **Node.js 18+** ([Download Node.js](https://nodejs.org/)) or **Bun** ([Download Bun](https://bun.sh/))
+- **Git**
+
+### 2. Clone & Install
+```bash
+git clone https://github.com/haystudio73/HAYStudio73_SonaWave.git
+cd HAYStudio73_SonaWave
+
+# Using Bun (recommended, fastest)
+bun install
+
+# Or using npm
+npm install
+```
+
+### 3. Run Development Server
+```bash
+bun run dev
+# or: npm run dev
+```
+Open **http://localhost:3000** in your browser — no `.env` setup required!
+
+### 4. Update & Production Build
+```bash
+git pull origin main
+bun install && bun run build
+```
+
+---
+
 ## ✨ Features
 
 ### Core Functionality
@@ -17,14 +54,40 @@ Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">
 - **Audio-Reactive Lottie & DotLottie Stickers**: Overlay scalable vector animations with beat-responsive bounce and custom blending.
 - **10-Band Studio Master Graphic EQ**: Hardware-grade 10-band audio equalizer with real-time spectrum and custom sound presets.
 - **Multi-Track Audio Playlist**: Continuous background playback, track queue management, and individual song metadata.
-- **Customizable Backgrounds**: High-resolution curated library, custom image (JPG/PNG), dynamic video (MP4), gradients, and 10 particle systems.
+- **Customizable Backgrounds**: High-resolution curated library, custom image (JPG/PNG), dynamic video (MP4), gradients, and 11 multi-layer particle systems.
 - **Professional Video Export**: High-quality MP4 output (9:16, 1:1, 16:9, 4:5) up to 60FPS optimized for TikTok, YouTube Shorts, and Instagram Reels.
 
 ### New & Enhanced Features
-- **Slide Preset Library Full Viewer & Categories**
-- **Ken Burns Organic Motion per Slide** — Cài đặt chuyển động Pan & Zoom hữu cơ độc lập cho từng Slide.
-- **2D Visualizer Rotation & Auto-Rotate** — Xoay góc tự do cho sóng âm 2D và tính năng Tự động xoay quanh tâm (Auto-Rotate 360°) với tốc độ xoay đa chiều.
-- **2D Floating Particle Upgrades** — Bụi Lofi trôi 2D sắc nét chọn hình dáng (Tròn, Vuông, Sao, Ngẫu Nhiên); Sao lấp lánh lóe sáng tia 4 góc (4-Corner Flare Bursts); Những hạt lửa bay nguội dần sang tàn tro (Tròn, Vuông, Thoi, Ngẫu Nhiên); Giọt nước mưa chảy trên bề mặt kính tự tan biến; Vệt tốc độ Speed Lines hỗ trợ chiều xuôi/ngược.
+- **Direct Canvas Drag & Drop & Track Info 2D Position Controls** — Tương tác kéo thả trực tiếp ngay trên khung hình xem trước:
+  1. **Khung kéo thả trực tiếp trên màn hình xem trước (Live Canvas Overlays)**: Cho phép dùng chuột kéo rê vị trí tự do trực tiếp trên khung video cho **Track Badge**, **Logo PNG Watermark**, **Track Details Typography**, **Playlist Track Title**, **Text Boxes**, **Lottie Stickers** và **Visualizer Sóng âm 2D**, hiển thị tọa độ X/Y thời gian thực (Live Coordinates Badge) cùng nút bật/tắt khung kéo trên thanh công cụ.
+  2. **Sắp xếp thứ tự chi tiết bài hát (Track Details Layout Order Drag & Drop)**: Hỗ trợ kéo thả trực quan để thay đổi thứ tự hiển thị giữa 3 thành phần thông tin bài hát (Phụ đề / Tiêu đề chính / Ca sĩ).
+  3. **Giao diện 2D Visualizer Tinh Gọn & Thông Minh**: Loại bỏ bảng kéo phụ trùng lặp (`Vị Trí & Nét Vẽ Trên Màn Hình 2D`) để ưu tiên kéo thả trực tiếp trên Stage kèm thanh trượt X/Y gọn gàng; đồng thời thanh **Độ dày nét vẽ sóng âm 2D (Line Thickness)** chỉ tự động hiển thị ở những kiểu sóng thực sự sử dụng (`spectrum-line`, `smooth-wave`, `double-ribbon`, `minimal-pulse`, `dna-helix`, `tunnel-vortex`).
+- **Specialized Private Studio Settings for All 2D Spectrum Styles (Tùy Chỉnh Chuyên Biệt & Đồng Bộ Preview 100%)** — Bảng điều khiển chuyên sâu riêng cho từng phong cách sóng âm 2D:
+  - **Cột Phổ Sóng Cổ Điển (`bars`)**: Kiểu đầu vát cột (Bo tròn, Vuông phẳng, Vát nhọn), Kết cấu cột (Khối LED tầng vs Liền khối mượt), 4 kiểu Hình dáng phân bố cột (Bình thường, Phải ➔ Trái, Đỉnh ở giữa, Đỉnh 2 bên), Giữ vạch đỉnh rơi chậm và chọn màu vạch đỉnh.
+  - **Spectrum Cột (Simple) & Spectrum Cột Hạt Rơi (`spectrum-bars-simple`, `bars-peaks`)**: Tinh giản bỏ cấu trúc chia tầng thừa; bổ sung **4 Hình dáng cột** (`Bình thường`, `Phải ➔ Trái`, `Đỉnh ở giữa`, `Đỉnh 2 bên`), **Kiểu dáng đầu cột** (`Bo tròn`, `Vuông phẳng`, `Vát nhọn`), và tùy chỉnh hạt đỉnh rơi trọng lực.
+  - **Sóng Cột Đối Xứng & Sóng Đối Xứng Hạt Đỉnh (`bars-mirrored`, `bars-mirrored-peaks`)**: Cập nhật live preview đầy đủ cho **Khoảng cách khe giữa 2 nửa (Center Gap 0–24px)**, **Phong cách đối xứng** (`Bo tròn`, `Vuông`, `Tầng LED`), và **Giữ vạch đỉnh 2 đầu** rơi trọng lực.
+  - **Sóng Nước Mềm Mại (`smooth-wave`)**: Số tầng sóng xếp lớp (1–4 tầng), Đổ màu mờ chân sóng kết hợp nét viền contour chỉnh độ dày trực tiếp, Độ uốn lượn Bezier (Wave Tension 0.1–1.0), Đối xứng 2 chiều qua trục.
+  - **Tia Tròn Tỏa Sáng & Vòng Tròn Hạt Bay Tỏa (`circular-spikes`, `radial-bars-peaks`)**: Bán kính lõi trong (10%–55%), Hướng tia tỏa (`Tỏa ngoài`, `Thu tâm`, `Hai chiều`), Phóng tia bùng nổ theo Bass Kick.
+  - **Ma Trận LED Cyber (`cyber-matrix`)**: Số hàng LED dọc (8–32 hàng), Hình dạng khối LED (Chữ nhật, Vuông, Bo tròn Pill), Đèn LED đỏ cảnh báo quá tải ở đỉnh.
+  - **Ma Trận EQ Khối Nổi (`audio-equalizer-grid`)**: Số tầng ma trận (6–24 tầng), Đỉnh LED rơi chậm trọng lực, Độ phát sáng LED (20%–100%), Bảng màu dải tần (Cổ điển Xanh-Vàng-Đỏ, Cyber Cyan-Magenta, Tùy chỉnh).
+  - **Ngọn Lửa Plasma (`flame-spectrum`)**: Độ cuộn xoáy ngọn lửa (Turbulence 0.5–3.0x), Tăng chiều cao bốc cháy theo Bass Kick (1.0–2.5x), và 4 tông màu Plasma (Fire, Plasma Violet, Ice Blue, Toxic Green) sạch nét.
+  - **Dải Ruy Băng Đôi (`double-ribbon`)**: Tần số uốn lượn (1–5x), Độ rộng bản ruy băng kết hợp độ dày nét, Xoắn 3D lồng ghép, Đổ lưới mờ kết nối giữa 2 dải.
+  - **Tia Laser Sân Khấu EDM (`laser-beams`)**: Số lượng chùm tia (6–32 tia), Góc quét quạt Laser (45°–180°), Nguồn phát tia (Đáy sàn, Giữa màn hình, Đỉnh trần), Chớp nháy Strobe theo nhịp Bass.
+  - **Lõi Siêu Tân Tinh (`starburst-core`)**: Số lượng tia sao tỏa sáng (16–72 tia), Bán kính lõi năng lượng (6–50px), Hào quang vầng sáng quanh lõi (Halo Bloom), Bắn hạt năng lượng theo Bass Kick.
+- **About & Open-Source License Dialog (`?`)** — Nút **About (`?`)** đặt ngay cạnh nút Cài Đặt (Settings) trên thanh công cụ trên cùng, hiển thị phiên bản ứng dụng (`v2.0.0`), thông tin giấy phép mã nguồn mở (MIT License) và liên kết trực tiếp tới kênh **Facebook** & **YouTube** của tác giả **HAY Studio73**.
+- **Curated Lofi & Chill Image Presets Expansion** — Bổ sung thêm các ảnh nền nghệ thuật mới vào danh mục **Lofi & Chill** trong thư viện Ảnh Nền & Slide Preset Library.
+- **Playlist Track Queue: Tinh Giản Phím Mũi Tên (Remove Drag/Drop) & Bố Cục Gọn Nhẹ** — Loại bỏ kéo thả, phần Background riêng từng track và trường Artist riêng trong hàng đợi Playlist (`TITLE` ➔ `TRACK TITLE`), thay bằng nút mũi tên lên/xuống (▲/▼) chuẩn xác 100%.
+- **100% Comprehensive Bilingual Studio (Chuẩn Hóa Song Ngữ EN / VI)** — Toàn bộ giao diện phòng thu từ nhãn, tiêu đề, nút bấm, chú thích, menu ngữ cảnh và bảng thiết lập chuyên biệt đều được bản địa hóa song ngữ trọn vẹn giữa Tiếng Việt (VI) và Tiếng Anh (EN), phản hồi tức thì khi chuyển đổi ngôn ngữ.
+- **Multi-Layer Floating Particle Overlays (Max 5 Lớp & Đàn Bướm Phát Sáng - Butterflies)** — Hệ thống hiệu ứng hạt lơ lửng đa lớp chuyên nghiệp: cho phép xếp chồng tối đa **5 lớp hiệu ứng hạt độc lập** trên cùng một video; mỗi lớp có thể tự do chỉnh sửa, bật/tắt hiển thị (Show/Hide qua nút Mắt) và xóa bỏ (Delete); hỗ trợ đầy đủ **11 phong cách hạt** (Mưa Tự Nhiên, Tuyết Mùa Đông, Vệt Tốc Độ, Mưa Ruy Băng Lụa, Đoạn Ngắn Xoay 360°, Bong Bóng Cầu Vồng, Tăng Tốc Hyperspace 3D, Bụi Lofi Trôi, Sao Lấp Lánh, Những Hạt Lửa, và **Đàn Bướm Phát Sáng 2D** bay dập dờn co giãn cánh phối cảnh kèm vệt bụi tiên); hai tính năng tương tác âm thanh **Tăng tốc theo nhịp Beat (Accelerate on Beats)** và **Bừng sáng rực rỡ theo Bass Drop (Flash Brighter)** áp dụng đồng bộ toàn cục cho tất cả các lớp hạt.
+- **TikTok/Shorts Multi-Duration MP4 Export (15s, 30s, 60s, 90s, 120s, 180s)** — Mở rộng tùy chọn độ dài xuất video ngắn cho TikTok / YouTube Shorts / Reels: hỗ trợ đầy đủ 6 mốc thời lượng linh hoạt (15s, 30s, 60s / 1m, 90s / 1.5m, 120s / 2m, 180s / 3m) chuẩn theo chính sách video ngắn mới nhất của TikTok và YouTube Shorts (lên đến 3 phút). Giao diện trực quan kèm thanh trượt kéo chọn đoạn phát chính xác, tự động giới hạn theo độ dài bài hát hoặc toàn bộ playlist.
+- **Multi-Image Slideshow Enforced Across Entire Playlist** — Khi thiết lập tính năng Multi-Image Slideshow (`mode === 'slides'`), hiệu ứng Slideshow tự động áp đặt lên toàn bộ Playlist khi có nhiều bài. Trục thời gian trình chiếu sử dụng đồng hồ lũy kế toàn dự án (`cumulativePlaylistTime`), giúp các slide chuyển cảnh mượt mà xuyên suốt qua các bài hát khác nhau mà không bị ngắt quãng, không bị giật lùi về slide đầu tiên, và không bị ghi đè bởi ảnh nền đơn khi chuyển track.
+- **Smart Display Hierarchy & Auto Remove Track Title on Single Audio** — Tách biệt rõ ràng Tiêu đề chính của toàn bộ dự án/Album (`Main Title of Playlist`) và Tên bài hát đang phát (`Track Title`). Đặc biệt, hệ thống **tự động loại bỏ / ẩn hoàn toàn Tên bài hát (Track Title)** khi playlist chỉ có 1 file nhạc duy nhất để tránh dư thừa trùng lặp thông tin trên video; khi danh sách có từ 2 bài hát trở lên, tính năng Track Title tự động kích hoạt hiển thị và cập nhật tên bài hát theo từng track đang phát.
+- **Slide Preset Library Full Viewer & Categories** — Mở rộng thư viện ảnh mẫu cho từng Slide: duyệt toàn bộ ảnh mẫu với bộ lọc danh mục (Tất cả, Cyberpunk, Lofi & Chill, Vũ Trụ, Sân Khấu DJ, Thiên Nhiên, Nghệ Thuật) và cửa sổ Modal xem/chọn ảnh nhanh chóng, hiển thị đầy đủ 100% kho ảnh.
+- **Seamless Demo Music Menu** — Loại bỏ hoàn toàn khoảng hở vật lý giữa nút Demo Music và menu thả xuống, tích hợp cầu nối hover liền mạch và hỗ trợ nhấn chuột để mở menu chọn nhạc demo ổn định, không bị tắt khi di chuyển chuột.
+- **Track Info: Rotating Vinyl Badge Spacing** — Xóa bỏ mẫu thẻ trùng lặp "360° Spinning Vinyl", bổ sung thanh trượt tùy chỉnh khoảng cách (`vinylTextSpacing`) giữa Huy hiệu đĩa Vinyl tròn xoay 360° và khối thông tin bài hát (Subtitle, Title, Artist) từ 0px đến 120px.
+- **Ken Burns Organic Motion per Slide** — Cài đặt chuyển động Pan & Zoom hữu cơ độc lập cho từng Slide (9 hướng chuyển động, Zoom Scale 1.05x–1.35x, Pan Speed 0.3x–2.5x, cosine smoothstep chống giật hở viền).
+- **2D Visualizer Rotation & Auto-Rotate** — Xoay góc tự do cho sóng âm 2D (0°, 90°, 180°, 270°, thanh trượt 0°–360°) và tính năng Tự động xoay quanh tâm (Auto-Rotate 360°) với tốc độ xoay đa chiều.
+- **2D Floating Particle Upgrades** — Bụi Lofi trôi 2D sắc nét từ 1px với bộ chọn hình dáng (Tròn, Vuông, Sao, Ngẫu Nhiên); Sao lấp lánh lóe sáng tia 4 góc (4-Corner Flare Bursts); Những hạt lửa bay nguội dần sang tàn tro (Tròn, Vuông, Thoi, Ngẫu Nhiên); Giọt nước mưa chảy trên bề mặt kính tự tan biến; Vệt tốc độ Speed Lines hỗ trợ chiều xuôi/ngược; Đàn bướm phát sáng với vệt bụi tiên.
 - **Multi-Format Slide Studio & Video MP4** — Mỗi slide hỗ trợ đầy đủ 4 định dạng (Ảnh mẫu, Upload ảnh, Video MP4, Màu sắc/Gradient 2-3 màu/Radial); Nút điều khiển Play/Pause preview MP4 độc lập, không autoplay gây lag; Tự động cắt/loop video khớp thời lượng slide.
 - **3D WebGL Particle & Mesh Visualizers** — 8 ultra-realistic 3D soundscapes powered by Three.js with hardware-accelerated Post-Processing Bloom.
 - **Independent 2D & 3D Positioning** — 2D position controls strictly affect 2D waveforms, leaving 3D spatial camera coordinates completely clean and centered.
@@ -52,7 +115,7 @@ Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">
 - Post-processing Bloom glow & Universal flowing neon wave lights
 - Customizable color palettes (Solid, Gradient 2/3, Rainbow, Neon Glow, Audio-Reactive)
 - Background optical filters, Beat Zoom dynamics & 4 Glitch distortion styles
-- 10 Audio-reactive particle systems (Rain, Snow, Spinning Dashes, Spaghetti, Sparks, Hyperspace 3D, etc.)
+- 11 Audio-reactive particle systems across up to 5 independent overlay layers (Rain, Snow, Spinning Dashes, Silk Ribbon, Sparks, Butterflies, Hyperspace 3D, etc.)
 - 6 Lyric styles, 3 karaoke sweep modes & advanced timing micro-editor
 - 8 Cinematic Film Light & vintage 35mm burn effects
 - 13 Professional Color Grading LUT presets
@@ -144,52 +207,105 @@ Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">
 - Hiệu ứng các vòng tròn sóng nước lan tỏa từ tâm, nhún nhảy và bừng nở theo từng nhịp trống Bass/Beat.
 - Tùy chỉnh màu sắc viền sóng, độ mờ (Opacity), số lượng vòng (1 - 8 vòng), tốc độ lan tỏa, độ dày nét viền, hào quang Neon và chọn tâm phát sóng (Chính giữa, Cạnh đáy, hoặc Trọng tâm thẻ bài hát).
 
-#### E. Hệ Thống Hạt Rơi Tương Tác Âm Nhạc (Audio-Reactive Particle System)
-- **Hệ thống hạt vẽ 2D Canvas sắc nét, tối ưu hiệu năng cao**:
+#### E. Hệ Thống Hạt Lơ Lửng Đa Lớp Tương Tác Âm Nhạc (Multi-Layer Particle Overlay System)
+- **Hệ Thống Đa Lớp Chuyên Nghiệp (Max 5 Layers On Video)**:
+  - Cho phép người dùng xếp chồng tối đa **5 lớp hiệu ứng hạt độc lập** trên cùng một khung hình video.
+  - **Quản lý từng lớp riêng biệt**: Mỗi lớp có thanh điều khiển riêng với tên tùy chỉnh, nút bật/tắt hiển thị tức thì (Show/Hide qua icon Mắt) và nút xóa (Delete, bảo vệ luôn giữ lại ít nhất 1 lớp).
+  - **Tùy biến thông số độc lập cho từng lớp**: Mỗi lớp sở hữu một kiểu hiệu ứng hạt riêng trong số 11 phong cách, với đầy đủ các thiết lập về số lượng hạt (10–250), tốc độ bay (0.01x–3.0x kèm các phím tắt nhanh), độ trong suốt Opacity (10%–100%), kích thước hạt pixel (1px–36px), kích thước ngẫu nhiên (Random Size), màu sắc tự chọn hoặc nhóm màu swatches, và cường độ phát sáng Neon Glow.
+  - **Cài đặt tương tác âm thanh toàn cục (Global Reactivity)**:
+    - **⚡ Tăng tốc theo nhịp Beat (Accelerate on Beats)**: Áp dụng đồng bộ cho toàn bộ các lớp hạt đang chạy.
+    - **🔥 Bừng sáng rực rỡ theo Bass Drop (Flash Brighter on Bass Drop)**: Tăng vọt độ rực sáng và hào quang phát quang cho tất cả các lớp khi có nhịp sub-bass kick dồn dập, kèm thanh trượt điều chỉnh cường độ khuếch đại Bass Flash Boost (0.5x–2.5x).
+
+- **Thư Viện 11 Phong Cách Hiệu Ứng Hạt 2D Canvas Tinh Xảo**:
   1. **Mưa Rơi Tự Nhiên (`rain`)**: Mô phỏng vật lý mưa rơi chân thực với 5 kiểu hạt (Hỗn hợp, Vệt dài Cinematic, Mưa phùn li ti, Mưa rào xối xả, Mưa phát sáng Neon), góc nghiêng gió, độ chao đảo, hướng gió biến thiên tự nhiên (`rainRandomWind`) và **Hạt nước chảy trên bề mặt kính (`waterOnGlass`)** tự động trôi nhẹ và bốc hơi / tan biến sau thời gian ngẫu nhiên (1.2s – 4.5s).
   2. **Tuyết Rơi Mùa Đông (`snow`)**: Bông tuyết tinh khiết với bộ chọn hình dạng (Lục giác 6 cánh, Kim cương băng, Ngôi sao, Chấm tròn, Flurry hoặc Ngẫu nhiên), tùy chỉnh góc gió và tốc độ gió.
   3. **Đường Vạch Tốc Độ Anime (`speed-lines`)**: Vệt tốc độ không gian với tùy chọn **Chiều xuôi / Chiều ngược (Reverse direction)**, đa dạng góc xoay (ngang, dọc, chéo 45°, chéo 135°, đồng quy tâm hoặc nửa trên/dưới), độ dài ngẫu nhiên và độ nhòe Motion Blur.
   4. **Mưa Băng Lụa Ruy Băng (`silk-ribbon` / `spaghetti`)**: Dải lụa mềm mại uốn lượn sóng 3D rực rỡ dạ quang khi rơi.
   5. **Bụi Lofi Trôi 2D (`dust`)**: Hạt bụi lơ lửng êm đềm phong cách vintage, vẽ 2D sắc nét tinh khiết (loại bỏ viền mờ), kích thước hạt siêu mịn từ **1px**, tích hợp bộ chọn hình dáng hạt bụi: **⚪ Tròn (Mặc định)**, **⬛ Vuông**, **⭐ Ngôi Sao**, và **🎲 Ngẫu Nhiên các loại**.
   6. **Sao Lấp Lánh (`stars`)**: Bầu trời ngàn sao lung linh cố định, tích hợp tính năng **Ngẫu nhiên lóe sáng tia 4 góc (4-Corner Flare Bursts)** tự động phóng ra các tia hào quang chữ thập và lõi tia lấp lánh khi đạt đỉnh nhấp nháy, kèm thanh trượt điều chỉnh cường độ tia lóe sáng (0.2x – 2.5x) và chọn shape sao (Sao 4 tia, Sao 5 cánh, Chấm tròn sáng, Ngẫu nhiên).
-  7. **Những Hạt Lửa & Tàn Tro Bay (`fire-embers`)**: Hiệu ứng các pixel lửa rực cháy bay từ đáy màn hình lên trên, tỏa ra nhiều hướng ngẫu nhiên rồi nguội dần theo chuỗi màu quang phổ (Trắng/Vàng → Cam lửa → Đỏ thẫm → Tro xám → Đen tàn) trước khi tan biến; tích hợp bộ chọn hình dáng hạt lửa: **⚪ Tròn**, **⬛ Vuông**, **🔷 Hình Thoi**, hoặc **🎲 Ngẫu Nhiên**.
+  7. **Những Hạt Lửa & Tàn Tro Bay (`fire-embers`)**: Hiệu ứng các pixel lửa rực cháy bay từ đáy màn hình lên trên, tỏa ra nhiều hướng ngẫu nhiên rồi nguội dần theo chuỗi màu quang phổ (Trắng/Vàng → Cam lửa → Đỏ thẫm → Tro xám → Đen tàn) trước khi tan biến; tích hợp bộ chọn hình dáng hạt lửa: **⚪ Tròn**, **⬛ Vuông**, **🔷 Hình Thoi**, hoặc **🎲 Ngẫu Nhiên**, thanh trượt độ tỏa rộng ngang và tốc độ nguội tro.
   8. **Tăng Tốc Hyperspace 3D (`hyperspace`)**: Hiệu ứng phi thuyền warp-speed lao qua không gian với vận tốc ánh sáng và hào quang lóa sáng.
   9. **Đoạn Thẳng Rơi & Xoay 360° (`spinning-dashes`)**: Các đoạn thẳng ngắn vừa rơi vừa xoay 360° nảy theo nhịp Bass.
   10. **Bong Bóng Cầu Vồng (`rainbow-bubbles`)**: Bong bóng ngũ sắc phản chiếu ánh sáng lấp lánh.
-- **Tùy chỉnh thông số**: Kích thước hạt theo đơn vị pixel (từ 1px đến 30px), Kích thước ngẫu nhiên (Random Size), Độ trong suốt (Opacity 10%–100%), Tốc độ bay (Speed 0.01x–3.0x), Số lượng hạt (10–250 hạt).
-- **Chế độ màu hạt**: Tùy chỉnh (Custom Color), Cầu vồng Gradient, Lửa rực Fire Glow, Neon Cyber, Phản hồi theo tần số âm thanh (Audio-Reactive).
-- **Phản ứng Bass Flash Boost**: Hạt tự động bùng sáng rực rỡ và phóng to kích thước mỗi khi có tiếng trống trầm hoặc bass drop.
+  11. **Đàn Bướm Phát Sáng 2D (`butterflies` - Mới 🦋)**: Đàn bướm 2D bay lượn dập dờn sinh động trong không gian với thuật toán chuyển động hữu cơ; mô phỏng cánh vỗ co giãn chiều ngang theo góc nhìn phối cảnh (foreshortening physics); cơ thể thanh mảnh có râu và mắt điểm nhấn; tích hợp **6 tông màu nghệ thuật**:
+      - 🦋 *Monarch Amber*: Cánh cam hổ phách viền đen đốm trắng kinh điển.
+      - ⚡ *Cyberpunk Neon*: Cánh phát sáng điện tử Cyan & Magenta tương lai.
+      - 🌿 *Emerald Glow*: Cánh ngọc lục bảo dạ quang thanh khiết.
+      - ✨ *Golden Sun*: Cánh vàng hoàng kim ấm áp óng ả.
+      - 🌈 *Prismatic Rainbow*: Cánh chuyển sắc cầu vồng ngũ sắc theo thời gian.
+      - 🎨 *Custom Palette*: Tự chọn màu chính và màu phụ độc quyền.
+      - Tùy chỉnh tần số đập cánh (0.5x–3.0x), kích thước bướm sải cánh (12px–56px) và **Vệt bụi tiên lấp lánh (Sparkle Dust Trail)** tự động tuôn rơi lấp lánh phía sau đường bay của bướm.
 
 ---
 
 ### 3. 🎤 Danh Sách Các Tính Năng Lyrics (Lời Bài Hát & Karaoke)
 
 #### A. Định dạng hỗ trợ & Nhập liệu
-- Hỗ trợ nhập file phụ đề tiêu chuẩn `.SRT`, file lời nhạc chạy thời gian `.LRC`, hoặc tự do soạn thảo / thêm / sửa từng câu trực tiếp trên giao diện trực quan.
+- Hỗ trợ nhập file phụ đề tiêu chuẩn `.SRT`, file lời nhạc chạy thời gian `.LRC` với độ chính xác mili-giây, hoặc tự do soạn thảo / thêm / sửa từng câu trực tiếp trên giao diện trực quan.
+- Tự động chuẩn hóa timing LRC/SRT để tránh gián đoạn hoặc ngưng trệ khi có đoạn dạo nhạc dài giữa các câu.
 
-#### B. 6 Kiểu hiển thị lời bài hát (Lyrics Styles)
-1. **Karaoke 1 Dòng Nổi Bật (`karaoke-single`)**: Chỉ hiển thị 1 câu đang hát với hiệu ứng quét chữ mượt mà và hạt bay lượn (Tối ưu tuyệt đối cho video ngắn TikTok, YouTube Shorts, Facebook Reels).
-2. **Karaoke 4 Dòng Tự Cuộn (`teleprompter-4lines`)**: 4 dòng chữ hiển thị liên tục, tự động cuộn mượt mà như máy nhắc chữ teleprompter chuyên nghiệp.
-3. **Karaoke 3 Dòng Kinh Điển (`karaoke`)**: Dòng đang hát được phóng to nổi bật nhất ở giữa, dòng trước đó và dòng kế tiếp được làm mờ nhẹ tạo chiều sâu không gian.
-4. **Thanh Phụ Đề Kính Mờ (`subtitle-bar`)**: Hộp kính mờ frosted glass tối giản, thanh lịch phong cách giao diện hiện đại.
-5. **Phát Sáng Tối Giản (`minimal-glow`)**: Chữ sắc nét với hào quang neon tỏa nhẹ mà không có khung viền hộp gò bó.
-6. **Hai Tông Màu Tương Phản (`duo-tone`)**: Phối màu tách đôi độc đáo giữa vế đầu và vế sau của câu hát.
+#### B. Các Kiểu Hiển Thị Lời Bài Hát (Lyrics Styles)
+1. **Karaoke 2 Dòng Song Ca / So Le (`karaoke-duo` - Mới ⭐)**: 
+   - **Tự động căn Timing 2 dòng hiển thị đồng thời (Hiện cùng lúc & Chữ chờ lót - Cover Text)**: Khi chọn chế độ Karaoke 2 dòng, hệ thống tự động tính toán lại thời gian hiển thị: Dòng 0 và Dòng 1 xuất hiện cùng lúc trên màn hình ngay từ đầu bài hát; Dòng 1 đóng vai trò chữ chờ lót với màu mặc định `#FFFFFF`. Khi Dòng 0 hát xong và Dòng 1 bắt đầu quét màu, Dòng 2 lập tức xuất hiện thế chỗ trên hàng đối diện.
+   - **Tự động khôi phục timing gốc**: Khi chuyển từ Karaoke 2 dòng về 1 dòng (`karaoke-single`), 3 dòng (`karaoke`) hoặc 4 dòng (`teleprompter-4lines`), hệ thống tự động hoàn trả lại mốc timing đơn ban đầu (`originalStartTime`/`originalEndTime`), không làm sai lệch phụ đề gốc.
+   - **Tùy chỉnh vị trí & bố cục độc lập**: Hỗ trợ tinh chỉnh tọa độ dọc/ngang riêng cho từng dòng (`Line 1 Y/X`, `Line 2 Y/X`), khoảng cách giữa 2 dòng (`Line Gap` từ 10px đến 80px) và 4 chế độ căn lề: Căn giữa (Center), So le trái-phải (Left-Right Staggered), Căn trái (Left), Căn phải (Right).
+   - Tích hợp nút hành động nhanh: *Căn lại Timing 2 Dòng* và *Khôi phục Timing Gốc*.
+2. **Karaoke 1 Dòng Nổi Bật (`karaoke-single`)**: Chỉ hiển thị 1 câu đang hát với hiệu ứng quét chữ mượt mà và hạt bay lượn (Tối ưu tuyệt đối cho video ngắn TikTok, YouTube Shorts, Facebook Reels).
+3. **Karaoke 4 Dòng Tự Cuộn (`teleprompter-4lines`)**: 4 dòng chữ hiển thị liên tục, tự động cuộn mượt mà như máy nhắc chữ teleprompter chuyên nghiệp.
+4. **Karaoke 3 Dòng Kinh Điển (`karaoke`)**: Dòng đang hát được phóng to nổi bật nhất ở giữa, dòng trước đó và dòng kế tiếp được làm mờ nhẹ tạo chiều sâu không gian.
+5. **Thanh Phụ Đề Kính Mờ (`subtitle-bar`)**: Hộp kính mờ frosted glass tối giản, thanh lịch phong cách giao diện hiện đại.
+6. **Phát Sáng Tối Giản (`minimal-glow` - Hỗ trợ Tự Động Chia 2 Dòng Cho Khung Dọc 9:16 ⭐)**:
+   - Chữ sắc nét với hào quang neon tỏa nhẹ phong cách hiện đại mà không có khung viền hộp gò bó.
+   - **Tùy chọn Tự Động Chia 1 Câu Thành 2 Dòng (`minimalGlowAutoTwoLines`)**: Khi bật tùy chọn này, hệ thống sử dụng thuật toán ngắt câu cân đối thông minh (dựa trên dấu ngắt dòng `\n`, phân cách ` / `, ` | `, dấu phẩy `,`, chấm phẩy `;`, gạch nối `-`, hoặc khoảng trắng giữa các từ gần tâm) để tự động tách 1 câu dài thành 2 dòng ngắn hiển thị cùng lúc trên màn hình (dòng trên & dòng dưới).
+   - **Tối ưu hóa chuyên biệt cho video dọc 9:16 (TikTok, YouTube Shorts, Facebook Reels)**: Giúp lời bài hát luôn vừa vặn trong màn hình hẹp, loại bỏ hoàn toàn tình trạng chữ bị tràn mép hoặc phải hạ cỡ chữ quá nhỏ; giữ chữ luôn to rõ, cân đối và thẩm mỹ.
+   - **Tùy chỉnh khoảng cách 2 dòng (`Line Gap`)**: Thanh trượt từ 18px đến 80px (mặc định 36px) để căn chỉnh độ thoáng giữa 2 dòng theo ý muốn.
 
-#### C. 3 Hiệu ứng chuyển động quét chữ Karaoke (`karaokeSweepMode`)
+#### C. Quản Lý Lyrics Presets (Tối Đa 10 Presets & Định Dạng `.lyrics`)
+- **Lưu Preset Cá Nhân**: Cho phép lưu cấu hình phong cách lyrics hiện tại thành preset có tên riêng (tối đa 10 presets lưu trữ an toàn trong trình duyệt).
+- **Áp dụng 1-Click**: Chọn nhanh từ các preset cá nhân hoặc 5 preset mẫu phòng thu có sẵn (Studio Duo Karaoke, Gold Luxury 3D, Cyber Gradient Pop, Minimal Glow, Frosted Subtitle Bar).
+- **Xuất File `.lyrics`**: Xuất từng preset riêng lẻ hoặc xuất toàn bộ gói preset thành file JSON mang đuôi mở rộng `.lyrics`.
+- **Nạp File `.lyrics`**: Tải file `.lyrics` hoặc `.json` từ máy tính lên để khôi phục hoặc áp dụng tức thì vào video.
+
+#### D. 3 Hiệu ứng chuyển động quét chữ Karaoke (`karaokeSweepMode`)
 1. **Chỉ Đổi Màu (`color-only`)**: Quét chuyển đổi màu chữ mượt mà chuẩn xác từ trái sang phải theo tiến độ câu hát.
 2. **Sao Vàng Bay + Đổi Màu (`star-flying`)**: Ngôi sao vàng 5 cánh phát sáng bay lướt và nảy tưng tưng trên đầu từng chữ đang được hát.
 3. **Quả Bóng Nhỏ Bay + Đổi Màu (`bouncing-ball`)**: Quả bóng tròn phát sáng 3D nảy bồng bềnh nhịp nhàng trên chữ theo phong cách karaoke vui nhộn.
 
-#### D. Tính năng Chỉnh Thời Gian Quét Màu Karaoke Độc Lập (Karaoke Timing Editor)
-- **Tách biệt hiển thị và quét màu**: Cho phép người dùng chỉnh thời gian quét màu karaoke độc lập với thời gian câu hiển thị trên màn hình (Ví dụ: Câu hiển thị từ `00:10.0` đến `00:14.8` [4.8 giây], nhưng ca sĩ hát xong lúc `00:12.8` [2.8 giây] thì chữ sẽ quét màu xong trong 2.8s và giữ nguyên trạng thái đổi màu đẹp mắt trên màn hình trong 2 giây còn lại cho đến khi chuyển câu).
+#### E. Tùy Biến Đổ Bóng Nổi 3D & Dải Màu Gradient Nâng Cao
+- **Đổ Bóng Nổi 3D (`3d-shadow`)**:
+  - Tùy chỉnh độ sâu khối 3D (`threeDDepth`: 1px đến 25px).
+  - Tùy chỉnh góc đổ bóng 3D (`threeDAngle`: 0° đến 360°) với các nút hướng nhanh: `↘ Dưới-Phải (135°)`, `↓ Thẳng Dưới (90°)`, `↙ Dưới-Trái (45°)`, `↗ Trên-Phải (225°)`.
+  - Chọn màu sắc bóng nổi 3D (`threeDColor`).
+  - Tùy chọn viền ngoài nổi khối sắc nét (`threeDStroke`: Bevel Outline).
+- **Dải Màu Gradient (`gradient-fill`)**:
+  - Tích hợp sẵn 9 chủ đề màu sắc tuyển chọn: Sunset Gold, Cyber Neon, Golden Luxury, Emerald Aurora, Fire Ember, Ocean Breeze, Pastel Candy, Silver Chrome, Rainbow Prism.
+  - Bảng chọn 3 điểm dừng màu sắc (Màu 1 Đỉnh, Màu 2 Giữa, Màu 3 Cuối).
+  - Thanh trượt chỉnh góc xoay hướng dải màu từ 0° đến 360°.
+
+#### F. Hiệu Ứng Xuất Hiện & Biến Mất Của Lời Bài Hát (In / Out Transitions)
+- **Hiệu ứng Xuất hiện (In-Effect)**: `none` (Tức thì), `fade` (Mờ dần), `slide-up` (Trượt từ dưới lên), `slide-down` (Trượt từ trên xuống), `slide-left` (Trượt từ trái sang), `slide-right` (Trượt từ phải sang), `zoom-in` (Phóng to từ tâm), `char-drop` (Rơi chữ theo ký tự), `dissolve` (Hòa tan biến hình), `bounce` (Nảy đàn hồi).
+- **Hiệu ứng Biến mất (Out-Effect)**: `none` (Tức thì), `fade` (Mờ dần), `slide-up` (Trượt lên trên tan biến), `slide-down` (Trượt xuống dưới tan biến), `zoom-out` (Thu nhỏ dần vào tâm), `dissolve` (Hòa tan biến mất).
+- **Thời lượng chuyển cảnh (Duration)**: Điều chỉnh linh hoạt từ 0.10s đến 1.00s.
+
+#### G. Tùy Biến Phông Chữ & Màu Sắc Typography
+- Thư viện 20+ phông chữ tuyển chọn hỗ trợ tiếng Việt đầy đủ dấu (Montserrat, Be Vietnam Pro, Quicksand, Playfair Display, Space Grotesk, Oswald, Lobster...).
+- **Màu Chữ Mặc Định (Default Lyrics Text Color)**: Luôn mặc định là `#FFFFFF` (trắng thuần sắc nét), đảm bảo khả năng đọc tốt nhất trên mọi nền và làm chữ chờ lót hoàn hảo trong chế độ Karaoke 2 dòng.
+- **3 Bảng Chọn Màu Trực Quan (3-Column Layout)**:
+  1. `Lyric Text Color`: Màu chữ gốc / chờ hát (`config.color`, mặc định `#FFFFFF`), cho phép đặt màu cơ bản trước khi ca sĩ hát đến.
+  2. `Active Singing Text Color`: Màu chữ đang hát (`config.activeColor`).
+  3. `Lyrics Glow Tint`: Màu hào quang phát sáng xung quanh chữ (`config.glowColor`).
+- Cỡ chữ (Font Size), độ đậm (Font Weight: 400, 500, 600, 700 Bold, 900 Black), chữ nghiêng (Italic), gạch chân (Underline), viết hoa toàn bộ (All Caps), căn lề (Trái, Giữa, Phải).
+- **Hộp nền chữ (Background Pill)**: Bật/tắt khung nền bo góc (Pill) trong suốt chống chìm chữ trên nền sáng/tối.
+
+#### H. Tính năng Chỉnh Thời Gian Quét Màu Karaoke Độc Lập (Karaoke Timing Editor)
+- **Tách biệt hiển thị và quét màu**: Cho phép người dùng chỉnh thời gian quét màu karaoke độc lập với thời gian câu hiển thị trên màn hình.
 - **Thanh trượt thời lượng Karaoke**: Kéo chỉnh thời lượng quét màu trực quan với tỷ lệ phần trăm hiển thị tức thì.
 - **Phím tắt nhanh thời lượng**: Chọn nhanh các mức `-0.5s`, `-1.0s`, `-1.5s`, `-2.0s` hoặc khôi phục `100%`.
 - **Nút gắn mốc phát hiện tại (`= Hiện tại`)**: Nhấn để gán ngay mốc thời gian bài hát đang chạy vào điểm kết thúc câu hát của ca sĩ.
 - **Phím vi chỉnh siêu chính xác**: Tăng/giảm bước nhảy `±0.05s`, `±0.2s`, `±1.0s` cho cả thời gian bắt đầu và kết thúc.
 - **Căn chỉnh hàng loạt (Batch Actions)**: Rút ngắn thời lượng karaoke cho tất cả câu hát (`-0.5s`, `-1.0s`) hoặc khôi phục đồng loạt chỉ với 1 click.
-- **Huy hiệu trực quan**: Badge trạng thái hiển thị rõ ràng câu nào đã được chỉnh thời gian karaoke riêng.
 
-#### E. Bộ công cụ xử lý lời bài hát thông minh
+#### I. Bộ công cụ xử lý lời bài hát thông minh
 - **Tách câu tự động**: Phân tách nhanh các câu dài thành câu ngắn vừa vặn màn hình điện thoại dựa trên dấu phẩy (`,`) hoặc dấu chấm (`.`).
 - **Tự động sửa chồng lấn thời gian (Auto-fix Overlaps)**: Quét và tự động triệt tiêu các khoảng thời gian bị lấn cấn giữa các câu liền kề.
 - **Cảnh báo lỗi đảo thời gian**: Phát hiện và đánh dấu câu có thời gian bắt đầu lớn hơn thời gian kết thúc.
@@ -198,20 +314,6 @@ Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">
 - **Tìm kiếm câu hát nhanh**: Ô tìm kiếm lọc câu hát theo từ khóa ngay lập tức.
 - **Phát nhạc ngay từ câu đang chọn**: Nhấn nút phát để tua bài hát đến đúng vị trí câu cần nghe thử.
 - **Quản lý câu linh hoạt**: Thêm câu mới, nhân bản câu (Duplicate), xóa câu hát.
-
-#### F. Tùy biến kiểu chữ & Hiệu ứng chữ (Typography)
-- Thư viện 20+ phông chữ tuyển chọn hỗ trợ tiếng Việt đầy đủ dấu.
-- Tùy chỉnh cỡ chữ (Font Size), độ đậm (Font Weight: Normal, Medium, Bold, 900), chữ nghiêng (Italic), gạch chân (Underline), viết hoa toàn bộ (All Caps), khoảng cách chữ (Letter Spacing), căn lề (Trái, Giữa, Phải).
-- **7 Hiệu ứng chữ (Font Effects)**:
-  1. Chữ tiêu chuẩn sắc nét (`none`)
-  2. Hào quang Laser Neon 2 lớp (`neon-glow`)
-  3. Viền đôi nổi bật tương phản cao (`double-stroke`)
-  4. Đổ bóng 3D chiều sâu khối (`3d-shadow`)
-  5. Chuyển sắc Gradient đa màu (`gradient-fill`)
-  6. Ánh kim loại Chrome tráng gương (`metallic-chrome`)
-  7. Phong cách truyện tranh Comic viền đậm (`comic-pop`)
-- **Tùy chỉnh màu sắc chi tiết**: Màu chữ chờ, màu chữ đang hát (Active Color), màu hào quang phát sáng (Glow Color & Intensity), màu viền nét chữ (Stroke Width/Color).
-- **Hộp nền chữ (Background Pill)**: Bật/tắt hộp nền, chỉnh màu sắc, độ mờ đục (Opacity) và độ nhòe kính mờ (Pill Blur).
 
 ---
 
@@ -520,7 +622,8 @@ Bảo vệ tuyệt đối công sức sáng tạo của người dùng và tối
    - Lyrics will be synchronized with the audio timeline
    - Preview timing before export
 
-3. **Customize Visualization**n   - Choose from available visualizer effects
+3. **Customize Visualization**
+   - Choose from available visualizer effects
    - Select colors and animation speed
    - Pick a background or upload custom image
 
@@ -649,9 +752,13 @@ How to test feature branches locally
 
 ## 📄 License
 
-This project is provided as-is for personal and commercial use.
+This project is open-source under the **MIT License** — provided as-is for personal and commercial use.
 
-## 🙋 Support
+## 🙋 Author & Support
+
+Created by **HAY Studio73**:
+- **Facebook**: [https://www.facebook.com/HAY.Studio73](https://www.facebook.com/HAY.Studio73)
+- **YouTube**: [https://www.youtube.com/@HAY.Studio73](https://www.youtube.com/@HAY.Studio73)
 
 For issues, questions, or feature requests:
 - Open an [Issue](https://github.com/haystudio73/HAYStudio73_SonaWave/issues) on GitHub
@@ -660,21 +767,21 @@ For issues, questions, or feature requests:
 ## 🎯 Roadmap & Completed Milestones
 
 - [x] Real-time waveform preview & 60FPS canvas rendering
-- [x] 18 Advanced 2D audio spectrum & visualizer styles
+- [x] 18 Advanced 2D audio spectrum & visualizer styles with specialized private settings
 - [x] 8 Real-time 3D WebGL scenes with Three.js & Post-Processing Bloom
-- [x] Independent 2D and 3D positioning separation
+- [x] Independent 2D and 3D positioning separation + Direct Canvas Drag & Drop overlays
+- [x] Multi-layer Floating Particle Overlays (max 5 layers, 11 particle styles including Butterflies)
 - [x] 13 Professional Color Grading LUT presets & film grain tools
 - [x] 8 Cinematic Film Light & vintage 35mm burn optical leaks
-- [x] Advanced lyrics synchronization & independent karaoke sweep timing editor
-- [x] Scene transitions & multi-slide timeline slideshow engine
+- [x] Karaoke 2-line Duo mode, Minimal Glow 9:16 auto 2-line wrap, 3D shadow, In/Out FX & `.lyrics` Presets
+- [x] Scene transitions & multi-slide timeline slideshow across entire playlist
 - [x] Multi-layer text boxes with automated playlist tracklist generator
 - [x] Audio-reactive Lottie & DotLottie vector animation engine
 - [x] 10-band studio master graphic equalizer & custom preset manager
-- [x] Multi-track audio playlist & continuous background player
+- [x] Multi-track audio playlist & continuous background player with smart single-track title handling
+- [x] TikTok / Shorts MP4 export presets (15s, 30s, 60s, 90s, 120s, 180s)
 - [x] Multi-project management, JSON backup, and local AutoSave recovery
-- [x] Safe in-app confirmation dialogs (iframe sandbox compatible)
-- [x] Fully responsive mobile UI/UX support
-- [x] Bilingual interface (Vietnamese & English)
+- [x] Safe in-app confirmation dialogs, About (`?`) license/author modal & Bilingual EN/VI UI
 - [ ] Cloud storage export integration (Google Drive / S3)
 - [ ] Server-side batch processing CLI 
 

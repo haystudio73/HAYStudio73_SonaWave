@@ -39,7 +39,11 @@ import {
   SAMPLE_SRT_SYNTHWAVE,
   SAMPLE_SRT_ACOUSTIC,
 } from './utils/presets';
-import { parseAnyLyrics } from './utils/lyricsParser';
+import { 
+  parseAnyLyrics, 
+  convertLyricsTo2LineKaraokeTiming, 
+  restoreOriginalLyricsTiming 
+} from './utils/lyricsParser';
 import { AudioEngine } from './utils/audioEngine';
 import { VisualizerRenderer } from './utils/visualizerRenderer';
 import { VideoExporter } from './utils/videoExporter';
@@ -75,6 +79,7 @@ import { ProjectsModal } from './components/ProjectsModal';
 import { ExportModal } from './components/ExportModal';
 import { MasterEQModal } from './components/MasterEQModal';
 import { GlobalSettingsModal } from './components/GlobalSettingsModal';
+import { AboutModal } from './components/AboutModal';
 import { NewProjectModal, NewProjectHardwareProfile } from './components/NewProjectModal';
 import { AudioPlaylistTab } from './components/AudioPlaylistTab';
 import { LottieTab } from './components/LottieTab';
@@ -131,7 +136,18 @@ export function App() {
   const [particles, setParticles] = useState<ParticleConfig>(DEFAULT_PARTICLES);
   const [filmLight, setFilmLight] = useState<FilmLightConfig>(DEFAULT_FILM_LIGHT);
   const [colorGrading, setColorGrading] = useState<ColorGradingConfig>(DEFAULT_COLOR_GRADING);
-  const [track, setTrack] = useState<TrackMetadata>(DEFAULT_TRACK);
+  const [track, setTrack] = useState<TrackMetadata>(() => {
+    const savedPl = getSavedPlaylist();
+    const curTrack = savedPl.tracks[savedPl.currentIndex];
+    const initialTitle = curTrack?.title || DEFAULT_PLAYLIST_CONFIG.tracks[0]?.title || 'Neon Synthwave Dream';
+    const isMultiTrack = savedPl.tracks && savedPl.tracks.length > 1;
+    return {
+      ...DEFAULT_TRACK,
+      currentPlayingTrackTitle: initialTitle,
+      showTrackTitle: isMultiTrack ? true : false,
+      playlistTracksCount: savedPl.tracks ? savedPl.tracks.length : 1,
+    };
+  });
   const [textBoxes, setTextBoxes] = useState<TextBoxItem[]>(DEFAULT_TEXT_BOXES);
   const [sceneTransitions, setSceneTransitions] = useState<SceneTransitionsConfig>(DEFAULT_SCENE_TRANSITIONS);
 
@@ -331,6 +347,7 @@ export function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isMasterEqModalOpen, setIsMasterEqModalOpen] = useState(false);
   const [isGlobalSettingsModalOpen, setIsGlobalSettingsModalOpen] = useState(false);
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [hasSavedIndicator, setHasSavedIndicator] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -632,6 +649,23 @@ export function App() {
     }
   }, [track?.logoUrl]);
 
+  // Auto remove / disable Track Title if only 1 audio file is in the playlist
+  useEffect(() => {
+    const trackCount = playlist.tracks ? playlist.tracks.length : 1;
+    const isSingleAudio = trackCount <= 1;
+    setTrack((prev) => {
+      const nextShow = isSingleAudio ? false : (prev.showTrackTitle !== undefined ? prev.showTrackTitle : true);
+      if (prev.showTrackTitle === nextShow && prev.playlistTracksCount === trackCount) {
+        return prev;
+      }
+      return {
+        ...prev,
+        showTrackTitle: nextShow,
+        playlistTracksCount: trackCount,
+      };
+    });
+  }, [playlist.tracks?.length]);
+
   // Load sample synthetic audio demo
   const loadSampleTrack = async (
     type: 'lofi' | 'synthwave' | 'acoustic' | 'edm',
@@ -858,8 +892,17 @@ export function App() {
     }));
     setCurrentTime(seekTime);
 
-    // Apply track's unique background if configured, otherwise fallback to project default background
-    if (targetTrack.background) {
+    // When Multi-Image Slideshow is active, slideshow governs all tracks in the playlist
+    const isSlideshowEnforced =
+      defaultBackgroundRef.current?.mode === 'slides' ||
+      backgroundRef.current?.mode === 'slides';
+
+    if (isSlideshowEnforced) {
+      const activeSlideBg = defaultBackgroundRef.current?.mode === 'slides'
+        ? defaultBackgroundRef.current
+        : backgroundRef.current;
+      setBackground(activeSlideBg);
+    } else if (targetTrack.background) {
       setBackground(targetTrack.background);
     } else {
       setBackground(defaultBackgroundRef.current);
@@ -867,7 +910,11 @@ export function App() {
 
     // Switch track lyrics if available
     if (targetTrack.lyrics && targetTrack.lyrics.length > 0) {
-      setLyricsData(targetTrack.lyrics);
+      if (lyricsConfigRef.current?.style === 'karaoke-duo') {
+        setLyricsData(convertLyricsTo2LineKaraokeTiming(targetTrack.lyrics));
+      } else {
+        setLyricsData(targetTrack.lyrics);
+      }
     } else {
       setLyricsData([]);
     }
@@ -896,11 +943,11 @@ export function App() {
       audioRef.current.currentTime = seekTime;
     }
 
-    setAudioFileName(targetTrack.fileName);
+    const isMultiTrackPlaylist = playlistRef.current.tracks.length > 1;
     setTrack((prev) => ({
       ...prev,
-      title: targetTrack.title,
-      artist: targetTrack.artist || prev.artist,
+      title: isMultiTrackPlaylist ? (prev.title || targetTrack.title) : (targetTrack.title || prev.title),
+      currentPlayingTrackTitle: targetTrack.title,
       coverUrl: targetTrack.coverUrl || prev.coverUrl,
     }));
 
@@ -1266,7 +1313,12 @@ export function App() {
     setFilmLight(DEFAULT_FILM_LIGHT);
     setColorGrading(DEFAULT_COLOR_GRADING);
     setMasterEqConfig(DEFAULT_MASTER_EQ);
-    setTrack(DEFAULT_TRACK);
+    const defaultTrackTitle = DEFAULT_PLAYLIST_CONFIG.tracks[0]?.title || 'Neon Synthwave Dream';
+    setTrack({
+      ...DEFAULT_TRACK,
+      currentPlayingTrackTitle: defaultTrackTitle,
+      showTrackTitle: true,
+    });
     setTextBoxes(DEFAULT_TEXT_BOXES);
     setSceneTransitions(DEFAULT_SCENE_TRANSITIONS);
     setPlaylist(DEFAULT_PLAYLIST_CONFIG);
@@ -1314,7 +1366,13 @@ export function App() {
   const handleSelectPresetTheme = (theme: PresetTheme) => {
     setAspectRatio(theme.aspectRatio || '9:16');
     setVisualizer(theme.visualizer || DEFAULT_VISUALIZER);
-    setLyricsConfig(theme.lyrics || DEFAULT_LYRICS);
+    const targetLyrics = theme.lyrics || DEFAULT_LYRICS;
+    if (targetLyrics.style === 'karaoke-duo' && lyricsConfig.style !== 'karaoke-duo') {
+      setLyricsData(prev => convertLyricsTo2LineKaraokeTiming(prev));
+    } else if (lyricsConfig.style === 'karaoke-duo' && targetLyrics.style && targetLyrics.style !== 'karaoke-duo') {
+      setLyricsData(prev => restoreOriginalLyricsTiming(prev));
+    }
+    setLyricsConfig(targetLyrics);
     setBackground(theme.background || DEFAULT_BACKGROUND);
     setParticles(theme.particles || DEFAULT_PARTICLES);
     setFilmLight(theme.filmLight || DEFAULT_FILM_LIGHT);
@@ -1421,6 +1479,20 @@ export function App() {
 
           const curTime = audioRef.current ? audioRef.current.currentTime : currentTimeRef.current;
 
+          // Compute cumulative elapsed time across playlist for seamless slideshow progression
+          let cumulativePlaylistTime = curTime;
+          const pList = playlistRef.current;
+          if (pList && pList.tracks && pList.tracks.length > 1) {
+            let priorDuration = 0;
+            for (let i = 0; i < pList.currentIndex && i < pList.tracks.length; i++) {
+              const tDur = (pList.tracks[i].duration && pList.tracks[i].duration > 0)
+                ? pList.tracks[i].duration
+                : 30;
+              priorDuration += tDur;
+            }
+            cumulativePlaylistTime = priorDuration + curTime;
+          }
+
           // Real-time Smooth Fade-In and Fade-Out automation
           if (audioEngine && audioRef.current && isPlayingRef.current) {
             const list = playlistRef.current;
@@ -1438,6 +1510,10 @@ export function App() {
             } else if (curTrack) {
               audioEngine.setFadeGain(curTrack.volume ?? 1.0);
             }
+          }
+
+          if (trackRef.current) {
+            trackRef.current.playlistTracksCount = playlistRef.current?.tracks?.length ?? 1;
           }
 
           // Render entire visualizer scene directly to isolated offscreen buffer / target
@@ -1465,7 +1541,8 @@ export function App() {
             colorGradingRef.current,
             sceneTransitionsRef.current,
             isExportingRef.current ? false : highPerformanceRenderRef.current,
-            lottiesRef.current
+            lottiesRef.current,
+            cumulativePlaylistTime
           );
 
           // Fast blit from OffscreenCanvas to export target if exporting
@@ -1908,6 +1985,7 @@ export function App() {
         language={language}
         onLanguageChange={handleLanguageChange}
         onOpenSettingsModal={() => setIsGlobalSettingsModalOpen(true)}
+        onOpenAboutModal={() => setIsAboutModalOpen(true)}
         onOpenMasterEqModal={() => setIsMasterEqModalOpen(true)}
         masterEqConfig={masterEqConfig}
       />
@@ -1973,6 +2051,11 @@ export function App() {
           onUpdateLottie={(id, partial) =>
             setLotties((prev) => prev.map((item) => (item.id === id ? { ...item, ...partial } : item)))
           }
+          track={track}
+          onUpdateTrack={(partial) => setTrack((prev) => ({ ...prev, ...partial }))}
+          visualizer={visualizer}
+          onUpdateVisualizer={(partial) => setVisualizer((prev) => ({ ...prev, ...partial }))}
+          activeTab={activeTab}
         />
 
         {/* Right Area: Customization Panel Tabs */}
@@ -2208,7 +2291,7 @@ export function App() {
 
             {/* 2. Track Metadata Content */}
             {activeTab === 'track' && (
-              <TrackTab track={track} onChange={setTrack} language={language} />
+              <TrackTab track={track} onChange={setTrack} language={language} playlist={playlist} />
             )}
 
             {/* 3. Visualizer Content */}
@@ -2270,6 +2353,13 @@ export function App() {
                 onBackgroundChange={(newBg) => {
                   setBackground(newBg);
                   setDefaultBackground(newBg);
+                  if (newBg.mode === 'slides') {
+                    // Enforce slideshow across all tracks in the playlist
+                    setPlaylist((prev) => ({
+                      ...prev,
+                      tracks: prev.tracks.map((t) => ({ ...t, background: { ...newBg } })),
+                    }));
+                  }
                 }}
                 language={language}
                 playlist={playlist}
@@ -2388,6 +2478,13 @@ export function App() {
         onToggleBottomCredit={(enabled) => setVisualizer((prev) => ({ ...prev, showBottomCredit: enabled }))}
         bottomCreditText={visualizer.bottomCreditText || '🔥 Visualizer by HAY Studio73'}
         onChangeBottomCreditText={(text) => setVisualizer((prev) => ({ ...prev, bottomCreditText: text }))}
+      />
+
+      {/* About & Open-Source License Modal */}
+      <AboutModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
+        language={language}
       />
 
       {/* High Definition Video Export Modal */}

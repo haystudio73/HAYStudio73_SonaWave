@@ -206,6 +206,67 @@ export interface VisualizerConfig {
   minimalPulseStems?: boolean;       // Hiển thị tia nối từ đường kẻ đến chấm (mặc định true)
   minimalPulseBaseline?: boolean;    // Hiển thị đường kẻ ngang nền audiophile (mặc định true)
   minimalPulsePeakDots?: boolean;    // Hiển thị chấm đỉnh rơi chậm theo trọng lực (mặc định true)
+
+  // Classic Bars (Cột Cổ Điển) & Column Spectrum Private Options
+  barsStyleType?: 'rounded' | 'sharp' | 'pointed'; // Kiểu đầu cột: Bo tròn mềm, Vuông góc, Vát nhọn
+  barsSegmented?: boolean;                         // Vạch chia tầng LED Blocks
+  barsShapeCurve?: 'normal' | 'reverse' | 'center-peak' | 'edges-peak'; // Hình dáng phân bố cột
+  barsPeakGravity?: boolean;                       // Chấm đỉnh rơi chậm Peak Hold
+  barsPeakColor?: string;                          // Màu chấm đỉnh
+
+  // Mirrored Bars (Sóng Cột Đối Xứng) Private Options
+  mirroredCenterGap?: number;                      // Khoảng cách khe giữa 2 nửa đối xứng (px)
+  mirroredPeakCaps?: boolean;                      // Giữ vạch đỉnh đối xứng 2 đầu
+  mirroredStyleType?: 'rounded' | 'sharp' | 'segmented'; // Kiểu dáng cột đối xứng
+
+  // Liquid Wave (Sóng Nước Mềm Mại) Private Options
+  waveFillGradient?: boolean;                      // Đổ màu mờ chân sóng (Fill under curve)
+  waveLayersCount?: number;                        // Số tầng sóng xếp lớp (1 - 4)
+  waveTension?: number;                            // Độ uốn lượn mềm Bezier (0.1 - 1.0)
+  waveMirrorMode?: boolean;                        // Sóng đối xứng qua trục
+
+  // Radial Spikes (Tia Tròn Tỏa Sáng) Private Options
+  spikesInnerRadius?: number;                      // Bán kính lõi trong (% 10-60)
+  spikesDirection?: 'outward' | 'inward' | 'both'; // Hướng tia: Tỏa ra, Thu vào, Cả hai
+  spikesCapStyle?: 'line' | 'needle' | 'dot';      // Đầu tia: Đoạn thẳng, Mũi kim, Chấm sáng
+  spikesBeatBurst?: boolean;                       // Tia phóng dài theo nhịp kick
+
+  // Cyber Matrix (Ma Trận LED Cyber) Private Options
+  cyberMatrixRows?: number;                        // Số hàng LED dọc (4 - 20)
+  cyberMatrixWarningRed?: boolean;                 // Đèn LED đỏ cảnh báo quá tải ở đỉnh
+  cyberMatrixBlockShape?: 'rectangle' | 'square' | 'pill'; // Hình dạng khối LED
+  cyberMatrixGap?: number;                         // Khoảng cách giữa các khối LED (px)
+
+  // Cyber EQ Matrix Grid (Ma Trận EQ Khối Nổi) Private Options
+  eqGridRows?: number;                             // Số hàng LED ma trận (6 - 24)
+  eqGridPeakDrop?: boolean;                        // Đỉnh LED rơi trọng lực
+  eqGridGlowIntensity?: number;                    // Độ phát sáng LED (%)
+  eqGridColorStops?: 'classic-green-yellow-red' | 'cyber-cyan-magenta' | 'custom'; // Bảng màu dải tần
+
+  // Plasma Fire (Ngọn Lửa Plasma) Private Options
+  flameTurbulence?: number;                        // Độ cuộn xoáy ngọn lửa (0.5 - 3.0)
+  flameHeightBoost?: number;                       // Tăng chiều cao bốc cháy khi có Bass Kick (1.0 - 2.5)
+  flameSparkEmber?: boolean;                       // Tàn tro lửa bay lên từ đỉnh
+  flameColorPalette?: 'plasma-violet' | 'fire-orange' | 'ice-blue' | 'toxic-green'; // Tông màu plasma
+
+  // Dual Ribbon (Dải Ruy Băng Đôi) Private Options
+  ribbonFrequency?: number;                        // Tần số uốn lượn sợi ruy băng (1 - 5)
+  ribbonTwist3D?: boolean;                         // Hiệu ứng xoắn 3D lồng vào nhau
+  ribbonFillMesh?: boolean;                        // Đổ lưới mờ giữa 2 dải
+  ribbonWidth?: number;                            // Độ rộng bản dải ruy băng (2 - 18px)
+
+  // EDM Concert Lasers (Tia Laser Sân Khấu EDM) Private Options
+  laserSpreadAngle?: number;                       // Góc quét quạt laser (45° - 180°)
+  laserBeamsCount?: number;                        // Số lượng chùm tia laser (6 - 32)
+  laserStrobeKick?: boolean;                       // Chớp nháy Strobe theo nhịp Bass
+  laserCenterOrigin?: 'bottom-center' | 'top-center' | 'center'; // Tâm phát nguồn tia
+
+  // Starburst Nova Core (Lõi Siêu Tân Tinh Tỏa Sáng) Private Options
+  starburstRaysCount?: number;                     // Số lượng tia sao tỏa sáng (16 - 72)
+  starburstCoreRadius?: number;                    // Kích cỡ lõi năng lượng trung tâm (5 - 50px)
+  starburstParticleBurst?: boolean;                // Hạt năng lượng bắn tỏa ra theo nhịp Bass
+  starburstHaloBloom?: boolean;                    // Hào quang vầng sáng cực đại quanh lõi
+
   // Visualizer 2D Rotation & Auto-Rotate (Góc Xoay Visualizer 2D)
   rotationAngle?: number;            // Góc xoay thủ công (0 đến 360 độ, 90, 180, 270...)
   autoRotate?: boolean;              // Tự động xoay quanh tâm (Auto Rotate)
@@ -222,10 +283,16 @@ export interface LyricLine {
   // Karaoke timing riêng cho từng câu (thời gian hát / quét màu):
   karaokeStartTime?: number; // seconds (thời gian bắt đầu quét màu karaoke, mặc định = startTime)
   karaokeEndTime?: number;   // seconds (thời gian kết thúc quét màu karaoke, ví dụ: 00:12.8 thay vì 00:14.8)
+  // Mốc timing gốc phục hồi khi chuyển giữa 2 dòng và 1/3/4 dòng:
+  originalStartTime?: number;
+  originalEndTime?: number;
+  originalKaraokeStartTime?: number;
+  originalKaraokeEndTime?: number;
 }
 
 export type LyricsStyle = 
   | 'karaoke-single'    // Karaoke 1 Dòng - chỉ hiện 1 câu đang hát quét màu mượt mà (Hot TikTok/Reels)
+  | 'karaoke-duo'       // Karaoke 2 Dòng - 2 dòng hiển thị rõ ràng, luân phiên hát và báo trước câu kế tiếp
   | 'teleprompter-4lines' // Karaoke 4 Dòng - 4 dòng chữ chạy cuộn mượt mà tự động
   | 'karaoke'           // Karaoke 3 Dòng - Dòng đang hát phóng to, 2 dòng trước & sau mờ dần
   | 'subtitle-bar'      // Thanh phụ đề mờ - hộp frosted glass tối giản hiện đại
@@ -246,12 +313,39 @@ export type LyricsFontEffect =
   | 'metallic-chrome'   // Ánh kim loại Chrome tráng gương
   | 'comic-pop';        // Phong cách truyện tranh Comic viền đậm
 
+export type LyricsInEffect = 
+  | 'none'              // Không hiệu ứng xuất hiện
+  | 'fade'              // Mờ dần vào (Fade In)
+  | 'slide-up'          // Trượt từ dưới lên
+  | 'slide-down'        // Trượt từ trên xuống
+  | 'slide-left'        // Trượt từ phải sang trái
+  | 'slide-right'       // Trượt từ trái sang phải
+  | 'zoom-in'           // Phóng to nở ra (Scale In)
+  | 'char-drop'         // Rơi từng ký tự
+  | 'dissolve'          // Hòa tan mờ nhòe rõ dần
+  | 'bounce';           // Nảy nhẹ đàn hồi (Bounce In)
+
+export type LyricsOutEffect = 
+  | 'none'              // Không hiệu ứng biến mất
+  | 'fade'              // Mờ dần ra (Fade Out)
+  | 'slide-up'          // Trượt bay lên trên
+  | 'slide-down'        // Trượt rơi xuống dưới
+  | 'zoom-out'          // Thu nhỏ biến mất
+  | 'dissolve';         // Hòa tan nhòe mờ biến mất
+
+export interface LyricsPresetItem {
+  id: string;
+  name: string;
+  createdAt: number;
+  config: LyricsConfig;
+}
+
 export interface LyricsConfig {
   enabled: boolean;
   fontFamily: string;
   fontSize: number;       // base font size
-  color: string;           // inactive text color
-  activeColor: string;     // active text color
+  color: string;           // inactive text color (Màu chữ gốc / chờ hát)
+  activeColor: string;     // active text color (Màu câu đang hát)
   glowColor: string;       // glow color for active line
   glowIntensity: number;   // glow strength
   positionY: number;       // 0 - 100 percentage
@@ -273,6 +367,36 @@ export interface LyricsConfig {
   pillColor: string;
   pillOpacity: number;
   pillBlur: number;
+
+  // Karaoke 2 Dòng (Duo Line) independent position settings
+  duoLine1Y?: number;      // Vị trí dòng 1 theo chiều dọc (0-100%, mặc định 76%)
+  duoLine1X?: number;      // Vị trí dòng 1 theo chiều ngang (0-100%, mặc định 50%)
+  duoLine2Y?: number;      // Vị trí dòng 2 theo chiều dọc (0-100%, mặc định 85%)
+  duoLine2X?: number;      // Vị trí dòng 2 theo chiều ngang (0-100%, mặc định 50%)
+  duoLineGap?: number;     // Khoảng cách giữa 2 dòng (px, mặc định 38px)
+  duoAlignMode?: 'center' | 'left-right' | 'left' | 'right';
+
+  // 3D Shadow Customization (Đổ bóng nổi 3D)
+  threeDDepth?: number;    // Độ dày bóng nổi 3D (1px - 25px, mặc định 6px)
+  threeDAngle?: number;    // Góc đổ bóng 3D (0 - 360 độ, mặc định 135)
+  threeDColor?: string;    // Màu bóng nổi 3D (mặc định '#000000')
+  threeDStroke?: boolean;  // Bật viền khối 3D
+
+  // Gradient Fill Themes & Customization (Dải màu Gradient)
+  gradientTheme?: string;  // Preset theme ('sunset', 'cyber-neon', 'gold', 'aurora', 'fire', 'ocean', 'pastel', 'silver', 'rainbow', 'custom')
+  gradientColor1?: string; // Màu gradient 1
+  gradientColor2?: string; // Màu gradient 2
+  gradientColor3?: string; // Màu gradient 3
+  gradientAngle?: number;  // Góc dải màu (0 - 360 độ, mặc định 90)
+
+  // In / Out Transitions (Hiệu ứng xuất hiện / biến mất)
+  inEffect?: LyricsInEffect;
+  outEffect?: LyricsOutEffect;
+  inOutDuration?: number;  // Thời lượng hiệu ứng in/out (giây, mặc định 0.35s)
+
+  // Minimalist Glow 2-Line Split for 9:16 Vertical Screens (Tự động chia 1 câu thành 2 dòng)
+  minimalGlowAutoTwoLines?: boolean; // Tự động ngắt 1 câu thành 2 dòng trên màn hình (cho video dọc 9:16)
+  minimalGlowLineGap?: number;       // Khoảng cách giữa 2 dòng (px, mặc định fontSize * 1.35)
 }
 
 export type BackgroundType = 'preset' | 'upload' | 'video' | 'gradient' | 'solid';
@@ -380,23 +504,113 @@ export interface BackgroundConfig {
 
 export type ParticleType = 
   | 'none' 
-  | 'rain'             // Mưa Rơi Tự Nhiên
-  | 'snow'             // Tuyết Rơi Mùa Đông
+  | 'rain'             // Mưa Rơi Tự Nhiên (Natural Rain)
+  | 'snow'             // Tuyết Rơi Mùa Đông (Winter Snowfall)
   | 'speed-lines'      // Đường vạch tốc độ (Speed Lines)
   | 'spaghetti'        // Mưa mảnh ruy băng lụa mềm mại (Silk Ribbon Rain)
   | 'silk-ribbon'      // Alias for Mưa mảnh ruy băng lụa
   | 'spinning-dashes'  // Đoạn thẳng ngắn vừa rơi vừa xoay 360° theo nhịp Bass
   | 'rainbow-bubbles'  // Bong bóng cầu vồng ngũ sắc lấp lánh
   | 'hyperspace'       // Tăng tốc vũ trụ Hyperspace warp-speed
-  | 'dust'             // Bụi Lofi trôi
-  | 'stars'            // Sao lấp lánh
-  | 'fire-embers';     // Những hạt lửa bay (Fire Embers & Sparks)
+  | 'dust'             // Bụi Lofi trôi (Lofi Ambient Dust)
+  | 'stars'            // Sao lấp lánh (Twinkling Stars)
+  | 'fire-embers'      // Những hạt lửa bay (Fire Embers & Sparks)
+  | 'butterflies';     // Đàn bướm bay dập dờn phát sáng (Butterflies)
 
 export type ParticleShape = 'circle' | 'square' | 'star' | 'heart' | 'diamond' | 'ring' | 'silk-fluff';
 export type ParticleColorMode = 'custom' | 'rainbow' | 'fire' | 'neon-pulse' | 'audio-reactive';
 
 export type SnowFlakeType = 'mixed' | 'crystal' | 'flurry' | 'glitter';
 export type RainDropType = 'mixed' | 'streaks' | 'drizzle' | 'heavy' | 'neon-glow';
+
+export interface ParticleLayer {
+  id: string;
+  name?: string;
+  enabled: boolean;
+  type: ParticleType;
+  count: number;
+  speed: number;
+  color: string;
+  secondaryColor?: string;
+  shape?: ParticleShape;
+  colorMode?: ParticleColorMode;
+  glowIntensity?: number; // 0 to 50
+  sizeScale?: number;
+  sizePx?: number;        // Kích thước hạt tính bằng pixel (từ 1px đến 36px)
+  randomSize?: boolean;
+  opacity?: number;       // 0.1 to 1.0
+
+  // 1. Mưa (Rain)
+  rainGlow?: boolean;
+  rainWindAngle?: number;
+  rainWindSpeed?: number;
+  rainTurbulence?: number;
+  rainDropType?: RainDropType;
+  rainLengthScale?: number;
+  rainSplash?: boolean;
+  rainRandomWind?: boolean;
+  rainRandomWindSpeed?: number;
+  waterOnGlass?: boolean;
+
+  // 2. Tuyết (Snow)
+  snowShape?: 'snowflake' | 'circle' | 'crystal' | 'star' | 'flurry';
+  snowRandomShape?: boolean;
+  snowWindAngle?: number;
+  snowWindSpeed?: number;
+  snowTurbulence?: number;
+  snowFlakeType?: SnowFlakeType;
+
+  // 3. Vệt Tốc Độ (Speed Lines)
+  speedLineOrientation?: 'horizontal' | 'vertical' | 'diagonal-45' | 'diagonal-135' | 'radial-center' | 'radial-top' | 'radial-bottom';
+  speedLineReverse?: boolean;
+  speedLineMode?: 'horizontal' | 'converge-center';
+  speedLineLength?: number;
+  speedLineRandomLength?: number;
+  speedLineWidth?: number;
+  speedLineBlur?: number;
+  speedLineDirection?: 'left-to-right' | 'right-to-left';
+  speedLineTilt?: number;
+  speedLineVerticalCenter?: 'top' | 'center' | 'bottom';
+  speedLineCenterY?: number;
+  speedLineHorizontalCenter?: 'left' | 'center' | 'right';
+  speedLineCenterX?: number;
+  speedLineSpeed?: number;
+
+  // 4. Mưa Ruy Băng Lụa (Silk Ribbon Rain)
+  ribbonWavy?: boolean;
+  ribbonLength?: number;
+  ribbonThickness?: number;
+  ribbonTwist?: number;
+  ribbonGlow?: number;
+
+  // 5. Bụi Lofi Trôi (Lofi Dust)
+  dustShape?: 'circle' | 'square' | 'star' | 'random';
+  dustRandomShape?: boolean;
+  dustMinSize?: number;
+  silkFluffGlow?: boolean;
+  particleGlowRadius?: number;
+
+  // 6. Tăng Tốc Hyperspace (3D Warp)
+  hyperspaceLength?: number;
+  hyperspaceGlow?: number;
+
+  // 7. Sao Lấp Lánh (Twinkling Stars)
+  starStatic?: boolean;
+  starShape?: '4-point' | '5-point' | 'circle' | 'random';
+  starRandomFlare?: boolean;
+  starFlareIntensity?: number;
+
+  // 8. Những Hạt Lửa (Fire Embers & Sparks)
+  fireEmbersShape?: 'circle' | 'square' | 'diamond' | 'random';
+  fireEmbersSpread?: number;
+  fireEmbersCooling?: number;
+
+  // 9. Đàn Bướm Phát Sáng (Butterflies)
+  butterflySize?: number;              // Kích thước bướm (12px đến 48px, mặc định 22px)
+  butterflyWingSpeed?: number;         // Tần số vỗ cánh (0.5 đến 3.0, mặc định 1.2)
+  butterflyColorVariant?: 'monarch' | 'neon-glow' | 'emerald' | 'golden' | 'rainbow' | 'custom';
+  butterflyTrail?: boolean;            // Vệt bụi lấp lánh sau cánh bướm
+}
 
 export interface ParticleConfig {
   enabled: boolean;
@@ -412,9 +626,21 @@ export interface ParticleConfig {
   sizePx?: number;        // Kích thước hạt tính bằng pixel (từ 1px đến 36px)
   randomSize?: boolean;   // Kích thước hạt ngẫu nhiên: từ 1px đến kích thước hạt hiện hành
   opacity?: number;       // Độ mờ / trong suốt của hạt particles (0.1 đến 1.0, mặc định 0.85)
-  reactiveToBeat: boolean;
-  bassReactiveColor?: boolean; // Dynamically link particle color to bass intensity & flash brighter on beat drops
+
+  // Global Audio-Reactive Settings for ALL layers
+  reactiveToBeat: boolean;     // Tăng tốc theo nhịp (Accelerate on Beats) áp dụng cho toàn bộ các layer
+  bassReactiveColor?: boolean; // Bừng sáng theo tiếng Bass (Flash Brighter on Bass Drop) áp dụng cho toàn bộ các layer
   bassFlashBoost?: number;    // 0.5 to 2.5 multiplier
+
+  // Multi-Layer Particle System (Max 5 layers)
+  layers?: ParticleLayer[];
+  activeLayerId?: string;
+
+  // Specific Settings for Butterflies (on config level as fallback):
+  butterflySize?: number;
+  butterflyWingSpeed?: number;
+  butterflyColorVariant?: 'monarch' | 'neon-glow' | 'emerald' | 'golden' | 'rainbow' | 'custom';
+  butterflyTrail?: boolean;
 
   // Specific Settings:
   // 1. Mưa (Rain)
@@ -598,7 +824,7 @@ export type BadgeBeatJumpStyle = 'pulse' | 'bounce-up' | 'scale-rotate' | 'jelly
 
 export type TrackLayerOrder = 'behind-visualizer' | 'front-visualizer' | 'back-all' | 'front-all';
 
-export type TrackDetailElement = 'subtitle' | 'title' | 'artist';
+export type TrackDetailElement = 'subtitle' | 'title' | 'artist' | 'track-title';
 
 export type TrackFontWeight = 'normal' | '500' | '600' | 'bold' | '900';
 
@@ -713,6 +939,22 @@ export interface TrackMetadata {
   boxBackground: boolean;
   boxBgColor: string;
   boxOpacity: number;
+
+  // Playlist Active Track Title Display settings (when playlist has > 1 song)
+  currentPlayingTrackTitle?: string;   // Tên bài hát đang phát trong Playlist
+  showTrackTitle?: boolean;            // Bật/tắt hiển thị Tên bài hát của Playlist (Show Track Title)
+  playlistTracksCount?: number;        // Số lượng file nhạc trong Playlist (dùng để tự động ẩn nếu chỉ có 1 bài)
+  trackTitleFontFamily?: string;       // Phông chữ riêng
+  trackTitleFontSize?: number;         // Cỡ chữ (default 18px)
+  trackTitleFontStyle?: TrackFontStyle;// Kiểu dáng font
+  trackTitleFontWeight?: TrackFontWeight;// Độ đậm font
+  trackTitleFontEffect?: TrackFontEffect;// Hiệu ứng chữ (neon, 3d, double-stroke, gradient, etc.)
+  trackTitleItalic?: boolean;          // Nghiêng
+  trackTitleUppercase?: boolean;       // In hoa
+  trackTitleColor?: string;            // Màu sắc chữ
+  trackTitleCustomPosition?: boolean;  // Tùy chỉnh vị trí tự do (X, Y riêng biệt trên stage)
+  trackTitlePositionX?: number;        // Tọa độ X (0-100%, mặc định 50%)
+  trackTitlePositionY?: number;        // Tọa độ Y (0-100%, mặc định 42%)
 }
 
 export type TextBoxLayerOrder = 
