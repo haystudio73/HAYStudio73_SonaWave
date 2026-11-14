@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AspectRatio, ExportSettings, ExportAudioTarget, PlaylistConfig } from '../types';
+import { AspectRatio, ExportSettings, ExportAudioTarget, ExportVideoFormat, PlaylistConfig } from '../types';
+import { Language } from '../utils/i18n';
 import { 
   Download, 
   X, 
@@ -38,7 +39,20 @@ interface ExportModalProps {
   exportedBlob: Blob | null;
   onDownloadExportedVideo: () => void;
   playlist?: PlaylistConfig;
+  language?: Language;
 }
+
+const VIDEO_FORMATS: {
+  id: ExportVideoFormat;
+  label: string;
+  ext: string;
+  descVi: string;
+  descEn: string;
+}[] = [
+  { id: 'mp4', label: 'MP4', ext: '.mp4', descVi: 'H.264 • Phổ biến nhất', descEn: 'H.264 • Most Popular' },
+  { id: 'mov', label: 'MOV', ext: '.mov', descVi: 'QuickTime • CapCut / Mac', descEn: 'QuickTime • Pro Editing' },
+  { id: 'webm', label: 'WEBM', ext: '.webm', descVi: 'VP9 • Web & Nhẹ file', descEn: 'VP9 • Web & Lightweight' },
+];
 
 export const ExportModal: React.FC<ExportModalProps> = ({
   isOpen,
@@ -55,7 +69,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   exportedBlob,
   onDownloadExportedVideo,
   playlist,
+  language = 'vi',
 }) => {
+  const [videoFormat, setVideoFormat] = useState<ExportVideoFormat>('mp4');
+  const [exportedFormat, setExportedFormat] = useState<ExportVideoFormat>('mp4');
   const [resolution, setResolution] = useState<'1080p' | '720p' | '4k'>('1080p');
   const [fps, setFps] = useState<30 | 60>(60);
   const [qualityBitrate, setQualityBitrate] = useState<'high' | 'ultra' | 'medium'>('high');
@@ -107,6 +124,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     const end = fullSong ? songDuration : Math.min(start + rangeDuration, songDuration);
 
     return {
+      format: videoFormat,
       resolution,
       fps,
       qualityBitrate,
@@ -124,6 +142,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   const handleConfirmAndRender = () => {
     setShowWarningConfirm(false);
+    setExportedFormat(videoFormat);
     const settings = getEffectiveSettings();
     onStartExport(settings);
   };
@@ -157,7 +176,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="w-full max-w-lg bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col gap-5">
+      <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-2xl relative flex flex-col gap-5">
         {/* Glow Header Accent */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-purple-500 to-cyan-400" />
 
@@ -168,9 +187,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               <Film className="w-5 h-5 text-rose-400" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Xuất Video MP4 Chất Lượng Cao</h3>
+              <h3 className="text-base font-bold text-white">
+                {language === 'vi' ? `Xuất Video ${videoFormat.toUpperCase()} Chất Lượng Cao` : `Export High-Quality ${videoFormat.toUpperCase()} Video`}
+              </h3>
               <p className="text-xs text-neutral-400">
-                Định dạng MP4 (H.264) • Chuẩn {aspectRatio} • {getResolutionDimensions()}
+                {language === 'vi' ? 'Định dạng' : 'Format'} {videoFormat.toUpperCase()} • {language === 'vi' ? 'Chuẩn' : 'Ratio'} {aspectRatio} • {getResolutionDimensions()}
               </p>
             </div>
           </div>
@@ -333,11 +354,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <div>
               <h4 className="text-base font-bold text-white">
                 {exportAudioTarget === 'full-playlist' && playlist && playlist.tracks.length > 1
-                  ? `Kết Xuất Toàn Bộ Playlist (${playlist.tracks.length} Bài) Hoàn Tất!`
-                  : 'Kết Xuất Video MP4 Hoàn Tất!'}
+                  ? (language === 'vi' ? `Kết Xuất Toàn Bộ Playlist (${playlist.tracks.length} Bài) Hoàn Tất!` : `Full Playlist (${playlist.tracks.length} Tracks) Export Complete!`)
+                  : (language === 'vi' ? `Kết Xuất Video ${exportedFormat.toUpperCase()} Hoàn Tất!` : `${exportedFormat.toUpperCase()} Video Export Complete!`)}
               </h4>
               <p className="text-xs text-neutral-400 mt-1">
-                Kích thước: {(exportedBlob.size / (1024 * 1024)).toFixed(1)} MB • Định dạng MP4 • 60 FPS • Sẵn sàng tải về hoặc đăng ngay lên TikTok / Shorts / Facebook / YouTube.
+                {language === 'vi'
+                  ? `Kích thước: ${(exportedBlob.size / (1024 * 1024)).toFixed(1)} MB • Định dạng ${exportedFormat.toUpperCase()} • ${fps} FPS • Sẵn sàng tải về hoặc đăng ngay lên TikTok / Shorts / Facebook / YouTube.`
+                  : `Size: ${(exportedBlob.size / (1024 * 1024)).toFixed(1)} MB • Format ${exportedFormat.toUpperCase()} • ${fps} FPS • Ready to download or upload to TikTok / Shorts / Facebook / YouTube.`}
               </p>
             </div>
 
@@ -348,7 +371,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-rose-500 via-purple-600 to-cyan-500 hover:opacity-95 text-white font-semibold text-sm shadow-xl shadow-rose-500/25 transition-all cursor-pointer active:scale-[0.99]"
               >
                 <Download className="w-4 h-4" />
-                <span>Tải Video MP4 Về Máy (.mp4)</span>
+                <span>
+                  {language === 'vi'
+                    ? `Tải Video ${exportedFormat.toUpperCase()} Về Máy (.${exportedFormat})`
+                    : `Download ${exportedFormat.toUpperCase()} Video (.${exportedFormat})`}
+                </span>
               </button>
 
               {/* Action Buttons: Export Again & Edit Settings */}
@@ -430,6 +457,34 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Video Format Selector (MP4 / MOV / WEBM) */}
+            <div>
+              <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider mb-2">
+                {language === 'vi' ? 'Định Dạng File Video Xuất (Format)' : 'Export Video Format'}
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {VIDEO_FORMATS.map((fmt) => (
+                  <button
+                    key={fmt.id}
+                    type="button"
+                    onClick={() => setVideoFormat(fmt.id)}
+                    className={`py-2 px-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      videoFormat === fmt.id
+                        ? 'bg-cyan-500/20 border-cyan-400 text-white font-bold ring-1 ring-cyan-400/40 shadow-sm'
+                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
+                    }`}
+                  >
+                    <span className="text-xs block uppercase font-mono font-bold">
+                      {fmt.label} <span className="text-[10px] opacity-75">({fmt.ext})</span>
+                    </span>
+                    <span className="text-[10px] text-neutral-400 block truncate mt-0.5">
+                      {language === 'vi' ? fmt.descVi : fmt.descEn}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Resolution Selector */}
             <div>

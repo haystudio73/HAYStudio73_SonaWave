@@ -1064,7 +1064,10 @@ export interface PlaylistConfig {
 
 export type ExportAudioTarget = 'current-track' | 'full-playlist';
 
+export type ExportVideoFormat = 'mp4' | 'mov' | 'webm';
+
 export interface ExportSettings {
+  format?: ExportVideoFormat;
   resolution: '1080p' | '720p' | '4k';
   fps: 30 | 60;
   qualityBitrate: 'high' | 'ultra' | 'medium';

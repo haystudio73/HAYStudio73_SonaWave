@@ -598,10 +598,12 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
           <div className="flex-1">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-semibold transition-all cursor-pointer"
+              title={language === 'vi' ? 'Đổi ảnh bìa' : 'Change Cover Art'}
+              aria-label={language === 'vi' ? 'Đổi ảnh bìa' : 'Change Cover Art'}
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-semibold transition-all cursor-pointer"
             >
-              <Upload className="w-3.5 h-3.5" />
-              <span>Đổi ảnh bìa</span>
+              <Upload className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">{language === 'vi' ? 'Đổi ảnh bìa' : 'Change Cover'}</span>
             </button>
             <p className="text-[10px] text-neutral-500 mt-1">
               Khuyên dùng ảnh vuông JPG / PNG độ nét cao
@@ -1130,10 +1132,16 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
           <div className="flex-1">
             <button
               onClick={() => logoInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition-all cursor-pointer"
+              title={track.logoUrl ? (language === 'vi' ? 'Đổi Logo PNG' : 'Change PNG Logo') : (language === 'vi' ? 'Tải lên Logo PNG' : 'Upload PNG Logo')}
+              aria-label={track.logoUrl ? (language === 'vi' ? 'Đổi Logo PNG' : 'Change PNG Logo') : (language === 'vi' ? 'Tải lên Logo PNG' : 'Upload PNG Logo')}
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 text-xs font-semibold transition-all cursor-pointer"
             >
-              <Upload className="w-3.5 h-3.5" />
-              <span>{track.logoUrl ? 'Đổi Logo PNG' : 'Tải lên Logo PNG'}</span>
+              <Upload className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">
+                {track.logoUrl
+                  ? (language === 'vi' ? 'Đổi Logo PNG' : 'Change PNG Logo')
+                  : (language === 'vi' ? 'Tải lên Logo PNG' : 'Upload PNG Logo')}
+              </span>
             </button>
             <p className="text-[10px] text-neutral-500 mt-1">
               Hỗ trợ PNG trong suốt, SVG, WebP làm watermark kênh

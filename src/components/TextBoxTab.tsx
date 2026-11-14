@@ -321,20 +321,23 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
             type="button"
             onClick={() => handleAddTracklistBox('title-duration')}
             title={language === 'vi' ? 'Tạo hộp chữ tự động điền danh sách bài hát (Thời gian & Tên)' : 'Create auto text box with audio playlist tracklist info (Time & Title)'}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-rose-600/30 hover:from-purple-600/45 hover:to-rose-600/45 border border-purple-500/50 text-purple-200 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
+            aria-label={language === 'vi' ? '+ Danh Sách Bài Hát (Tracklist)' : '+ Auto Tracklist Box'}
+            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-rose-600/30 hover:from-purple-600/45 hover:to-rose-600/45 border border-purple-500/50 text-purple-200 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
           >
-            <ListMusic className="w-3.5 h-3.5 text-purple-300" />
-            <span>{language === 'vi' ? '+ Danh Sách Bài Hát (Tracklist)' : '+ Auto Tracklist Box'}</span>
+            <ListMusic className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-purple-300" />
+            <span className="hidden sm:inline">{language === 'vi' ? '+ Danh Sách Bài Hát (Tracklist)' : '+ Auto Tracklist Box'}</span>
           </button>
 
           {/* Standard Add Text Box */}
           <button
             type="button"
             onClick={() => handleAddBox()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600/25 hover:bg-rose-600/35 border border-rose-500/50 text-rose-300 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
+            title={language === 'vi' ? 'Thêm Hộp Chữ Mới' : 'Add Text Box'}
+            aria-label={language === 'vi' ? 'Thêm Hộp Chữ' : 'Add Text Box'}
+            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-600/25 hover:bg-rose-600/35 border border-rose-500/50 text-rose-300 text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{language === 'vi' ? 'Thêm Hộp Chữ' : 'Add Text Box'}</span>
+            <Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden sm:inline">{language === 'vi' ? 'Thêm Hộp Chữ' : 'Add Text Box'}</span>
           </button>
         </div>
       </div>
@@ -496,10 +499,11 @@ export const TextBoxTab: React.FC<TextBoxTabProps> = ({
                   type="button"
                   onClick={() => handleSyncTracklist(activeBox.id)}
                   title={language === 'vi' ? 'Đồng bộ lại danh sách bài hát mới nhất từ playlist' : 'Sync tracklist from current playlist'}
-                  className="px-2.5 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+                  aria-label={language === 'vi' ? 'Đồng Bộ Lại' : 'Sync Now'}
+                  className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
                 >
                   <RefreshCw className="w-3.5 h-3.5 text-purple-300" />
-                  <span>{language === 'vi' ? 'Đồng Bộ Lại' : 'Sync Now'}</span>
+                  <span className="hidden sm:inline">{language === 'vi' ? 'Đồng Bộ Lại' : 'Sync Now'}</span>
                 </button>
               </div>
 

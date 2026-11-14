@@ -8,35 +8,37 @@ Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">
 
 ---
 
-## ⚡ Quick Install (Start Here)
+## ⚡ Quick Install / Cài Đặt Nhanh (Start Here)
 
-Get **Sona Wave Pro** running locally in under 1 minute:
+Get **Sona Wave Pro** running locally in under 1 minute — *Hướng dẫn cài đặt và chạy Sona Wave Pro trên máy tính cá nhân chỉ trong chưa đầy 1 phút:*
 
-### 1. Prerequisites
-- **Node.js 18+** ([Download Node.js](https://nodejs.org/)) or **Bun** ([Download Bun](https://bun.sh/))
-- **Git**
+### 1. Prerequisites / Yêu cầu hệ thống
+- **Node.js 18+** ([Tải Node.js](https://nodejs.org/)) hoặc **Bun** ([Tải Bun](https://bun.sh/) — khuyên dùng vì tốc độ cài đặt cực nhanh)
+- **Git** ([Tải Git](https://git-scm.com/))
 
-### 2. Clone & Install
+### 2. Clone & Install / Tải mã nguồn & Cài đặt thư viện
 ```bash
+# Tải mã nguồn về máy và di chuyển vào thư mục dự án
 git clone https://github.com/haystudio73/HAYStudio73_SonaWave.git
 cd HAYStudio73_SonaWave
 
-# Using Bun (recommended, fastest)
+# Cài đặt thư viện bằng Bun (khuyên dùng, nhanh nhất)
 bun install
 
-# Or using npm
+# Hoặc cài đặt bằng npm
 npm install
 ```
 
-### 3. Run Development Server
+### 3. Run Development Server / Chạy ứng dụng
 ```bash
 bun run dev
-# or: npm run dev
+# hoặc / or: npm run dev
 ```
-Open **http://localhost:3000** in your browser — no `.env` setup required!
+Mở trình duyệt và truy cập **http://localhost:3000** — không cần thiết lập biến môi trường `.env`! *(Open http://localhost:3000 in your browser — no `.env` setup required!)*
 
-### 4. Update & Production Build
+### 4. Update & Production Build / Cập nhật & Đóng gói bản chạy chính thức
 ```bash
+# Kéo các tính năng mới nhất từ GitHub và build
 git pull origin main
 bun install && bun run build
 ```
@@ -55,7 +57,7 @@ bun install && bun run build
 - **10-Band Studio Master Graphic EQ**: Hardware-grade 10-band audio equalizer with real-time spectrum and custom sound presets.
 - **Multi-Track Audio Playlist**: Continuous background playback, track queue management, and individual song metadata.
 - **Customizable Backgrounds**: High-resolution curated library, custom image (JPG/PNG), dynamic video (MP4), gradients, and 11 multi-layer particle systems.
-- **Professional Video Export**: High-quality MP4 output (9:16, 1:1, 16:9, 4:5) up to 60FPS optimized for TikTok, YouTube Shorts, and Instagram Reels.
+- **Professional Multi-Format Video Export**: High-quality **MP4**, **MOV (QuickTime)**, and **WebM** output (9:16, 1:1, 16:9, 4:5) up to 4K / 60FPS optimized for TikTok, YouTube Shorts, Instagram Reels, CapCut, and pro NLE editors.
 
 ### New & Enhanced Features
 - **Direct Canvas Drag & Drop & Track Info 2D Position Controls** — Tương tác kéo thả trực tiếp ngay trên khung hình xem trước:
@@ -79,7 +81,11 @@ bun install && bun run build
 - **Playlist Track Queue: Tinh Giản Phím Mũi Tên (Remove Drag/Drop) & Bố Cục Gọn Nhẹ** — Loại bỏ kéo thả, phần Background riêng từng track và trường Artist riêng trong hàng đợi Playlist (`TITLE` ➔ `TRACK TITLE`), thay bằng nút mũi tên lên/xuống (▲/▼) chuẩn xác 100%.
 - **100% Comprehensive Bilingual Studio (Chuẩn Hóa Song Ngữ EN / VI)** — Toàn bộ giao diện phòng thu từ nhãn, tiêu đề, nút bấm, chú thích, menu ngữ cảnh và bảng thiết lập chuyên biệt đều được bản địa hóa song ngữ trọn vẹn giữa Tiếng Việt (VI) và Tiếng Anh (EN), phản hồi tức thì khi chuyển đổi ngôn ngữ.
 - **Multi-Layer Floating Particle Overlays (Max 5 Lớp & Đàn Bướm Phát Sáng - Butterflies)** — Hệ thống hiệu ứng hạt lơ lửng đa lớp chuyên nghiệp: cho phép xếp chồng tối đa **5 lớp hiệu ứng hạt độc lập** trên cùng một video; mỗi lớp có thể tự do chỉnh sửa, bật/tắt hiển thị (Show/Hide qua nút Mắt) và xóa bỏ (Delete); hỗ trợ đầy đủ **11 phong cách hạt** (Mưa Tự Nhiên, Tuyết Mùa Đông, Vệt Tốc Độ, Mưa Ruy Băng Lụa, Đoạn Ngắn Xoay 360°, Bong Bóng Cầu Vồng, Tăng Tốc Hyperspace 3D, Bụi Lofi Trôi, Sao Lấp Lánh, Những Hạt Lửa, và **Đàn Bướm Phát Sáng 2D** bay dập dờn co giãn cánh phối cảnh kèm vệt bụi tiên); hai tính năng tương tác âm thanh **Tăng tốc theo nhịp Beat (Accelerate on Beats)** và **Bừng sáng rực rỡ theo Bass Drop (Flash Brighter)** áp dụng đồng bộ toàn cục cho tất cả các lớp hạt.
-- **TikTok/Shorts Multi-Duration MP4 Export (15s, 30s, 60s, 90s, 120s, 180s)** — Mở rộng tùy chọn độ dài xuất video ngắn cho TikTok / YouTube Shorts / Reels: hỗ trợ đầy đủ 6 mốc thời lượng linh hoạt (15s, 30s, 60s / 1m, 90s / 1.5m, 120s / 2m, 180s / 3m) chuẩn theo chính sách video ngắn mới nhất của TikTok và YouTube Shorts (lên đến 3 phút). Giao diện trực quan kèm thanh trượt kéo chọn đoạn phát chính xác, tự động giới hạn theo độ dài bài hát hoặc toàn bộ playlist.
+- **Multi-Format Video Export (`MP4`, `MOV`, `WebM`) & TikTok/Shorts Multi-Duration (15s–180s)** — Bộ xuất video đa định dạng chuẩn phòng thu kèm tùy chọn thời lượng linh hoạt:
+  - **Định dạng `.MOV` (QuickTime Container - `video/quicktime`)**: Cho phép xuất trực tiếp file `.mov` chuẩn QuickTime (codec H.264 High Profile + âm thanh AAC 320kbps), tối ưu độ tương thích mượt mà khi đưa vào các phần mềm dựng phim hậu kỳ chuyên nghiệp như **CapCut, Final Cut Pro, Adobe Premiere Pro, DaVinci Resolve** và hệ sinh thái **macOS / Apple**.
+  - **Định dạng `.MP4` (H.264 / AAC)**: Định dạng phổ biến nhất, tương thích 100% khi đăng tải trực tiếp lên TikTok, YouTube Shorts, Facebook Reels và thiết bị di động.
+  - **Định dạng `.WebM` (VP9 / Opus)**: Dung lượng file gọn nhẹ, tốc độ mã hóa nhanh, tối ưu cho trình duyệt web và chia sẻ trực tuyến.
+  - **6 mốc thời lượng TikTok / Shorts / Reels**: Hỗ trợ xuất 15s, 30s, 60s (1m), 90s (1.5m), 120s (2m), 180s (3m) hoặc toàn bộ bài hát / toàn bộ playlist, kèm độ phân giải lên đến **4K (2160p)**, tốc độ khung hình **30 / 60 FPS** và tăng tốc phần cứng GPU.
 - **Multi-Image Slideshow Enforced Across Entire Playlist** — Khi thiết lập tính năng Multi-Image Slideshow (`mode === 'slides'`), hiệu ứng Slideshow tự động áp đặt lên toàn bộ Playlist khi có nhiều bài. Trục thời gian trình chiếu sử dụng đồng hồ lũy kế toàn dự án (`cumulativePlaylistTime`), giúp các slide chuyển cảnh mượt mà xuyên suốt qua các bài hát khác nhau mà không bị ngắt quãng, không bị giật lùi về slide đầu tiên, và không bị ghi đè bởi ảnh nền đơn khi chuyển track.
 - **Smart Display Hierarchy & Auto Remove Track Title on Single Audio** — Tách biệt rõ ràng Tiêu đề chính của toàn bộ dự án/Album (`Main Title of Playlist`) và Tên bài hát đang phát (`Track Title`). Đặc biệt, hệ thống **tự động loại bỏ / ẩn hoàn toàn Tên bài hát (Track Title)** khi playlist chỉ có 1 file nhạc duy nhất để tránh dư thừa trùng lặp thông tin trên video; khi danh sách có từ 2 bài hát trở lên, tính năng Track Title tự động kích hoạt hiển thị và cập nhật tên bài hát theo từng track đang phát.
 - **Slide Preset Library Full Viewer & Categories** — Mở rộng thư viện ảnh mẫu cho từng Slide: duyệt toàn bộ ảnh mẫu với bộ lọc danh mục (Tất cả, Cyberpunk, Lofi & Chill, Vũ Trụ, Sân Khấu DJ, Thiên Nhiên, Nghệ Thuật) và cửa sổ Modal xem/chọn ảnh nhanh chóng, hiển thị đầy đủ 100% kho ảnh.
@@ -103,7 +109,11 @@ bun install && bun run build
 - **Subtitle Formats**: SRT (SubRip), LRC (LyRiCs with millisecond precision)
 - **Background Input Formats**: JPG / PNG / WebP / MP4 Video
 - **Vector Animation Formats**: Lottie (.json) & dotLottie (.lottie)
-- **Video Export**: MP4 (H.264 / AAC) with configurable resolution, framerate (30/60 FPS), and bitrate
+- **Video Export**:
+  - **MP4 (`.mp4`)**: H.264 / AAC — phổ biến nhất cho TikTok, YouTube Shorts, Reels
+  - **MOV (`.mov`)**: QuickTime H.264 / AAC (`video/quicktime`) — tối ưu cho CapCut, Final Cut Pro, Premiere Pro, macOS
+  - **WebM (`.webm`)**: VP9 / Opus — nhẹ file, tối ưu cho web
+  - Hỗ trợ độ phân giải 720p / 1080p / 4K, khung hình 30 / 60 FPS và bitrate 8–24 Mbps
 - **Optimal Dimensions**: 
   - TikTok / Reels / Shorts: 1080x1920 (9:16 Vertical)
   - Instagram Feed / Square: 1080x1080 (1:1 Square)
@@ -628,8 +638,8 @@ Bảo vệ tuyệt đối công sức sáng tạo của người dùng và tối
    - Pick a background or upload custom image
 
 4. **Export Video**
-   - Select output quality and dimensions
-   - Choose export format (MP4)
+   - Select output quality and dimensions (720p, 1080p, 4K • 30/60 FPS)
+   - Choose export format (**MP4**, **MOV** QuickTime, or **WebM**)
    - Click export and download your video
   
 And more ...
@@ -715,9 +725,9 @@ bun run lint
 - Subtitle rendering on video
 
 ### Video Export
-- MP4 encoding with H.264 codec
-- Custom resolution support
-- Quality presets (SD, HD, Full HD)
+- Multi-format encoding: **MP4** (H.264), **MOV** (QuickTime `video/quicktime`), and **WebM** (VP9)
+- Custom resolution & aspect ratio support (9:16, 1:1, 16:9, 4:5)
+- Quality & bitrate presets (720p, 1080p Full HD, 4K Ultra HD)
 
 ## 🤝 Contributing
 
@@ -779,7 +789,7 @@ For issues, questions, or feature requests:
 - [x] Audio-reactive Lottie & DotLottie vector animation engine
 - [x] 10-band studio master graphic equalizer & custom preset manager
 - [x] Multi-track audio playlist & continuous background player with smart single-track title handling
-- [x] TikTok / Shorts MP4 export presets (15s, 30s, 60s, 90s, 120s, 180s)
+- [x] Multi-format video export (**MP4**, **MOV** QuickTime, **WebM**) & TikTok / Shorts duration presets (15s, 30s, 60s, 90s, 120s, 180s)
 - [x] Multi-project management, JSON backup, and local AutoSave recovery
 - [x] Safe in-app confirmation dialogs, About (`?`) license/author modal & Bilingual EN/VI UI
 - [ ] Cloud storage export integration (Google Drive / S3)

@@ -1684,7 +1684,7 @@ export const DEFAULT_TRACK: TrackMetadata = {
   showTitle: true,
   showArtist: true,
   showSubtitle: true,
-  cardStyle: 'vinyl',
+  cardStyle: 'rotating-badge',
   positionX: 50,
   positionY: 26,
   scale: 1.0,

@@ -1013,14 +1013,16 @@ export const BackgroundEffectsTab: React.FC<BackgroundEffectsTabProps> = ({
                   type="button"
                   onClick={handleAddLayer}
                   disabled={effectiveLayers.length >= 5}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  title={isVi ? 'Thêm Lớp Hạt Hiệu Ứng' : 'Add Particle FX Layer'}
+                  aria-label={isVi ? 'Thêm Lớp Hạt' : 'Add Layer'}
+                  className={`flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold transition-all ${
                     effectiveLayers.length >= 5
                       ? 'bg-neutral-800/60 text-neutral-500 border border-neutral-700/50 cursor-not-allowed'
                       : 'bg-amber-500 hover:bg-amber-400 text-neutral-950 shadow-md shadow-amber-500/20 cursor-pointer active:scale-95'
                   }`}
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{isVi ? 'Thêm Lớp Hạt' : 'Add Layer'}</span>
+                  <Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                  <span className="hidden sm:inline">{isVi ? 'Thêm Lớp Hạt' : 'Add Layer'}</span>
                 </button>
               </div>
 

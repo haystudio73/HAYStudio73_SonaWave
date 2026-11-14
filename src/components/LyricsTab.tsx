@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import { 
   LyricsConfig, 
   LyricLine, 
@@ -350,6 +350,352 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
   const [newPresetName, setNewPresetName] = useState('');
   const [isAddingPreset, setIsAddingPreset] = useState(false);
   const presetImportInputRef = useRef<HTMLInputElement>(null);
+  const presetPreviewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>(BUILTIN_LYRICS_PRESETS[0]?.id || '');
+
+  const allAvailablePresets = useMemo(() => {
+    return [
+      ...BUILTIN_LYRICS_PRESETS.map((p) => ({ ...p, isBuiltIn: true })),
+      ...customPresets.map((p) => ({ ...p, isBuiltIn: false })),
+    ];
+  }, [customPresets]);
+
+  const selectedPreset = useMemo(() => {
+    return (
+      allAvailablePresets.find((p) => p.id === selectedPresetId) ||
+      allAvailablePresets[0] ||
+      null
+    );
+  }, [allAvailablePresets, selectedPresetId]);
+
+  useEffect(() => {
+    const canvas = presetPreviewCanvasRef.current;
+    if (!canvas || !selectedPreset) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const pCfg: LyricsConfig = {
+      ...config,
+      ...selectedPreset.config,
+    };
+
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // 1. Dark Stage Backdrop with ambient glow tint
+    const glowTint = pCfg.glowColor || pCfg.activeColor || '#a855f7';
+    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+    bgGrad.addColorStop(0, '#09090f');
+    bgGrad.addColorStop(0.5, '#111222');
+    bgGrad.addColorStop(1, '#08090e');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    const radial = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, w * 0.55);
+    radial.addColorStop(0, `${glowTint}29`);
+    radial.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = radial;
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle grid lines for studio look
+    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+    ctx.lineWidth = 1;
+    for (let gx = 40; gx < w; gx += 40) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, h);
+      ctx.stroke();
+    }
+    for (let gy = 40; gy < h; gy += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(w, gy);
+      ctx.stroke();
+    }
+
+    const formatPreviewText = (txt: string) => {
+      if (pCfg.textTransform === 'uppercase') return txt.toUpperCase();
+      if (pCfg.textTransform === 'capitalize') return txt.replace(/\b\w/g, (l) => l.toUpperCase());
+      return txt;
+    };
+
+    const drawStyledPreviewText = (
+      txt: string,
+      tx: number,
+      ty: number,
+      fontSize: number,
+      isActive: boolean
+    ) => {
+      const fFam = pCfg.fontFamily || 'Be Vietnam Pro';
+      const fWeight = pCfg.fontWeight || 'bold';
+      const fStyle = pCfg.fontStyle === 'italic' ? 'italic ' : '';
+      ctx.font = `${fStyle}${fWeight} ${fontSize}px '${fFam}', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const baseColor = isActive ? (pCfg.activeColor || '#ffffff') : (pCfg.color || '#FFFFFF');
+      const fx = pCfg.fontEffect || 'none';
+      const fxColor = pCfg.fontEffectColor || pCfg.glowColor || '#06b6d4';
+
+      ctx.save();
+      if (fx === 'neon-glow') {
+        ctx.shadowColor = fxColor;
+        ctx.shadowBlur = isActive ? Math.max(14, (pCfg.glowIntensity || 16) * 0.9) : 6;
+        ctx.fillStyle = baseColor;
+        ctx.fillText(txt, tx, ty, w * 0.88);
+        if (isActive) {
+          ctx.shadowBlur = 6;
+          ctx.fillText(txt, tx, ty, w * 0.88);
+        }
+      } else if (fx === 'double-stroke') {
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = pCfg.strokeColor || '#000000';
+        ctx.lineWidth = Math.max(4, (pCfg.strokeWidth || 3) * 1.8);
+        ctx.strokeText(txt, tx, ty, w * 0.88);
+        ctx.strokeStyle = isActive ? fxColor : 'rgba(255,255,255,0.4)';
+        ctx.lineWidth = 2;
+        ctx.strokeText(txt, tx, ty, w * 0.88);
+        ctx.fillStyle = baseColor;
+        ctx.fillText(txt, tx, ty, w * 0.88);
+      } else if (fx === '3d-shadow') {
+        const depth = Math.min(10, pCfg.threeDDepth ?? 5);
+        const angleRad = ((pCfg.threeDAngle ?? 135) * Math.PI) / 180;
+        const stepX = Math.cos(angleRad);
+        const stepY = Math.sin(angleRad);
+        const dCol = pCfg.threeDColor || '#000000';
+        ctx.fillStyle = dCol;
+        for (let d = depth; d >= 1; d--) {
+          ctx.fillText(txt, tx + stepX * d, ty + stepY * d, w * 0.88);
+        }
+        if (pCfg.threeDStroke !== false) {
+          ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+          ctx.lineWidth = 1.5;
+          ctx.strokeText(txt, tx + stepX * depth, ty + stepY * depth, w * 0.88);
+        }
+        ctx.fillStyle = baseColor;
+        ctx.fillText(txt, tx, ty, w * 0.88);
+      } else if (fx === 'gradient-fill') {
+        const metrics = ctx.measureText(txt);
+        const gradAngle = ((pCfg.gradientAngle ?? 90) * Math.PI) / 180;
+        const halfW = metrics.width / 2;
+        const halfH = fontSize / 2;
+        const dx = Math.cos(gradAngle) * halfW;
+        const dy = Math.sin(gradAngle) * halfH;
+        const grad = ctx.createLinearGradient(tx - dx, ty - dy, tx + dx, ty + dy);
+        let c1 = pCfg.gradientColor1 || '#ff7e5f';
+        let c2 = pCfg.gradientColor2 || '#feb47b';
+        let c3 = pCfg.gradientColor3 || '#ffe066';
+        if (pCfg.gradientTheme && pCfg.gradientTheme !== 'custom') {
+          const found = LYRICS_GRADIENT_THEMES.find((t) => t.id === pCfg.gradientTheme);
+          if (found) {
+            c1 = found.colors[0];
+            c2 = found.colors[1];
+            c3 = found.colors[2];
+          }
+        }
+        grad.addColorStop(0, c1);
+        grad.addColorStop(0.5, c2);
+        grad.addColorStop(1, c3);
+        ctx.shadowColor = isActive ? c2 : 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = isActive ? 10 : 4;
+        ctx.fillStyle = grad;
+        ctx.fillText(txt, tx, ty, w * 0.88);
+      } else if (fx === 'metallic-chrome') {
+        const chromeGrad = ctx.createLinearGradient(0, ty - fontSize * 0.55, 0, ty + fontSize * 0.55);
+        chromeGrad.addColorStop(0, '#ffffff');
+        chromeGrad.addColorStop(0.3, '#cbd5e1');
+        chromeGrad.addColorStop(0.5, '#475569');
+        chromeGrad.addColorStop(0.8, '#94a3b8');
+        chromeGrad.addColorStop(1, '#ffffff');
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2.5;
+        ctx.strokeText(txt, tx, ty, w * 0.88);
+        ctx.fillStyle = chromeGrad;
+        ctx.fillText(txt, tx, ty, w * 0.88);
+      } else if (fx === 'comic-pop') {
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 4.5;
+        ctx.strokeText(txt, tx + 2.5, ty + 2.5, w * 0.88);
+        ctx.strokeText(txt, tx, ty, w * 0.88);
+        ctx.fillStyle = isActive ? (pCfg.fontEffectColor || '#facc15') : baseColor;
+        ctx.fillText(txt, tx, ty, w * 0.88);
+      } else {
+        if (isActive && (pCfg.glowIntensity || 0) > 0) {
+          ctx.shadowColor = pCfg.glowColor || '#ec4899';
+          ctx.shadowBlur = Math.min(18, pCfg.glowIntensity || 10);
+        } else {
+          ctx.shadowColor = 'rgba(0,0,0,0.75)';
+          ctx.shadowBlur = 5;
+        }
+        ctx.fillStyle = baseColor;
+        ctx.fillText(txt, tx, ty, w * 0.88);
+      }
+
+      if (pCfg.textDecoration === 'underline') {
+        const lineW = Math.min(w * 0.88, ctx.measureText(txt).width);
+        ctx.beginPath();
+        ctx.moveTo(tx - lineW / 2, ty + fontSize * 0.56);
+        ctx.lineTo(tx + lineW / 2, ty + fontSize * 0.56);
+        ctx.strokeStyle = isActive ? (pCfg.glowColor || baseColor) : baseColor;
+        ctx.lineWidth = Math.max(1.5, fontSize * 0.08);
+        ctx.stroke();
+      }
+      ctx.restore();
+    };
+
+    const drawSweptLine = (txt: string, tx: number, ty: number, fontSize: number, progress: number) => {
+      const fFam = pCfg.fontFamily || 'Be Vietnam Pro';
+      const fWeight = pCfg.fontWeight || 'bold';
+      const fStyle = pCfg.fontStyle === 'italic' ? 'italic ' : '';
+      ctx.font = `${fStyle}${fWeight} ${fontSize}px '${fFam}', sans-serif`;
+      const tw = Math.min(w * 0.86, ctx.measureText(txt).width);
+      const textLeft = tx - tw / 2;
+
+      if (pCfg.showBackgroundPill) {
+        const pillW = Math.min(w * 0.92, tw + 34);
+        const pillH = fontSize * 1.95;
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(tx - pillW / 2, ty - pillH / 2, pillW, pillH, pillH / 2);
+        ctx.fillStyle = pCfg.pillColor || 'rgba(10, 14, 28, 0.72)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      drawStyledPreviewText(txt, tx, ty, fontSize, false);
+
+      const fillW = tw * progress;
+      if (fillW > 1) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(textLeft - 8, ty - fontSize * 1.8, fillW + 8, fontSize * 3.6);
+        ctx.clip();
+        drawStyledPreviewText(txt, tx, ty, fontSize, true);
+        ctx.restore();
+
+        // Cursor dot/star preview
+        const sweepMode = pCfg.karaokeSweepMode || 'star-flying';
+        if (sweepMode !== 'color-only') {
+          const cx = textLeft + fillW;
+          const cy = ty - fontSize * 0.72;
+          ctx.save();
+          ctx.translate(cx, cy);
+          if (sweepMode === 'bouncing-ball') {
+            ctx.shadowColor = pCfg.glowColor || pCfg.activeColor || '#38bdf8';
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = pCfg.activeColor || '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(0, 0, Math.max(4.5, fontSize * 0.24), 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.shadowColor = '#facc15';
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = '#facc15';
+            const sr = Math.max(6, fontSize * 0.34);
+            ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+              const r = i % 2 === 0 ? sr : sr * 0.45;
+              const a = (i * Math.PI) / 5 - Math.PI / 2;
+              if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+              else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+    };
+
+    const line1 = formatPreviewText(
+      language === 'vi' ? 'Đêm nay ánh trăng soi sáng...' : 'Moonlight shining through the night...'
+    );
+    const line2 = formatPreviewText(
+      language === 'vi' ? 'Nhịp tim khẽ ngân vang mãi' : 'Heartbeats echoing in rhythm'
+    );
+    const prevTxt = formatPreviewText(
+      language === 'vi' ? 'Giai điệu dịu êm vang lên' : 'Soft melodies drifting in'
+    );
+    const next2Txt = formatPreviewText(
+      language === 'vi' ? 'Cùng hòa vào khúc ca này' : 'Singing along to every beat'
+    );
+
+    const previewFontSize = Math.max(16, Math.min(28, (pCfg.fontSize || 24) * 0.92));
+
+    if (pCfg.style === 'karaoke-duo') {
+      drawSweptLine(line1, w * 0.5, h * 0.36, previewFontSize, 0.58);
+      drawStyledPreviewText(line2, w * 0.5, h * 0.68, previewFontSize, false);
+    } else if (pCfg.style === 'karaoke-single') {
+      drawSweptLine(line1, w * 0.5, h * 0.52, previewFontSize * 1.05, 0.62);
+    } else if (pCfg.style === 'karaoke') {
+      ctx.save();
+      ctx.globalAlpha = 0.42;
+      drawStyledPreviewText(prevTxt, w * 0.5, h * 0.23, previewFontSize * 0.74, false);
+      ctx.restore();
+      drawSweptLine(line1, w * 0.5, h * 0.5, previewFontSize, 0.58);
+      ctx.save();
+      ctx.globalAlpha = 0.42;
+      drawStyledPreviewText(line2, w * 0.5, h * 0.77, previewFontSize * 0.74, false);
+      ctx.restore();
+    } else if (pCfg.style === 'teleprompter-4lines') {
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      drawStyledPreviewText(prevTxt, w * 0.5, h * 0.17, previewFontSize * 0.72, false);
+      ctx.restore();
+      drawSweptLine(line1, w * 0.5, h * 0.41, previewFontSize * 0.98, 0.6);
+      ctx.save();
+      ctx.globalAlpha = 0.62;
+      drawStyledPreviewText(line2, w * 0.5, h * 0.65, previewFontSize * 0.78, false);
+      ctx.globalAlpha = 0.3;
+      drawStyledPreviewText(next2Txt, w * 0.5, h * 0.86, previewFontSize * 0.68, false);
+      ctx.restore();
+    } else if (pCfg.style === 'subtitle-bar') {
+      const barW = w * 0.84;
+      const barH = previewFontSize * 2.15;
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect((w - barW) / 2, h * 0.5 - barH / 2, barW, barH, 14);
+      ctx.fillStyle = pCfg.pillColor || 'rgba(10, 15, 30, 0.78)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+      drawStyledPreviewText(line1, w * 0.5, h * 0.5, previewFontSize, true);
+    } else {
+      // minimal-glow
+      if (pCfg.minimalGlowAutoTwoLines) {
+        if (pCfg.showBackgroundPill) {
+          const pillW = w * 0.84;
+          const pillH = previewFontSize * 3.1;
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect((w - pillW) / 2, h * 0.5 - pillH / 2, pillW, pillH, 16);
+          ctx.fillStyle = pCfg.pillColor || 'rgba(10, 14, 28, 0.72)';
+          ctx.fill();
+          ctx.restore();
+        }
+        drawStyledPreviewText(line1, w * 0.5, h * 0.38, previewFontSize * 0.94, true);
+        drawStyledPreviewText(line2, w * 0.5, h * 0.64, previewFontSize * 0.94, true);
+      } else {
+        if (pCfg.showBackgroundPill) {
+          const pillW = w * 0.84;
+          const pillH = previewFontSize * 2.0;
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect((w - pillW) / 2, h * 0.5 - pillH / 2, pillW, pillH, 14);
+          ctx.fillStyle = pCfg.pillColor || 'rgba(10, 14, 28, 0.72)';
+          ctx.fill();
+          ctx.restore();
+        }
+        drawStyledPreviewText(line1, w * 0.5, h * 0.5, previewFontSize, true);
+      }
+    }
+  }, [selectedPreset, config, language]);
 
   const handleSaveCurrentPreset = () => {
     if (customPresets.length >= 10) {
@@ -365,6 +711,7 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
     };
     const updated = [newPreset, ...customPresets].slice(0, 10);
     setCustomPresets(updated);
+    setSelectedPresetId(newPreset.id);
     try {
       localStorage.setItem('sonawave_custom_lyrics_presets_v1', JSON.stringify(updated));
     } catch (e) {
@@ -378,6 +725,9 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
   const handleDeletePreset = (id: string, name: string) => {
     const updated = customPresets.filter(p => p.id !== id);
     setCustomPresets(updated);
+    if (selectedPresetId === id) {
+      setSelectedPresetId(updated[0]?.id || BUILTIN_LYRICS_PRESETS[0]?.id || '');
+    }
     try {
       localStorage.setItem('sonawave_custom_lyrics_presets_v1', JSON.stringify(updated));
     } catch (e) {
@@ -499,8 +849,11 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
           } catch (err) {
             console.error(err);
           }
-          if (imported[0]?.config) {
-            handleApplyPreset(imported[0].config, imported[0].name);
+          if (imported[0]) {
+            setSelectedPresetId(imported[0].id);
+            if (imported[0].config) {
+              handleApplyPreset(imported[0].config, imported[0].name);
+            }
           }
           showToast(language === 'vi' ? `Đã nạp ${imported.length} preset từ file .lyrics!` : `Imported ${imported.length} preset(s) from .lyrics!`);
         } else {
@@ -846,10 +1199,11 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                 type="button"
                 onClick={() => batchLyricsInputRef.current?.click()}
                 title={language === 'vi' ? 'Nạp nhiều file .LRC/.SRT cùng lúc, hệ thống tự động ghép theo tên bài hát' : 'Batch import .lrc/.srt files'}
-                className="px-2.5 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/40 border border-purple-500/50 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                aria-label={language === 'vi' ? 'Nạp Lời Hàng Loạt (.LRC/.SRT)' : 'Batch Lyrics (.lrc/.srt)'}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/40 border border-purple-500/50 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
               >
                 <Upload className="w-3.5 h-3.5 text-purple-300" />
-                <span>{language === 'vi' ? 'Nạp Lời Hàng Loạt (.LRC/.SRT)' : 'Batch Lyrics (.lrc/.srt)'}</span>
+                <span className="hidden sm:inline">{language === 'vi' ? 'Nạp Lời Hàng Loạt (.LRC/.SRT)' : 'Batch Lyrics (.lrc/.srt)'}</span>
               </button>
 
               <button
@@ -859,10 +1213,11 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                   setIsPasteModalOpen(true);
                 }}
                 title={language === 'vi' ? 'Dán nhanh văn bản hoặc nội dung file lời cho bài này' : 'Quick paste lyrics text'}
-                className="px-2.5 py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+                aria-label={language === 'vi' ? 'Dán Lời Nhanh' : 'Paste'}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <FileText className="w-3.5 h-3.5 text-neutral-400" />
-                <span>{language === 'vi' ? 'Dán Lời Nhanh' : 'Paste'}</span>
+                <span className="hidden sm:inline">{language === 'vi' ? 'Dán Lời Nhanh' : 'Paste'}</span>
               </button>
 
               {onNavigateToPlaylistTab && (
@@ -953,10 +1308,11 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                       }
                     }}
                     title={language === 'vi' ? 'Phát bài hát này ngay trên Visualizer' : 'Play this track'}
-                    className="px-2.5 py-1 rounded-lg bg-rose-600/30 hover:bg-rose-600/40 border border-rose-500/40 text-rose-200 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+                    aria-label={language === 'vi' ? 'Phát Bài Này' : 'Play Track'}
+                    className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg bg-rose-600/30 hover:bg-rose-600/40 border border-rose-500/40 text-rose-200 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
                   >
-                    <Play className="w-3 h-3 text-rose-300 fill-rose-300" />
-                    <span>{language === 'vi' ? 'Phát Bài Này' : 'Play Track'}</span>
+                    <Play className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-rose-300 fill-rose-300" />
+                    <span className="hidden sm:inline">{language === 'vi' ? 'Phát Bài Này' : 'Play Track'}</span>
                   </button>
                 )}
 
@@ -965,9 +1321,10 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                   onClick={handleApplyToAllTracks}
                   disabled={lyrics.length === 0}
                   title={language === 'vi' ? 'Áp dụng câu hát này cho toàn bộ danh sách' : 'Apply these lyrics to all tracks'}
-                  className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[11px] font-semibold transition-all disabled:opacity-30 cursor-pointer flex items-center gap-1"
+                  aria-label={language === 'vi' ? 'Chép Cho Mọi Bài' : 'Copy All'}
+                  className="p-1.5 sm:px-2 sm:py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[11px] font-semibold transition-all disabled:opacity-30 cursor-pointer flex items-center gap-1"
                 >
-                  <RefreshCw className="w-3 h-3 text-neutral-400" />
+                  <RefreshCw className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-neutral-400" />
                   <span className="hidden sm:inline">{language === 'vi' ? 'Chép Cho Mọi Bài' : 'Copy All'}</span>
                 </button>
 
@@ -976,10 +1333,11 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                     type="button"
                     onClick={handleClearViewedLyrics}
                     title={language === 'vi' ? 'Xóa toàn bộ câu hát của bài này' : 'Clear lyrics'}
-                    className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-rose-500/20 text-neutral-300 hover:text-rose-300 text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1"
+                    aria-label={language === 'vi' ? 'Xóa Lời' : 'Clear'}
+                    className="p-1.5 sm:px-2 sm:py-1 rounded-lg bg-neutral-800 hover:bg-rose-500/20 text-neutral-300 hover:text-rose-300 text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1"
                   >
-                    <Trash2 className="w-3 h-3 text-rose-400" />
-                    <span>{language === 'vi' ? 'Xóa Lời' : 'Clear'}</span>
+                    <Trash2 className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-rose-400" />
+                    <span className="hidden sm:inline">{language === 'vi' ? 'Xóa Lời' : 'Clear'}</span>
                   </button>
                 )}
               </div>
@@ -1084,19 +1442,23 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
         <div className="grid grid-cols-2 gap-2 pt-1">
           <button
             onClick={() => fileInputRef.current?.click()}
+            title={t.uploadLrcSrt || 'Tải File .SRT / .LRC'}
+            aria-label={t.uploadLrcSrt || 'Tải File .SRT / .LRC'}
             className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 text-xs font-semibold transition-all cursor-pointer"
           >
-            <Upload className="w-3.5 h-3.5" />
-            <span>{t.uploadLrcSrt || 'Tải File .SRT / .LRC'}</span>
+            <Upload className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden sm:inline">{t.uploadLrcSrt || 'Tải File .SRT / .LRC'}</span>
           </button>
 
           <button
             onClick={handleExportSRT}
             disabled={lyrics.length === 0}
+            title={t.exportLyricsSrt || 'Xuất file .SRT'}
+            aria-label={t.exportLyricsSrt || 'Xuất file .SRT'}
             className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-neutral-800/80 hover:bg-neutral-700 border border-neutral-700 text-neutral-300 text-xs font-medium transition-all disabled:opacity-40 cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>{t.exportLyricsSrt || 'Xuất file .SRT'}</span>
+            <Download className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden sm:inline">{t.exportLyricsSrt || 'Xuất file .SRT'}</span>
           </button>
         </div>
       </div>
@@ -1126,10 +1488,11 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
               type="button"
               onClick={() => presetImportInputRef.current?.click()}
               title={language === 'vi' ? 'Nhập file preset (.lyrics hoặc .json)' : 'Import .lyrics or .json file'}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-[11px] font-medium border border-neutral-700 transition-colors cursor-pointer"
+              aria-label={language === 'vi' ? 'Nạp .lyrics' : 'Import'}
+              className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-[11px] font-medium border border-neutral-700 transition-colors cursor-pointer"
             >
-              <Upload className="w-3 h-3 text-cyan-400" />
-              <span>{language === 'vi' ? 'Nạp .lyrics' : 'Import'}</span>
+              <Upload className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-cyan-400" />
+              <span className="hidden sm:inline">{language === 'vi' ? 'Nạp .lyrics' : 'Import'}</span>
             </button>
 
             {customPresets.length > 0 && (
@@ -1137,20 +1500,23 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
                 type="button"
                 onClick={handleExportAllPresets}
                 title={language === 'vi' ? 'Xuất toàn bộ preset ra file .lyrics' : 'Export all presets as .lyrics'}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-[11px] font-medium border border-neutral-700 transition-colors cursor-pointer"
+                aria-label={language === 'vi' ? 'Xuất hết .lyrics' : 'Export All'}
+                className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-[11px] font-medium border border-neutral-700 transition-colors cursor-pointer"
               >
-                <FolderDown className="w-3 h-3 text-emerald-400" />
-                <span>{language === 'vi' ? 'Xuất hết .lyrics' : 'Export All'}</span>
+                <FolderDown className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-emerald-400" />
+                <span className="hidden sm:inline">{language === 'vi' ? 'Xuất hết .lyrics' : 'Export All'}</span>
               </button>
             )}
 
             <button
               type="button"
               onClick={() => setIsAddingPreset(!isAddingPreset)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-semibold transition-colors cursor-pointer"
+              title={language === 'vi' ? 'Lưu Preset hiện tại' : 'Save Preset'}
+              aria-label={language === 'vi' ? 'Lưu Preset' : 'Save Preset'}
+              className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-semibold transition-colors cursor-pointer"
             >
-              <Save className="w-3 h-3" />
-              <span>{language === 'vi' ? 'Lưu Preset' : 'Save Preset'}</span>
+              <Save className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+              <span className="hidden sm:inline">{language === 'vi' ? 'Lưu Preset' : 'Save Preset'}</span>
             </button>
           </div>
         </div>
@@ -1177,91 +1543,182 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
               <button
                 type="button"
                 onClick={handleSaveCurrentPreset}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                title={language === 'vi' ? 'Lưu' : 'Save'}
+                aria-label={language === 'vi' ? 'Lưu' : 'Save'}
+                className="p-2 sm:px-3 sm:py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer"
               >
-                <Check className="w-3 h-3" />
-                <span>{language === 'vi' ? 'Lưu' : 'Save'}</span>
+                <Check className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                <span className="hidden sm:inline">{language === 'vi' ? 'Lưu' : 'Save'}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setIsAddingPreset(false)}
-                className="px-2 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-xs cursor-pointer"
+                title={language === 'vi' ? 'Hủy' : 'Cancel'}
+                aria-label={language === 'vi' ? 'Hủy' : 'Cancel'}
+                className="p-2 sm:px-2 sm:py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-xs cursor-pointer"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
               </button>
             </div>
           </div>
         )}
 
-        {/* Built-in Presets */}
-        <div>
-          <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block mb-1.5">
-            {language === 'vi' ? 'Presets Có Sẵn (Studio Templates):' : 'Built-in Studio Presets:'}
-          </span>
-          <div className="flex flex-wrap gap-1.5">
-            {BUILTIN_LYRICS_PRESETS.map((bp) => (
-              <button
-                key={bp.id}
-                type="button"
-                onClick={() => handleApplyPreset(bp.config, bp.name)}
-                className="px-2.5 py-1 rounded-xl bg-neutral-800/90 hover:bg-neutral-700 border border-neutral-700 text-[11px] text-neutral-200 hover:text-white transition-all flex items-center gap-1.5 group cursor-pointer"
-              >
-                <Sparkles className="w-3 h-3 text-amber-400 group-hover:rotate-12 transition-transform" />
-                <span>{bp.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Custom Presets List */}
-        {customPresets.length > 0 && (
-          <div className="pt-2 border-t border-neutral-800/60">
-            <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block mb-1.5">
-              {language === 'vi' ? `Presets Của Bạn (${customPresets.length}/10):` : `Your Presets (${customPresets.length}/10):`}
+        {/* List Selector Box (Hộp Chọn Danh Sách Preset) */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
+              {language === 'vi' ? 'Chọn Preset từ danh sách:' : 'Select Preset from List:'}
+            </label>
+            <span className="text-[10px] text-neutral-500">
+              {BUILTIN_LYRICS_PRESETS.length} Studio + {customPresets.length}/10 Custom
             </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {customPresets.map((cp) => (
-                <div
-                  key={cp.id}
-                  className="flex items-center justify-between p-2 rounded-xl bg-neutral-950/60 border border-neutral-800/80 hover:border-purple-500/40 transition-colors"
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleApplyPreset(cp.config, cp.name)}
-                    className="flex-1 text-left truncate mr-2 cursor-pointer"
-                    title={language === 'vi' ? 'Nhấn để áp dụng preset này' : 'Click to apply preset'}
-                  >
-                    <span className="text-xs font-semibold text-neutral-200 block truncate hover:text-purple-300">
-                      {cp.name}
-                    </span>
-                    <span className="text-[9px] text-neutral-500">
-                      {new Date(cp.createdAt).toLocaleDateString()}
-                    </span>
-                  </button>
+          </div>
 
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedPreset?.id || ''}
+              onChange={(e) => setSelectedPresetId(e.target.value)}
+              className="flex-1 bg-neutral-950 border border-neutral-700 hover:border-purple-500/60 focus:border-purple-500 rounded-xl px-3 py-2 text-xs text-white font-medium focus:outline-none transition-colors cursor-pointer"
+            >
+              <optgroup label={language === 'vi' ? '✨ Studio Templates (Có sẵn)' : '✨ Studio Templates (Built-in)'}>
+                {BUILTIN_LYRICS_PRESETS.map((bp) => (
+                  <option key={bp.id} value={bp.id} className="bg-neutral-900 text-white">
+                    ★ {bp.name}
+                  </option>
+                ))}
+              </optgroup>
+              {customPresets.length > 0 && (
+                <optgroup
+                  label={
+                    language === 'vi'
+                      ? `💾 Presets Của Bạn (${customPresets.length}/10)`
+                      : `💾 Your Presets (${customPresets.length}/10)`
+                  }
+                >
+                  {customPresets.map((cp) => (
+                    <option key={cp.id} value={cp.id} className="bg-neutral-900 text-white">
+                      ● {cp.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+
+            {selectedPreset && (
+              <button
+                type="button"
+                onClick={() => handleApplyPreset(selectedPreset.config, selectedPreset.name)}
+                title={language === 'vi' ? 'Áp dụng Preset đã chọn' : 'Apply selected Preset'}
+                aria-label={language === 'vi' ? 'Áp Dụng' : 'Apply'}
+                className="p-2 sm:px-3 sm:py-2 rounded-xl bg-gradient-to-r from-purple-600 to-rose-500 hover:opacity-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-purple-500/20 transition-all cursor-pointer shrink-0 active:scale-95"
+              >
+                <Check className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                <span className="hidden sm:inline">{language === 'vi' ? 'Áp Dụng' : 'Apply'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Live Preset Preview Card Below the Select Box */}
+          {selectedPreset && (
+            <div className="p-3 rounded-xl bg-neutral-950/90 border border-neutral-800 space-y-2.5 animate-fade-in">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="text-xs font-bold text-white truncate">
+                    {selectedPreset.name}
+                  </span>
+                  <span
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${
+                      selectedPreset.isBuiltIn
+                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                        : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                    }`}
+                  >
+                    {selectedPreset.isBuiltIn
+                      ? 'Studio'
+                      : language === 'vi'
+                      ? 'Tự lưu'
+                      : 'Custom'}
+                  </span>
+                </div>
+
+                {!selectedPreset.isBuiltIn && (
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
-                      onClick={() => handleExportSinglePreset(cp)}
+                      onClick={() =>
+                        handleExportSinglePreset({
+                          id: selectedPreset.id,
+                          name: selectedPreset.name,
+                          createdAt: selectedPreset.createdAt,
+                          config: selectedPreset.config,
+                        })
+                      }
                       title={language === 'vi' ? 'Tải file .lyrics về máy' : 'Download .lyrics file'}
-                      className="p-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-cyan-300 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-cyan-300 transition-colors cursor-pointer"
                     >
-                      <FileDown className="w-3 h-3" />
+                      <FileDown className="w-3.5 h-3.5" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDeletePreset(cp.id, cp.name)}
+                      onClick={() => handleDeletePreset(selectedPreset.id, selectedPreset.name)}
                       title={language === 'vi' ? 'Xóa preset này' : 'Delete preset'}
-                      className="p-1 rounded-lg bg-neutral-800 hover:bg-rose-950/50 text-neutral-400 hover:text-rose-400 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg bg-neutral-800 hover:bg-rose-950/60 text-neutral-400 hover:text-rose-400 transition-colors cursor-pointer"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                )}
+              </div>
+
+              {/* Visual Canvas Preview */}
+              <div className="relative">
+                <canvas
+                  ref={presetPreviewCanvasRef}
+                  width={680}
+                  height={200}
+                  className="w-full h-32 rounded-xl border border-neutral-800/90 block bg-neutral-950"
+                />
+                <span className="absolute top-2 left-2.5 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-black/60 text-neutral-300 border border-white/10 backdrop-blur-sm">
+                  {language === 'vi' ? 'Mẫu Xem Trước (Preview)' : 'Live Preview'}
+                </span>
+              </div>
+
+              {/* Preset Specifications Summary */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[10px] text-neutral-400">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded-md bg-neutral-900 border border-neutral-800 text-neutral-300 font-medium">
+                    {STYLES.find((s) => s.id === (selectedPreset.config.style || 'minimal-glow'))?.[
+                      language === 'vi' ? 'labelVi' : 'labelEn'
+                    ] || selectedPreset.config.style}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-neutral-900 border border-neutral-800 text-purple-300">
+                    {selectedPreset.config.fontFamily || 'Be Vietnam Pro'}
+                  </span>
+                  {selectedPreset.config.fontEffect && selectedPreset.config.fontEffect !== 'none' && (
+                    <span className="px-2 py-0.5 rounded-md bg-neutral-900 border border-neutral-800 text-amber-300">
+                      {selectedPreset.config.fontEffect}
+                    </span>
+                  )}
+                  {(selectedPreset.config.inEffect && selectedPreset.config.inEffect !== 'none') ||
+                  (selectedPreset.config.outEffect && selectedPreset.config.outEffect !== 'none') ? (
+                    <span className="px-2 py-0.5 rounded-md bg-neutral-900 border border-neutral-800 text-cyan-300">
+                      {selectedPreset.config.inEffect || 'none'} → {selectedPreset.config.outEffect || 'none'}
+                    </span>
+                  ) : null}
                 </div>
-              ))}
+
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset(selectedPreset.config, selectedPreset.name)}
+                  className="text-[11px] font-semibold text-purple-300 hover:text-white underline underline-offset-2 cursor-pointer"
+                >
+                  {language === 'vi' ? 'Áp dụng mẫu này →' : 'Apply this preset →'}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* 2. Lyrics Display Style */}
@@ -2285,10 +2742,12 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
 
             <button
               onClick={handleAddLine}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-sm"
+              title={t.addLyricLine || 'Thêm câu'}
+              aria-label={t.addLyricLine || 'Thêm câu'}
+              className="flex items-center gap-1 p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-white text-xs font-semibold transition-all cursor-pointer shadow-sm"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{t.addLyricLine || 'Thêm câu'}</span>
+              <Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">{t.addLyricLine || 'Thêm câu'}</span>
             </button>
           </div>
         </div>
@@ -2308,11 +2767,12 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
 
               <button
                 onClick={handleAutoFixAllOverlaps}
-                className="px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0"
-                title="Tự động căn chỉnh và khử chồng lấn thời gian giữa các câu liên tiếp"
+                className="p-2 sm:px-2.5 sm:py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0"
+                title={language === 'vi' ? 'Tự động căn chỉnh và khử chồng lấn thời gian giữa các câu liên tiếp' : 'Auto-Fix Overlaps'}
+                aria-label={t.autoFixOverlaps || 'Tự Động Sửa Chồng Lấn'}
               >
                 <Wrench className="w-3.5 h-3.5" />
-                <span>{t.autoFixOverlaps || 'Tự Động Sửa Chồng Lấn'}</span>
+                <span className="hidden sm:inline">{t.autoFixOverlaps || 'Tự Động Sửa Chồng Lấn'}</span>
               </button>
             </div>
             <p className="text-[11px] text-amber-300/80 leading-relaxed">

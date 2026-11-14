@@ -3,6 +3,8 @@
  * Exports high-definition video with canvas visualizer + synchronized audio stream
  */
 
+import { ExportVideoFormat } from '../types';
+
 export interface ExportProgress {
   progress: number; // 0 to 100
   currentSeconds: number;
@@ -17,38 +19,77 @@ export class VideoExporter {
   private activeStream: MediaStream | null = null;
 
   /**
-   * Get optimal supported MIME type (Prefers GPU hardware-accelerated H264/MP4 format if requested)
+   * Return standard container MIME type for a requested ExportVideoFormat
    */
-  public static getSupportedMimeType(hardwareAcceleration: 'prefer-hardware' | 'auto' | 'software' = 'prefer-hardware'): string {
-    const hwTypes = [
-      'video/mp4;codecs=avc1.640028,mp4a.40.2', // High Profile H.264 (Hardware-accelerated NVENC / Apple VideoToolbox / Intel QSV)
+  public static getFormatContainerMime(format: ExportVideoFormat = 'mp4'): string {
+    switch (format) {
+      case 'mov':
+        return 'video/quicktime';
+      case 'webm':
+        return 'video/webm';
+      case 'mp4':
+      default:
+        return 'video/mp4';
+    }
+  }
+
+  /**
+   * Get optimal supported MIME type for requested container format & hardware acceleration preference
+   */
+  public static getSupportedMimeType(
+    hardwareAcceleration: 'prefer-hardware' | 'auto' | 'software' = 'prefer-hardware',
+    format: ExportVideoFormat = 'mp4'
+  ): string {
+    const mp4HwTypes = [
+      'video/mp4;codecs=avc1.640028,mp4a.40.2', // High Profile H.264 (NVENC / VideoToolbox / QSV)
       'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
       'video/mp4;codecs=avc1,mp4a.40.2',
       'video/mp4;codecs=h264,aac',
       'video/mp4;codecs=h264,opus',
       'video/mp4',
+    ];
+
+    const mp4SwTypes = [
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+      'video/mp4;codecs=h264,aac',
+      'video/mp4',
       'video/webm;codecs=h264,opus',
       'video/webm;codecs=vp9,opus',
-      'video/webm;codecs=vp8,opus',
       'video/webm',
     ];
 
-    const swTypes = [
+    const movTypes = [
+      'video/quicktime;codecs=avc1.640028,mp4a.40.2',
+      'video/quicktime;codecs=avc1.42E01E,mp4a.40.2',
+      'video/quicktime',
+      ...mp4HwTypes,
+      'video/webm;codecs=h264,opus',
+      'video/webm',
+    ];
+
+    const webmTypes = [
       'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=h264,opus',
       'video/webm;codecs=vp8,opus',
-      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
-      'video/mp4',
       'video/webm',
+      ...mp4HwTypes,
     ];
 
-    const targetList = hardwareAcceleration === 'software' ? swTypes : hwTypes;
+    let targetList: string[];
+    if (format === 'webm') {
+      targetList = webmTypes;
+    } else if (format === 'mov') {
+      targetList = movTypes;
+    } else {
+      targetList = hardwareAcceleration === 'software' ? mp4SwTypes : [...mp4HwTypes, ...webmTypes];
+    }
 
     for (const type of targetList) {
       if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
         return type;
       }
     }
-    return 'video/mp4';
+    return VideoExporter.getFormatContainerMime(format);
   }
 
   /**
@@ -59,7 +100,8 @@ export class VideoExporter {
     audioStream: MediaStream | null,
     fps: number = 60,
     bitrateMultiplier: 'high' | 'ultra' | 'medium' = 'high',
-    hardwareAcceleration: 'prefer-hardware' | 'auto' | 'software' = 'prefer-hardware'
+    hardwareAcceleration: 'prefer-hardware' | 'auto' | 'software' = 'prefer-hardware',
+    format: ExportVideoFormat = 'mp4'
   ): Promise<Blob> {
     return new Promise((resolve, reject) => {
       this.recordedChunks = [];
@@ -89,7 +131,7 @@ export class VideoExporter {
           });
         }
 
-        const mimeType = VideoExporter.getSupportedMimeType(hardwareAcceleration);
+        const mimeType = VideoExporter.getSupportedMimeType(hardwareAcceleration, format);
 
         let videoBitrate = 14000000; // 14 Mbps for High Quality
         if (bitrateMultiplier === 'ultra') videoBitrate = 24000000;

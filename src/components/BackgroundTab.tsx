@@ -831,10 +831,12 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
             <button
               type="button"
               onClick={() => onApplyBackgroundToAllTracks(background)}
+              title={isVi ? 'Áp dụng hình nền này cho tất cả bài trong Playlist' : 'Apply this background to all tracks in playlist'}
+              aria-label={isVi ? 'Áp dụng hình nền này cho tất cả bài trong Playlist' : 'Apply this background to all tracks in playlist'}
               className="w-full py-2.5 px-4 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 text-xs font-semibold text-neutral-200 flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               <ListMusic className="w-4 h-4 text-cyan-400" />
-              <span>{isVi ? 'Áp dụng hình nền này cho tất cả bài trong Playlist' : 'Apply this background to all tracks in playlist'}</span>
+              <span className="hidden sm:inline">{isVi ? 'Áp dụng hình nền này cho tất cả bài trong Playlist' : 'Apply this background to all tracks in playlist'}</span>
             </button>
           )}
         </div>
@@ -886,10 +888,12 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
             <button
               type="button"
               onClick={handleAddSlide}
-              className="py-2 px-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+              title={isVi ? 'Thêm Slide Mới' : 'Add New Slide'}
+              aria-label={isVi ? '+ Thêm Slide Mới' : '+ Add New Slide'}
+              className="p-2.5 sm:py-2 sm:px-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>{isVi ? '+ Thêm Slide Mới' : '+ Add New Slide'}</span>
+              <span className="hidden sm:inline">{isVi ? '+ Thêm Slide Mới' : '+ Add New Slide'}</span>
             </button>
           </div>
 
@@ -1164,11 +1168,12 @@ export const BackgroundTab: React.FC<BackgroundTabProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setActiveSlidePresetModalId(slide.id)}
-                                className="px-2.5 py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/50 text-indigo-200 text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-sm"
+                                className="p-2 sm:px-2.5 sm:py-1.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/50 text-indigo-200 text-[10px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-sm"
                                 title={isVi ? 'Mở cửa sổ duyệt toàn bộ ảnh mẫu' : 'Open full presets library'}
+                                aria-label={isVi ? `Xem Thư Viện (${BACKGROUND_PRESETS.length})` : `Full Library (${BACKGROUND_PRESETS.length})`}
                               >
                                 <Grid className="w-3.5 h-3.5 text-indigo-400" />
-                                <span>{isVi ? `Xem Thư Viện (${BACKGROUND_PRESETS.length})` : `Full Library (${BACKGROUND_PRESETS.length})`}</span>
+                                <span className="hidden sm:inline">{isVi ? `Xem Thư Viện (${BACKGROUND_PRESETS.length})` : `Full Library (${BACKGROUND_PRESETS.length})`}</span>
                               </button>
                             </div>
 

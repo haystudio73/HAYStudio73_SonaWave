@@ -407,7 +407,7 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
         </div>
 
         {/* Action Button: Batch Add Files & Add Tracklist to Video */}
-        <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="pt-2 flex items-center gap-2">
           <input
             ref={fileInputRef}
             type="file"
@@ -420,10 +420,12 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
+            title={language === 'vi' ? 'Thêm Nhiều File Nhạc (Multi-Upload)' : 'Add Multiple Audio Tracks'}
+            aria-label={language === 'vi' ? 'Thêm Nhiều File Nhạc (Multi-Upload)' : 'Add Multiple Audio Tracks'}
             className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-rose-500 to-purple-600 hover:from-rose-600 hover:to-purple-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20 transition-all cursor-pointer active:scale-98 disabled:opacity-50"
           >
-            <Plus className="w-4 h-4" />
-            <span>
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">
               {isUploading
                 ? language === 'vi'
                   ? 'Đang nạp âm thanh...'
@@ -439,10 +441,11 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
               type="button"
               onClick={onAddTracklistBox}
               title={language === 'vi' ? 'Thêm hộp chữ danh sách bài hát (Thời gian & Tiêu đề) lên video visualizer' : 'Add audio tracklist info text box (Time & Title) to visualizer'}
-              className="py-2.5 px-3.5 rounded-xl bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/40 text-purple-200 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-98 whitespace-nowrap"
+              aria-label={language === 'vi' ? 'Hộp Tracklist Lên Video' : 'Tracklist to Video'}
+              className="py-2.5 px-3 sm:px-3.5 rounded-xl bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/40 text-purple-200 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer active:scale-98 whitespace-nowrap"
             >
-              <ListMusic className="w-4 h-4 text-purple-300" />
-              <span>
+              <ListMusic className="w-4 h-4 text-purple-300 shrink-0" />
+              <span className="hidden sm:inline">
                 {language === 'vi' ? 'Hộp Tracklist Lên Video' : 'Tracklist to Video'}
               </span>
             </button>
@@ -651,10 +654,11 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
                 onChangePlaylist({ ...playlist, tracks: res.tracks, currentIndex: res.newIndex });
               }}
               title={language === 'vi' ? 'Trộn thứ tự danh sách' : 'Shuffle track order'}
-              className="px-2 py-1.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
+              aria-label={language === 'vi' ? 'Trộn thứ tự danh sách' : 'Shuffle track order'}
+              className="p-2 sm:px-2 sm:py-1.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
             >
-              <Shuffle className="w-3 h-3 text-cyan-400" />
-              <span>{language === 'vi' ? 'Trộn Thứ Tự' : 'Shuffle'}</span>
+              <Shuffle className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-cyan-400" />
+              <span className="hidden sm:inline">{language === 'vi' ? 'Trộn Thứ Tự' : 'Shuffle'}</span>
             </button>
 
             <button
@@ -664,20 +668,22 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
                 onChangePlaylist({ ...playlist, tracks: res.tracks, currentIndex: res.newIndex });
               }}
               title={language === 'vi' ? 'Đảo ngược thứ tự danh sách' : 'Reverse track order'}
-              className="px-2 py-1.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
+              aria-label={language === 'vi' ? 'Đảo ngược thứ tự danh sách' : 'Reverse track order'}
+              className="p-2 sm:px-2 sm:py-1.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
             >
-              <ArrowUpDown className="w-3 h-3 text-purple-400" />
-              <span>{language === 'vi' ? 'Đảo Ngược' : 'Reverse'}</span>
+              <ArrowUpDown className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-purple-400" />
+              <span className="hidden sm:inline">{language === 'vi' ? 'Đảo Ngược' : 'Reverse'}</span>
             </button>
 
             <button
               type="button"
               onClick={handleApplyDefaultsToAll}
               title={language === 'vi' ? 'Áp dụng Fade mặc định cho toàn bộ bài hát' : 'Apply default fade to all'}
-              className="px-2 py-1.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 text-rose-300 hover:text-rose-200 text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
+              aria-label={language === 'vi' ? 'Áp dụng Fade mặc định cho toàn bộ bài hát' : 'Apply default fade to all'}
+              className="p-2 sm:px-2 sm:py-1.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 text-rose-300 hover:text-rose-200 text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
             >
-              <Sparkles className="w-3 h-3 text-rose-400" />
-              <span>{language === 'vi' ? 'Fade Toàn Bộ' : 'Sync Fade'}</span>
+              <Sparkles className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-rose-400" />
+              <span className="hidden sm:inline">{language === 'vi' ? 'Fade Toàn Bộ' : 'Sync Fade'}</span>
             </button>
           </div>
         </div>
@@ -730,10 +736,11 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
               type="button"
               onClick={() => batchLyricsInputRef.current?.click()}
               title={language === 'vi' ? 'Chọn nhiều file lời (.lrc, .srt) để tự động ghép vào từng bài' : 'Import multiple .lrc/.srt files'}
-              className="px-2.5 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/40 border border-purple-500/50 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              aria-label={language === 'vi' ? 'Nạp Lời Hàng Loạt (.LRC/.SRT)' : 'Batch Lyrics (.lrc/.srt)'}
+              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/40 border border-purple-500/50 text-purple-200 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
             >
               <Upload className="w-3.5 h-3.5 text-purple-300" />
-              <span>{language === 'vi' ? 'Nạp Lời Hàng Loạt (.LRC/.SRT)' : 'Batch Lyrics (.lrc/.srt)'}</span>
+              <span className="hidden sm:inline">{language === 'vi' ? 'Nạp Lời Hàng Loạt (.LRC/.SRT)' : 'Batch Lyrics (.lrc/.srt)'}</span>
             </button>
 
             {onNavigateToLyricsTab && (
@@ -741,10 +748,11 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
                 type="button"
                 onClick={() => onNavigateToLyricsTab(playlist.currentIndex)}
                 title={language === 'vi' ? 'Mở Tab Lời Bài Hát & Karaoke để chỉnh sửa câu chữ và hiệu ứng' : 'Open full Lyrics & Karaoke Studio'}
-                className="px-2.5 py-1.5 rounded-xl bg-neutral-800/90 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
+                aria-label={language === 'vi' ? 'Tab Lời Nhạc' : 'Lyrics Studio'}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-neutral-800/90 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
               >
-                <ExternalLink className="w-3 h-3 text-neutral-400" />
-                <span>{language === 'vi' ? 'Tab Lời Nhạc' : 'Lyrics Studio'}</span>
+                <ExternalLink className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-neutral-400" />
+                <span className="hidden sm:inline">{language === 'vi' ? 'Tab Lời Nhạc' : 'Lyrics Studio'}</span>
               </button>
             )}
           </div>
@@ -1072,10 +1080,11 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
                             type="button"
                             onClick={() => handleClearTrackLyrics(track.id)}
                             title={language === 'vi' ? 'Xóa lời bài hát này' : 'Clear lyrics'}
-                            className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-rose-500/20 text-neutral-300 hover:text-rose-300 text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
+                            aria-label={language === 'vi' ? 'Xóa lời bài hát này' : 'Clear lyrics'}
+                            className="p-1.5 sm:px-2 sm:py-1 rounded-lg bg-neutral-800 hover:bg-rose-500/20 text-neutral-300 hover:text-rose-300 text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1"
                           >
-                            <Trash2 className="w-3 h-3 text-rose-400" />
-                            <span>{language === 'vi' ? 'Xóa Lời' : 'Clear'}</span>
+                            <Trash2 className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-rose-400" />
+                            <span className="hidden sm:inline">{language === 'vi' ? 'Xóa Lời' : 'Clear'}</span>
                           </button>
                         )}
 
@@ -1084,10 +1093,11 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
                             type="button"
                             onClick={() => onNavigateToLyricsTab(index)}
                             title={language === 'vi' ? 'Mở Tab Lời Bài Hát để tinh chỉnh thời gian karaoke' : 'Edit in Lyrics Studio'}
-                            className="px-2 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 text-[10px] font-semibold border border-purple-500/30 transition-all cursor-pointer flex items-center gap-1"
+                            aria-label={language === 'vi' ? 'Chỉnh Chuyên Sâu' : 'Edit Studio'}
+                            className="p-1.5 sm:px-2 sm:py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 text-[10px] font-semibold border border-purple-500/30 transition-all cursor-pointer flex items-center gap-1"
                           >
-                            <ExternalLink className="w-3 h-3" />
-                            <span>{language === 'vi' ? 'Chỉnh Chuyên Sâu' : 'Edit Studio'}</span>
+                            <ExternalLink className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                            <span className="hidden sm:inline">{language === 'vi' ? 'Chỉnh Chuyên Sâu' : 'Edit Studio'}</span>
                           </button>
                         )}
                       </div>
@@ -1095,9 +1105,13 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
 
                     {/* Quick Lyrics Action Buttons */}
                     <div className="flex items-center gap-2">
-                      <label className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 text-[11px] font-semibold transition-all cursor-pointer">
-                        <Upload className="w-3 h-3" />
-                        <span>{language === 'vi' ? 'Tải File .LRC / .SRT' : 'Upload .LRC / .SRT'}</span>
+                      <label
+                        title={language === 'vi' ? 'Tải File .LRC / .SRT' : 'Upload .LRC / .SRT'}
+                        aria-label={language === 'vi' ? 'Tải File .LRC / .SRT' : 'Upload .LRC / .SRT'}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 sm:py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 text-[11px] font-semibold transition-all cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                        <span className="hidden sm:inline">{language === 'vi' ? 'Tải File .LRC / .SRT' : 'Upload .LRC / .SRT'}</span>
                         <input
                           type="file"
                           accept=".srt,.lrc,.txt"
@@ -1116,14 +1130,16 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
                             setPastingText(track.rawLyrics || '');
                           }
                         }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer ${
+                        title={language === 'vi' ? 'Dán Lời Nhanh' : 'Paste Lyrics'}
+                        aria-label={language === 'vi' ? 'Dán Lời Nhanh' : 'Paste Lyrics'}
+                        className={`flex-1 flex items-center justify-center gap-1.5 px-2.5 py-2 sm:py-1.5 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer ${
                           pastingLyricsTrackId === track.id
                             ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
                             : 'bg-neutral-800/90 hover:bg-neutral-700 border-neutral-700 text-neutral-300 hover:text-white'
                         }`}
                       >
-                        <FileText className="w-3 h-3" />
-                        <span>{language === 'vi' ? 'Dán Lời Nhanh' : 'Paste Lyrics'}</span>
+                        <FileText className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                        <span className="hidden sm:inline">{language === 'vi' ? 'Dán Lời Nhanh' : 'Paste Lyrics'}</span>
                       </button>
                     </div>
 
@@ -1160,10 +1176,12 @@ export const AudioPlaylistTab: React.FC<AudioPlaylistTabProps> = ({
                             type="button"
                             onClick={() => handleSavePastedLyrics(track.id)}
                             disabled={!pastingText.trim()}
-                            className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold transition-all disabled:opacity-40 cursor-pointer flex items-center gap-1 shadow-md shadow-purple-600/30"
+                            title={language === 'vi' ? 'Lưu & Áp Dụng' : 'Save Lyrics'}
+                            aria-label={language === 'vi' ? 'Lưu & Áp Dụng' : 'Save Lyrics'}
+                            className="p-2 sm:px-3 sm:py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold transition-all disabled:opacity-40 cursor-pointer flex items-center gap-1 shadow-md shadow-purple-600/30"
                           >
-                            <Check className="w-3 h-3" />
-                            <span>{language === 'vi' ? 'Lưu & Áp Dụng' : 'Save Lyrics'}</span>
+                            <Check className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                            <span className="hidden sm:inline">{language === 'vi' ? 'Lưu & Áp Dụng' : 'Save Lyrics'}</span>
                           </button>
                         </div>
                       </div>

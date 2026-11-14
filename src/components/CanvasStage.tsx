@@ -410,10 +410,12 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-medium transition-all shrink-0 cursor-pointer"
+              title={language === 'vi' ? 'Tải nhạc lên' : 'Upload Audio'}
+              aria-label={language === 'vi' ? 'Tải nhạc lên' : 'Upload Audio'}
+              className="flex items-center justify-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-medium transition-all shrink-0 cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5" />
-              <span>Tải nhạc</span>
+              <span className="hidden sm:inline">{language === 'vi' ? 'Tải nhạc' : 'Upload'}</span>
             </button>
 
             <button
@@ -788,13 +790,13 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
                     type="button"
                     onClick={onToggleRepeatMode}
                     title={`Chế độ phát: ${repeatMode}`}
-                    className="px-2 py-0.5 rounded-md bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[10px] font-semibold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                    className="p-1.5 sm:px-2 sm:py-0.5 rounded-md bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-[10px] font-semibold flex items-center gap-1 transition-colors cursor-pointer shrink-0"
                   >
                     {repeatMode === 'repeat-all' && <Repeat className="w-3 h-3 text-rose-400" />}
                     {repeatMode === 'repeat-one' && <Repeat1 className="w-3 h-3 text-purple-400" />}
                     {repeatMode === 'shuffle' && <Shuffle className="w-3 h-3 text-cyan-400" />}
                     {repeatMode === 'off' && <RotateCcw className="w-3 h-3 text-neutral-500" />}
-                    <span className="capitalize hidden xs:inline">{repeatMode.replace('-', ' ')}</span>
+                    <span className="capitalize hidden sm:inline">{repeatMode.replace('-', ' ')}</span>
                   </button>
                 )}
               </div>
@@ -994,17 +996,18 @@ export const CanvasStage: React.FC<CanvasStageProps> = ({
               <button
                 onClick={toggleFullscreen}
                 title={isFullscreen ? t.exitFullscreen : t.fullscreen}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs font-medium transition-all cursor-pointer"
+                aria-label={isFullscreen ? t.exitFullscreen : t.fullscreen}
+                className="flex items-center justify-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs font-medium transition-all cursor-pointer"
               >
                 {isFullscreen ? (
                   <>
                     <Minimize2 className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Thu nhỏ</span>
+                    <span className="hidden sm:inline">{language === 'vi' ? 'Thu nhỏ' : 'Exit'}</span>
                   </>
                 ) : (
                   <>
                     <Maximize2 className="w-3.5 h-3.5" />
-                    <span>Toàn màn hình</span>
+                    <span className="hidden sm:inline">{language === 'vi' ? 'Toàn màn hình' : 'Fullscreen'}</span>
                   </>
                 )}
               </button>

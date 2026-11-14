@@ -8,6 +8,7 @@ import {
   TrackMetadata,
   LyricLine,
   ExportSettings,
+  ExportVideoFormat,
   PresetTheme,
   TextBoxItem,
   FilmLightConfig,
@@ -429,6 +430,7 @@ export function App() {
   const [exportCurrentSec, setExportCurrentSec] = useState(0);
   const [exportTotalSec, setExportTotalSec] = useState(30);
   const [exportedBlob, setExportedBlob] = useState<Blob | null>(null);
+  const [exportFormat, setExportFormat] = useState<ExportVideoFormat>('mp4');
 
   // 5. Refs for High-Performance Animation Loop (Decoupled from React State Churn)
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -1630,6 +1632,8 @@ export function App() {
       audio.volume = 1.0;
     }
 
+    const targetFormat: ExportVideoFormat = settings.format || 'mp4';
+    setExportFormat(targetFormat);
     setIsExporting(true);
     isExportingRef.current = true;
     setExportProgress(0);
@@ -1736,7 +1740,8 @@ export function App() {
       audioStream,
       settings.fps,
       settings.qualityBitrate,
-      hwAccel
+      hwAccel,
+      targetFormat
     );
 
     const startTimeStamp = Date.now();
@@ -1898,15 +1903,19 @@ export function App() {
 
   const handleDownloadExportedVideo = () => {
     if (exportedBlob) {
+      const ext = exportFormat || 'mp4';
+      const targetMime = VideoExporter.getFormatContainerMime(ext);
       let filename: string;
       if (playlistRef.current.tracks.length > 1 && exportTotalSec > (duration || 30) * 1.2) {
-        filename = `SonaWave_Playlist_${playlistRef.current.tracks.length}Tracks_${aspectRatio}_${Date.now()}.mp4`;
+        filename = `SonaWave_Playlist_${playlistRef.current.tracks.length}Tracks_${aspectRatio}_${Date.now()}.${ext}`;
       } else {
         const safeTitle = track?.title || 'Track';
-        filename = `SonaWave_${safeTitle.replace(/\s+/g, '_')}_${aspectRatio}_${Date.now()}.mp4`;
+        filename = `SonaWave_${safeTitle.replace(/\s+/g, '_')}_${aspectRatio}_${Date.now()}.${ext}`;
       }
-      const mp4Blob = exportedBlob.type === 'video/mp4' ? exportedBlob : new Blob([exportedBlob], { type: 'video/mp4' });
-      VideoExporter.downloadBlob(mp4Blob, filename);
+      const outBlob = exportedBlob.type.startsWith(targetMime)
+        ? exportedBlob
+        : new Blob([exportedBlob], { type: targetMime });
+      VideoExporter.downloadBlob(outBlob, filename);
     }
   };
 
@@ -2089,14 +2098,15 @@ export function App() {
                 data-tab="playlist"
                 onClick={() => setActiveTab('playlist')}
                 title={TRANSLATIONS[language].tabPlaylist}
-                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                aria-label={TRANSLATIONS[language].tabPlaylist}
+                className={`p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   activeTab === 'playlist'
                     ? 'bg-gradient-to-r from-rose-500 to-amber-500 text-white shadow-md shadow-rose-600/20'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
                 }`}
               >
                 <ListMusic className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                <span className="inline">{TRANSLATIONS[language].tabPlaylist}</span>
+                <span className="hidden sm:inline">{TRANSLATIONS[language].tabPlaylist}</span>
               </button>
 
               {/* 2. Track - Thông Tin Bài Hát */}
@@ -2104,14 +2114,15 @@ export function App() {
                 data-tab="track"
                 onClick={() => setActiveTab('track')}
                 title={TRANSLATIONS[language].tabTrack}
-                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                aria-label={TRANSLATIONS[language].tabTrack}
+                className={`p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   activeTab === 'track'
                     ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
                 }`}
               >
                 <Disc className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                <span className="inline">{TRANSLATIONS[language].tabTrack}</span>
+                <span className="hidden sm:inline">{TRANSLATIONS[language].tabTrack}</span>
               </button>
 
               {/* 3. Visualizer - Sóng Nhạc */}
@@ -2119,14 +2130,15 @@ export function App() {
                 data-tab="visualizer"
                 onClick={() => setActiveTab('visualizer')}
                 title={TRANSLATIONS[language].tabVisualizer}
-                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                aria-label={TRANSLATIONS[language].tabVisualizer}
+                className={`p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   activeTab === 'visualizer'
                     ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
                 }`}
               >
                 <BarChart2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                <span className="inline">{TRANSLATIONS[language].tabVisualizer}</span>
+                <span className="hidden sm:inline">{TRANSLATIONS[language].tabVisualizer}</span>
               </button>
 
               {/* 4. Lyrics - Lời Nhạc / Karaoke */}
@@ -2134,14 +2146,15 @@ export function App() {
                 data-tab="lyrics"
                 onClick={() => setActiveTab('lyrics')}
                 title={TRANSLATIONS[language].tabLyrics}
-                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                aria-label={TRANSLATIONS[language].tabLyrics}
+                className={`p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   activeTab === 'lyrics'
                     ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
                 }`}
               >
                 <FileText className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                <span className="inline">{TRANSLATIONS[language].tabLyrics}</span>
+                <span className="hidden sm:inline">{TRANSLATIONS[language].tabLyrics}</span>
               </button>
 
               {/* 5. Text Boxes - Chữ & Hộp Tracklist */}
@@ -2149,14 +2162,15 @@ export function App() {
                 data-tab="textboxes"
                 onClick={() => setActiveTab('textboxes')}
                 title={TRANSLATIONS[language].tabTextBoxes}
-                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                aria-label={TRANSLATIONS[language].tabTextBoxes}
+                className={`p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   activeTab === 'textboxes'
                     ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
                 }`}
               >
                 <Type className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                <span className="inline">{TRANSLATIONS[language].tabTextBoxes}</span>
+                <span className="hidden sm:inline">{TRANSLATIONS[language].tabTextBoxes}</span>
               </button>
 
               {/* 6. Lottie Animation FX / LottieFiles (placed before Background) */}
@@ -2164,16 +2178,17 @@ export function App() {
                 data-tab="lottie"
                 onClick={() => setActiveTab('lottie')}
                 title={TRANSLATIONS[language].tabLottie || 'LottieFiles'}
-                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 relative ${
+                aria-label={TRANSLATIONS[language].tabLottie || 'LottieFiles'}
+                className={`p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 relative ${
                   activeTab === 'lottie'
                     ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md shadow-indigo-600/20'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
                 }`}
               >
                 <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-300" />
-                <span className="inline">{TRANSLATIONS[language].tabLottie || 'LottieFiles'}</span>
+                <span className="hidden sm:inline">{TRANSLATIONS[language].tabLottie || 'LottieFiles'}</span>
                 {lotties.length > 0 && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-400 text-neutral-950 ml-0.5">
+                  <span className="hidden sm:inline text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-400 text-neutral-950 ml-0.5">
                     {lotties.length}
                   </span>
                 )}
@@ -2184,14 +2199,15 @@ export function App() {
                 data-tab="background"
                 onClick={() => setActiveTab('background')}
                 title={TRANSLATIONS[language].tabBackground}
-                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                aria-label={TRANSLATIONS[language].tabBackground}
+                className={`p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   activeTab === 'background'
                     ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
                 }`}
               >
                 <ImageIcon className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-                <span className="inline">{TRANSLATIONS[language].tabBackground}</span>
+                <span className="hidden sm:inline">{TRANSLATIONS[language].tabBackground}</span>
               </button>
 
               {/* 8. Background Effects - Hiệu Ứng Nền (Bộ Lọc, Zoom, Glitch, Ripple, Hạt) */}
@@ -2199,14 +2215,15 @@ export function App() {
                 data-tab="bgeffects"
                 onClick={() => setActiveTab('bgeffects')}
                 title={TRANSLATIONS[language].tabBgEffects}
-                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                aria-label={TRANSLATIONS[language].tabBgEffects}
+                className={`p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   activeTab === 'bgeffects'
                     ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md shadow-cyan-600/20'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
                 }`}
               >
                 <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-cyan-300" />
-                <span className="inline">{TRANSLATIONS[language].tabBgEffects}</span>
+                <span className="hidden sm:inline">{TRANSLATIONS[language].tabBgEffects}</span>
               </button>
 
               {/* 9. Film Light - Ánh Sáng Phim & Bụi Điện Ảnh */}
@@ -2214,14 +2231,15 @@ export function App() {
                 data-tab="filmlight"
                 onClick={() => setActiveTab('filmlight')}
                 title={TRANSLATIONS[language].tabFilmLight}
-                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                aria-label={TRANSLATIONS[language].tabFilmLight}
+                className={`p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   activeTab === 'filmlight'
                     ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
                 }`}
               >
                 <Sparkles className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
-                <span className="inline">{TRANSLATIONS[language].tabFilmLight}</span>
+                <span className="hidden sm:inline">{TRANSLATIONS[language].tabFilmLight}</span>
               </button>
 
               {/* 10. Color Grading - Chỉnh Màu & LUTs */}
@@ -2229,14 +2247,15 @@ export function App() {
                 data-tab="colorgrading"
                 onClick={() => setActiveTab('colorgrading')}
                 title={TRANSLATIONS[language].tabColorGrading}
-                className={`py-2 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                aria-label={TRANSLATIONS[language].tabColorGrading}
+                className={`p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                   activeTab === 'colorgrading'
                     ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md shadow-amber-500/20'
                     : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
                 }`}
               >
                 <Palette className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-amber-300" />
-                <span className="inline">{TRANSLATIONS[language].tabColorGrading}</span>
+                <span className="hidden sm:inline">{TRANSLATIONS[language].tabColorGrading}</span>
               </button>
             </div>
 

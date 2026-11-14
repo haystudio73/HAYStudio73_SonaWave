@@ -461,27 +461,33 @@ export const LottieTab: React.FC<LottieTabProps> = ({
           <button
             type="button"
             onClick={() => setShowLibraryModal(true)}
+            title={isVi ? 'Thư Viện Mẫu' : 'Free Presets'}
+            aria-label={isVi ? 'Thư Viện Mẫu' : 'Free Presets'}
             className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-950/50 transition cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{isVi ? 'Thư Viện Mẫu' : 'Free Presets'}</span>
+            <Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+            <span className="hidden sm:inline">{isVi ? 'Thư Viện Mẫu' : 'Free Presets'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowUrlInput(!showUrlInput)}
+            title={isVi ? 'Dán Link URL' : 'Paste URL'}
+            aria-label={isVi ? 'Dán Link URL' : 'Paste URL'}
             className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs font-medium transition cursor-pointer"
           >
-            <LinkIcon className="w-3.5 h-3.5 text-sky-400" />
-            <span>{isVi ? 'Dán Link URL' : 'Paste URL'}</span>
+            <LinkIcon className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-sky-400" />
+            <span className="hidden sm:inline">{isVi ? 'Dán Link URL' : 'Paste URL'}</span>
           </button>
 
           <label
             htmlFor={fileInputId}
+            title={isVi ? 'Tải File JSON/.lottie' : 'Upload File'}
+            aria-label={isVi ? 'Tải File JSON/.lottie' : 'Upload File'}
             className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 text-xs font-medium transition cursor-pointer"
           >
-            <Upload className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{isVi ? 'Tải File JSON/.lottie' : 'Upload File'}</span>
+            <Upload className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-emerald-400" />
+            <span className="hidden sm:inline">{isVi ? 'Tải File JSON/.lottie' : 'Upload File'}</span>
             <input
               id={fileInputId}
               type="file"
@@ -667,10 +673,12 @@ export const LottieTab: React.FC<LottieTabProps> = ({
             <button
               type="button"
               onClick={() => removeLottie(selectedLottie.id)}
-              className="text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
+              title={isVi ? 'Xóa Animation' : 'Remove Animation'}
+              aria-label={isVi ? 'Xóa' : 'Remove'}
+              className="p-1.5 sm:p-1 text-[10px] text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
             >
-              <Trash2 className="w-3 h-3" />
-              <span>{isVi ? 'Xóa' : 'Remove'}</span>
+              <Trash2 className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+              <span className="hidden sm:inline">{isVi ? 'Xóa' : 'Remove'}</span>
             </button>
           </div>
 
@@ -1057,10 +1065,12 @@ export const LottieTab: React.FC<LottieTabProps> = ({
 
                   <button
                     type="button"
+                    title={isVi ? 'Chèn Ngay' : 'Insert'}
+                    aria-label={isVi ? 'Chèn Ngay' : 'Insert'}
                     className="w-full py-1.5 px-2 rounded-lg bg-indigo-600/30 group-hover:bg-indigo-600 text-indigo-300 group-hover:text-white text-[11px] font-semibold transition flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    <Plus className="w-3 h-3" />
-                    <span>{isVi ? 'Chèn Ngay' : 'Insert'}</span>
+                    <Plus className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                    <span className="hidden sm:inline">{isVi ? 'Chèn Ngay' : 'Insert'}</span>
                   </button>
                 </div>
               ))}
