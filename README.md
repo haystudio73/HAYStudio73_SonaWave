@@ -6,7 +6,7 @@ A professional audio wave video generator with synchronized lyrics, diverse visu
 
 Link demo: https://hay-studio73-sona-wave.vercel.app/
 
-<img width="1920" height="909" alt="image" src="https://github.com/user-attachments/assets/73a33db1-221b-4d2e-a3ae-d880c6a9b387" />
+<img width="1794" height="889" alt="Screenshot_16-11-2026_17374_hay-studio73-sona-wave vercel app" src="https://github.com/user-attachments/assets/14295fa9-1a50-45ff-a55c-7bec208a64d9" />
 
 ---
 
