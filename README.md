@@ -12,7 +12,7 @@ Link demo: https://hay-studio73-sona-wave.vercel.app/
 
 ## ⚡ Quick Install / Cài Đặt Nhanh (Start Here)
 
-[![Hướng dẫn cài app tạo sóng âm - Sona Wave Pro!](https://img.youtube.com/vi/8VqLIJTDX0M/maxresdefault.jpg)](https://www.youtube.com/watch?v=8VqLIJTDX0M)
+[![Hướng dẫn cài app tạo sóng âm - Sona Wave Pro!](https://img.youtube.com/vi/8VqLIJTDX0M/0.jpg)](https://www.youtube.com/watch?v=8VqLIJTDX0M)
 
 > **Video:** [Hướng dẫn cài app tạo sóng âm - Sona Wave Pro!](https://www.youtube.com/watch?v=8VqLIJTDX0M) — Kênh **HAY Studio73**
 
