@@ -12,6 +12,8 @@ Link demo: https://hay-studio73-sona-wave.vercel.app/
 
 ## ⚡ Quick Install / Cài Đặt Nhanh (Start Here)
 
+> **Video:** [Hướng dẫn cài app tạo sóng âm - Sona Wave Pro!](https://www.youtube.com/watch?v=8VqLIJTDX0M) — Kênh **HAY Studio73**
+
 Get **Sona Wave Pro** running locally in under 1 minute — *Hướng dẫn cài đặt và chạy Sona Wave Pro trên máy tính cá nhân chỉ trong chưa đầy 1 phút:*
 
 ### 1. Prerequisites / Yêu cầu hệ thống
