@@ -1,6 +1,8 @@
-# 🎵 Sona Wave Pro (version 2.0) - Trình Tạo Video Sóng Âm & Lyrics
+# 🎵 Sona Wave Pro (version 2.1.0) - Trình Tạo Video Sóng Âm & Lyrics
 
 A professional audio wave video generator with synchronized lyrics, diverse visualizer effects, and high-quality video export capabilities optimized for TikTok, YouTube Shorts, and Instagram Reels.
+
+> **🆕 Phiên bản mới nhất `v2.1.0`**: Nâng cấp **Triangle Badge** & **7 Hiệu Ứng Viền Huy Hiệu Động** (*Glow, LED Tracing, Magic Light, Fire, Smoke, Electric, Rainbow Aurora*), cửa sổ **Design Templates & Aesthetic Presets** 2 cột rộng 80% màn hình có xem trước & JSON Import/Export, **Lyrics Presets Manager** kèm khung Preview, sửa mượt **Lyrics In/Out Transitions**, tối ưu tắt **Bloom 3D** lần đầu chọn để bảo vệ GPU và **Giao diện Mobile Icon-Only** tinh gọn.
 
 Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">https://hay-studio73-sona-wave.vercel.app/</a>
 
@@ -59,6 +61,25 @@ bun install && bun run build
 - **Customizable Backgrounds**: High-resolution curated library, custom image (JPG/PNG), dynamic video (MP4), gradients, and 11 multi-layer particle systems.
 - **Professional Multi-Format Video Export**: High-quality **MP4**, **MOV (QuickTime)**, and **WebM** output (9:16, 1:1, 16:9, 4:5) up to 4K / 60FPS optimized for TikTok, YouTube Shorts, Instagram Reels, CapCut, and pro NLE editors.
 
+### 🆕 What's New in Version 2.1.0 / Thay Đổi Trong Phiên Bản Mới (v2.1.0)
+- **Track Info — Triangle Badge & 7 Animated Badge Border Effects**:
+  - Bổ sung kiểu huy hiệu mới **Triangle Badge (`triangle-badge`)** với thanh chỉnh độ bo góc tam giác (`0–48px`) và khoảng cách chi tiết bài hát.
+  - Đặt **Huy hiệu Tròn Xoay 360° (`rotating-badge` - Rotating Vinyl Badge 360°)** làm kiểu thẻ bìa mặc định mới.
+  - Bổ sung **7 Hiệu Ứng Viền Huy Hiệu (`Badge Border Effect`)** bật/tắt linh hoạt cho **Horizontal Rounded Card, Rotating Vinyl 360°, Triangle Badge, Frosted Glass Badge**: **Glow Border**, **LED Tracing**, **Magic Light**, **Fire**, **Smoke**, **Electric**, và **Rainbow Aurora** kèm thanh chỉnh **Effect Speed (0.3x–3.0x)**, **Effect Intensity (30%–200%)** và chọn **Màu phụ hiệu ứng (Effect Accent Color)**.
+  - Tinh giản khu vực *Badge Customization* bằng cách loại bỏ bảng kéo 2D trùng lặp ở cuối mục Badge Settings, giữ thao tác kéo thả trực tiếp trên Preview Stage và bảng tọa độ X/Y ở mục *Track Details Layout & Typography*.
+- **Design Templates & Aesthetic Presets Studio (Cửa Sổ Rộng ~80% & Chia 2 Cột)**:
+  - Mở rộng cửa sổ **Presets** rộng khoảng **80% màn hình** với giao diện **2 cột** chuyên nghiệp:
+    - **Cột trái**: Tạo **New Preset**, thanh tìm kiếm, bộ lọc theo nhóm (*Cyberpunk & Neon, Lofi & Chill, Vũ Trụ & 3D, Studio & Acoustic, Tùy Chỉnh*), nguồn & tỷ lệ khung hình, hỗ trợ chuyển đổi **Danh sách (List)** hoặc **Lưới Thumbnail (Thumbnail Grid)**.
+    - **Cột phải**: Khung **Xem trước chi tiết (Preset Preview)** hiển thị đầy đủ thông số của preset đang chọn (**Aspect Ratio, Badge Style, Visualizer, Background, VFX, Photo FX, Tên Preset**), hỗ trợ **Download Preset (`.json`)**, **Upload Presets (`.json`)**, và nút **Apply** áp dụng ngay vào video hiện tại.
+- **Lyrics Presets Manager (List + Live Preview) & Sửa Lỗi In/Out Transitions**:
+  - Nâng cấp **Lyrics Presets Manager**: Chọn các preset theo dạng danh sách gọn gàng kèm **khung mẫu xem trước (Live Preview)** ngay bên dưới hộp chọn trước khi áp dụng.
+  - Sửa lỗi hoàn chỉnh các hiệu ứng xuất hiện & biến mất lời bài hát (**Slide Up/Down/Left/Right**, **Char Drop**, **Dissolve**) hoạt động mượt mà đồng bộ trên cả màn hình Preview và Export Video.
+- **Visualizer 3D — Tối Ưu Mặc Định Tắt Hào Quang Phát Sáng (Bloom Off on First 3D Select)**:
+  - Khi người dùng chuyển sang không gian **Visualizer 3D** lần đầu tiên, tính năng **Global Post-Processing Bloom (Hào Quang Phát Sáng)** được tự động tắt (`false`) để đảm bảo khung hình 3D sắc nét, mượt mà trên mọi thiết bị và có thể bật lại bất cứ lúc nào.
+- **Giao Diện Mobile Responsive Tinh Gọn (Icon-Only Buttons)**:
+  - Khi mở ứng dụng trên thiết bị di động (**Mobile**), các nút trên thanh công cụ và tab điều hướng tự động **ẩn nhãn chữ (`text label`), chỉ hiển thị Icon** tối ưu không gian thao tác, vẫn giữ đầy đủ nhãn chữ trên Tablet & Desktop.
+- **About & Open-Source License Dialog (`?`)** — Nút **About (`?`)** đặt ngay cạnh nút Cài Đặt (Settings) trên thanh công cụ trên cùng, hiển thị phiên bản ứng dụng (`v2.1.0`), thông tin giấy phép mã nguồn mở (MIT License) và liên kết trực tiếp tới kênh **Facebook** & **YouTube** của tác giả **HAY Studio73**.
+
 ### New & Enhanced Features
 - **Direct Canvas Drag & Drop & Track Info 2D Position Controls** — Tương tác kéo thả trực tiếp ngay trên khung hình xem trước:
   1. **Khung kéo thả trực tiếp trên màn hình xem trước (Live Canvas Overlays)**: Cho phép dùng chuột kéo rê vị trí tự do trực tiếp trên khung video cho **Track Badge**, **Logo PNG Watermark**, **Track Details Typography**, **Playlist Track Title**, **Text Boxes**, **Lottie Stickers** và **Visualizer Sóng âm 2D**, hiển thị tọa độ X/Y thời gian thực (Live Coordinates Badge) cùng nút bật/tắt khung kéo trên thanh công cụ.
@@ -76,7 +97,6 @@ bun install && bun run build
   - **Dải Ruy Băng Đôi (`double-ribbon`)**: Tần số uốn lượn (1–5x), Độ rộng bản ruy băng kết hợp độ dày nét, Xoắn 3D lồng ghép, Đổ lưới mờ kết nối giữa 2 dải.
   - **Tia Laser Sân Khấu EDM (`laser-beams`)**: Số lượng chùm tia (6–32 tia), Góc quét quạt Laser (45°–180°), Nguồn phát tia (Đáy sàn, Giữa màn hình, Đỉnh trần), Chớp nháy Strobe theo nhịp Bass.
   - **Lõi Siêu Tân Tinh (`starburst-core`)**: Số lượng tia sao tỏa sáng (16–72 tia), Bán kính lõi năng lượng (6–50px), Hào quang vầng sáng quanh lõi (Halo Bloom), Bắn hạt năng lượng theo Bass Kick.
-- **About & Open-Source License Dialog (`?`)** — Nút **About (`?`)** đặt ngay cạnh nút Cài Đặt (Settings) trên thanh công cụ trên cùng, hiển thị phiên bản ứng dụng (`v2.0.0`), thông tin giấy phép mã nguồn mở (MIT License) và liên kết trực tiếp tới kênh **Facebook** & **YouTube** của tác giả **HAY Studio73**.
 - **Curated Lofi & Chill Image Presets Expansion** — Bổ sung thêm các ảnh nền nghệ thuật mới vào danh mục **Lofi & Chill** trong thư viện Ảnh Nền & Slide Preset Library.
 - **Playlist Track Queue: Tinh Giản Phím Mũi Tên (Remove Drag/Drop) & Bố Cục Gọn Nhẹ** — Loại bỏ kéo thả, phần Background riêng từng track và trường Artist riêng trong hàng đợi Playlist (`TITLE` ➔ `TRACK TITLE`), thay bằng nút mũi tên lên/xuống (▲/▼) chuẩn xác 100%.
 - **100% Comprehensive Bilingual Studio (Chuẩn Hóa Song Ngữ EN / VI)** — Toàn bộ giao diện phòng thu từ nhãn, tiêu đề, nút bấm, chú thích, menu ngữ cảnh và bảng thiết lập chuyên biệt đều được bản địa hóa song ngữ trọn vẹn giữa Tiếng Việt (VI) và Tiếng Anh (EN), phản hồi tức thì khi chuyển đổi ngôn ngữ.
@@ -129,7 +149,8 @@ bun install && bun run build
 - 6 Lyric styles, 3 karaoke sweep modes & advanced timing micro-editor
 - 8 Cinematic Film Light & vintage 35mm burn effects
 - 13 Professional Color Grading LUT presets
-- 8 Track info badge styles with vinyl 360° spin & beat jumping dynamics
+- 9 Track info badge styles (including **Rotating Vinyl 360°** default & **Triangle Badge**) with **7 animated Badge Border Effects** & beat jumping dynamics
+- 2-Column 80%-width **Design Templates & Aesthetic Presets Studio** with full preview & JSON import/export
 - Unlimited draggable Text Boxes with smart playlist tracklist formatting
 - Multi-scene timeline transitions & curated image slideshows
 
@@ -376,22 +397,34 @@ Tích hợp **13 bộ lọc màu LUT chuyên nghiệp** được phân theo từ
 
 ---
 
-### 6. 🏷️ Danh Sách Track Info Badge Style (Kiểu Thẻ Thông Tin Bài Hát)
-Cung cấp **8 phong cách hiển thị thẻ bài hát & bìa đĩa**:
+### 6. 🏷️ Danh Sách Track Info Badge Style & Hiệu Ứng Viền Huy Hiệu
+Cung cấp các phong cách hiển thị thẻ bài hát & bìa đĩa đa dạng:
 
-1. **Thẻ Ngang Bo Tròn - Badge Mới (`horizontal-rounded-card` - Horizontal Rounded Card Badge)**: Thẻ hiện đại với khung ảnh bìa bo tròn viền dày nổi bật bên trái, kết hợp 3 tầng thông tin (Tiêu đề phụ, Tên bài hát, Ca sĩ) được bố trí ngay ngắn, thanh lịch bên phải.
-2. **Đĩa Than Vinyl Xoay 360° (`vinyl` - 360° Spinning Vinyl)**: Đĩa than cổ điển với vân rãnh chân thực, ánh phản quang tinh xảo và ảnh bìa xoay tròn liên tục 360° theo thời gian bài hát.
-3. **Huy Hiệu Tròn Xoay 360° (`rotating-badge` - Rotating Vinyl Badge 360°)**: Huy hiệu tròn xoay 360° với viền chữ uốn cong chạy vòng tròn quanh chu vi và tâm ảnh bìa đĩa hát.
-4. **Thẻ Kính Mờ (`glass-card` - Frosted Glass Badge)**: Thẻ bo góc phủ kính acrylic bán trong suốt hiện đại kèm ảnh bìa, tên bài hát và nghệ sĩ trình bày.
-5. **Huy Hiệu PNG / Sticker (`logo-badge` - PNG Badge)**: Hình ảnh PNG trong suốt hoặc sticker riêng biệt làm tâm điểm nổi bật không bị gò bó bởi khung tròn, nhún nhảy theo nhạc.
-6. **Huy Hiệu Tròn Phát Sáng (`circular-badge` - Circular Avatar Badge)**: Vòng tròn ảnh đại diện tinh tế với đường viền hào quang phát sáng neon rực rỡ.
-7. **Chữ Tối Giản Không Khung (`minimal-tag` - Minimalist Typography)**: Chỉ hiển thị tên bài hát và ca sĩ bay tự do trên khung hình, không viền ngăn cách.
-8. **Ẩn Thẻ Bìa (`hidden` - Hidden / Off)**: Ẩn hoàn toàn thẻ thông tin bài hát trên video khi muốn nhường trọn không gian cho sóng âm và lời bài hát.
+1. **Huy Hiệu Tròn Xoay 360° (`rotating-badge` - Rotating Vinyl Badge 360° [Mặc Định])**: Huy hiệu tròn xoay 360° với viền chữ uốn cong chạy vòng tròn quanh chu vi và tâm ảnh bìa đĩa hát.
+2. **Huy Hiệu Tam Giác (`triangle-badge` - Triangle Badge [Mới])**: Khung tam giác đều bo góc hiện đại hiển thị ảnh bìa kèm thanh chỉnh độ bo góc (`Corner Roundness 0–48px`) và hiệu ứng viền phát sáng động.
+3. **Thẻ Ngang Bo Tròn (`horizontal-rounded-card` - Horizontal Rounded Card Badge)**: Thẻ hiện đại với khung ảnh bìa bo tròn viền dày nổi bật bên trái, kết hợp 3 tầng thông tin (Tiêu đề phụ, Tên bài hát, Ca sĩ) được bố trí ngay ngắn, thanh lịch bên phải.
+4. **Đĩa Than Vinyl Xoay 360° (`vinyl` - 360° Spinning Vinyl)**: Đĩa than cổ điển với vân rãnh chân thực, ánh phản quang tinh xảo và ảnh bìa xoay tròn liên tục 360° theo thời gian bài hát.
+5. **Thẻ Kính Mờ (`glass-card` - Frosted Glass Badge)**: Thẻ bo góc phủ kính acrylic bán trong suốt hiện đại kèm ảnh bìa, tên bài hát và nghệ sĩ trình bày.
+6. **Huy Hiệu PNG / Sticker (`logo-badge` - PNG Badge)**: Hình ảnh PNG trong suốt hoặc sticker riêng biệt làm tâm điểm nổi bật không bị gò bó bởi khung tròn, nhún nhảy theo nhạc.
+7. **Huy Hiệu Tròn Phát Sáng (`circular-badge` - Circular Avatar Badge)**: Vòng tròn ảnh đại diện tinh tế với đường viền hào quang phát sáng neon rực rỡ.
+8. **Chữ Tối Giản Không Khung (`minimal-tag` - Minimalist Typography)**: Chỉ hiển thị tên bài hát và ca sĩ bay tự do trên khung hình, không viền ngăn cách.
+9. **Ẩn Thẻ Bìa (`hidden` - Hidden / Off)**: Ẩn hoàn toàn thẻ thông tin bài hát trên video khi muốn nhường trọn không gian cho sóng âm và lời bài hát.
+
+*7 Hiệu Ứng Viền Huy Hiệu Động (`Badge Border Effect` — Bật/Tắt linh hoạt)*:
+- Áp dụng cho **Horizontal Rounded Card, Rotating Vinyl 360°, Triangle Badge, Frosted Glass Badge, Spinning Vinyl**:
+  1. **Viền Phát Sáng (`glow`)**: Hào quang neon phát sáng nhịp nhàng theo tiếng Bass.
+  2. **Viền Đèn LED Chạy (`led-tracing`)**: Vệt sáng LED chạy đuổi vòng quanh đường viền huy hiệu.
+  3. **Viền Ánh Sáng Ma Thuật (`magic-light`)**: Dải sáng đa sắc xoay chuyển kèm các ngôi sao lấp lánh.
+  4. **Viền Lửa Cháy (`fire`)**: Ngọn lửa rực cháy bập bùng kèm tàn tro bay dọc viền.
+  5. **Viền Khói Mờ (`smoke`)**: Làn khói sương mờ ảo cuộn nhẹ xung quanh khung huy hiệu.
+  6. **Viền Tia Sét Điện (`electric`)**: Tia sét cao áp giật sáng mạnh theo từng cú đập Bass.
+  7. **Viền Cực Quang (`rainbow-aurora`)**: Dải màu cầu vồng cực quang luân chuyển mượt mà 360°.
+- Tùy chỉnh tốc độ hiệu ứng (`Effect Speed 0.3x–3.0x`), cường độ phát sáng (`Effect Intensity 30%–200%`) và màu phụ (`Effect Accent Color`).
 
 *Các tính năng tùy biến mạnh mẽ cho Track Info*:
 - **Bố cục 3 dòng linh hoạt (Subtitle - Title - Artist)**:
   - Bật/tắt hiển thị từng thành phần riêng lẻ (Tiêu đề phụ, Tiêu đề chính, Tên nghệ sĩ).
-  - Tự do thay đổi thứ tự hiển thị sắp xếp giữa các dòng theo ý thích (Ví dụ: Subtitle nằm trên, Title ở giữa, Artist ở dưới hoặc tùy chỉnh).
+  - Tự do kéo thả thay đổi thứ tự hiển thị sắp xếp giữa các dòng theo ý thích (Ví dụ: Subtitle nằm trên, Title ở giữa, Artist ở dưới hoặc tùy chỉnh).
 - **Tùy chỉnh Typography độc lập cho từng dòng**:
   - Tùy chỉnh riêng biệt Phông chữ, Cỡ chữ (Size), Màu sắc cho từng dòng.
   - Kiểu chữ: Bình thường (Normal), Đậm nét (Bold), Nghiêng (Italic), Đậm & Nghiêng (Bold Italic), VIẾT HOA (Uppercase).
@@ -792,6 +825,7 @@ For issues, questions, or feature requests:
 - [x] Multi-format video export (**MP4**, **MOV** QuickTime, **WebM**) & TikTok / Shorts duration presets (15s, 30s, 60s, 90s, 120s, 180s)
 - [x] Multi-project management, JSON backup, and local AutoSave recovery
 - [x] Safe in-app confirmation dialogs, About (`?`) license/author modal & Bilingual EN/VI UI
+- [x] **v2.1.0**: Triangle Badge, 7 Animated Badge Border Effects, 2-Column 80% Presets Studio with JSON Import/Export, Lyrics Presets Live Preview & Fixed In/Out Transitions, 3D First-Select Bloom Off & Mobile Icon-Only UI
 - [ ] Cloud storage export integration (Google Drive / S3)
 - [ ] Server-side batch processing CLI 
 

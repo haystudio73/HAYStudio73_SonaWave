@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { TrackMetadata, CardStyle, LogoPosition, BadgeBeatJumpStyle, TrackLayerOrder, TrackFontEffect, LogoAnimation, LogoAnimationDirection, TrackFontWeight, PlaylistConfig } from '../types';
+import { TrackMetadata, CardStyle, BadgeBorderEffect, LogoPosition, BadgeBeatJumpStyle, TrackLayerOrder, TrackFontEffect, LogoAnimation, LogoAnimationDirection, TrackFontWeight, PlaylistConfig } from '../types';
 import { AVAILABLE_FONTS, DEFAULT_TRACK } from '../utils/presets';
 import { 
   Disc, 
@@ -29,6 +29,8 @@ import {
   RotateCcw,
   GripVertical,
   Move,
+  Triangle,
+  Wand2,
 } from 'lucide-react';
 
 import { Language, TRANSLATIONS } from '../utils/i18n';
@@ -44,9 +46,20 @@ interface TrackTabProps {
 const CARD_STYLES: { id: CardStyle; nameVi: string; nameEn: string; descVi: string; descEn: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'horizontal-rounded-card', nameVi: 'Thẻ Ngang Bo Tròn (Badge Mới)', nameEn: 'Horizontal Rounded Card Badge', descVi: 'Khung ảnh bo tròn viền dày nổi bật bên trái + 3 dòng phụ đề, tên bài và ca sĩ bên phải', descEn: 'Modern horizontal card with thick rounded cover frame on left and 3-tier track details on right', icon: CreditCard },
   { id: 'rotating-badge', nameVi: 'Huy Hiệu Tròn Xoay (Rotating Badge)', nameEn: 'Rotating Vinyl Badge 360°', descVi: 'Huy hiệu tròn xoay 360° với viền chữ uốn cong xoay tròn và tâm ảnh đĩa', descEn: 'Rotating circular badge with continuous circular curved text ribbon and center album artwork', icon: Disc },
+  { id: 'triangle-badge', nameVi: 'Huy Hiệu Tam Giác (Triangle Badge)', nameEn: 'Triangle Badge', descVi: 'Khung tam giác bo góc hiện đại hiển thị ảnh bìa kèm hiệu ứng viền phát sáng', descEn: 'Modern rounded equilateral triangle frame with album artwork and border effects', icon: Triangle },
   { id: 'glass-card', nameVi: 'Thẻ Kính Mờ (Glass Card)', nameEn: 'Frosted Glass Badge', descVi: 'Thẻ bo góc phủ kính hiện đại kèm ảnh bìa & tên ca sĩ', descEn: 'Translucent frosted glass card with artwork, title and singer', icon: CreditCard },
   { id: 'minimal-tag', nameVi: 'Chữ Tối Giản Không Khung', nameEn: 'Minimalist Typography', descVi: 'Chỉ hiển thị tên bài hát & ca sĩ không có khung bao quanh', descEn: 'Floating text only without container boundaries', icon: Music },
   { id: 'hidden', nameVi: 'Ẩn Thẻ Bìa', nameEn: 'Hidden / Off', descVi: 'Không hiển thị thẻ thông tin bài hát trên video', descEn: 'Hide track card info from the video render', icon: EyeOff },
+];
+
+const BADGE_BORDER_EFFECTS: { id: BadgeBorderEffect; nameVi: string; nameEn: string; descVi: string; descEn: string }[] = [
+  { id: 'glow', nameVi: 'Viền Phát Sáng (Glow Border)', nameEn: 'Glow Border', descVi: 'Hào quang neon phát sáng nhịp nhàng theo tiếng Bass', descEn: 'Pulsing neon halo glowing along the badge perimeter' },
+  { id: 'led-tracing', nameVi: 'Viền Đèn LED Chạy (LED Tracing)', nameEn: 'LED Tracing Border', descVi: 'Vệt sáng LED chạy đuổi vòng quanh đường viền huy hiệu', descEn: 'Animated chasing LED light segments tracing the border' },
+  { id: 'magic-light', nameVi: 'Viền Ánh Sáng Ma Thuật (Magic Light)', nameEn: 'Magic Light Border', descVi: 'Dải sáng đa sắc xoay chuyển kèm các ngôi sao lấp lánh', descEn: 'Iridescent sweeping light beam with orbiting starlight glints' },
+  { id: 'fire', nameVi: 'Viền Lửa Cháy (Fire)', nameEn: 'Fire Border', descVi: 'Ngọn lửa rực cháy bập bùng kèm tàn tro bay dọc viền', descEn: 'Blazing flickering flames and rising ember sparks around the edge' },
+  { id: 'smoke', nameVi: 'Viền Khói Mờ (Smoke)', nameEn: 'Smoke Border', descVi: 'Làn khói sương mờ ảo cuộn nhẹ xung quanh khung huy hiệu', descEn: 'Ethereal swirling mist wisps drifting smoothly around the frame' },
+  { id: 'electric', nameVi: 'Viền Tia Sét Điện (Electric)', nameEn: 'Electric Border', descVi: 'Tia sét cao áp giật sáng mạnh theo từng cú đập Bass', descEn: 'Crackling high-voltage lightning arcs pulsing on beats' },
+  { id: 'rainbow-aurora', nameVi: 'Viền Cực Quang (Rainbow Aurora)', nameEn: 'Rainbow Aurora', descVi: 'Dải màu cầu vồng cực quang luân chuyển mượt mà 360°', descEn: 'Flowing 360° spectrum aurora gradient around the border' },
 ];
 
 const BEAT_JUMP_STYLES: { id: BadgeBeatJumpStyle; nameVi: string; nameEn: string; descVi: string; descEn: string }[] = [
@@ -652,8 +665,8 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
         </div>
       </div>
 
-      {/* 4. Dedicated Settings for Badge Styles (Huy Hiệu: rotating-badge, horizontal-rounded-card) */}
-      {(track.cardStyle === 'rotating-badge' || track.cardStyle === 'horizontal-rounded-card') && (
+      {/* 4. Dedicated Settings for Badge Styles (horizontal-rounded-card, rotating-badge, triangle-badge, glass-card, vinyl) */}
+      {(track.cardStyle === 'rotating-badge' || track.cardStyle === 'horizontal-rounded-card' || track.cardStyle === 'triangle-badge' || track.cardStyle === 'glass-card' || track.cardStyle === 'vinyl') && (
         <div className="space-y-3.5 pt-2 border-t border-neutral-800/80 bg-gradient-to-br from-amber-500/10 via-neutral-900/60 to-neutral-900/80 p-3.5 rounded-2xl border border-amber-500/30">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -771,18 +784,24 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
               />
             </div>
 
-            {track.cardStyle === 'horizontal-rounded-card' ? (
+            {(track.cardStyle === 'horizontal-rounded-card' || track.cardStyle === 'glass-card' || track.cardStyle === 'triangle-badge') ? (
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-neutral-400">{language === 'vi' ? 'Bo góc viền' : 'Border Radius'}</span>
-                  <span className="text-amber-400 font-mono font-bold">{track.badgeBorderRadius ?? 24}px</span>
+                  <span className="text-neutral-400">
+                    {language === 'vi'
+                      ? (track.cardStyle === 'triangle-badge' ? 'Bo góc tam giác' : 'Bo góc viền')
+                      : (track.cardStyle === 'triangle-badge' ? 'Corner Roundness' : 'Border Radius')}
+                  </span>
+                  <span className="text-amber-400 font-mono font-bold">
+                    {track.badgeBorderRadius ?? (track.cardStyle === 'glass-card' ? 16 : track.cardStyle === 'triangle-badge' ? 18 : 24)}px
+                  </span>
                 </div>
                 <input
                   type="range"
-                  min={6}
+                  min={0}
                   max={48}
                   step={2}
-                  value={track.badgeBorderRadius ?? 24}
+                  value={track.badgeBorderRadius ?? (track.cardStyle === 'glass-card' ? 16 : track.cardStyle === 'triangle-badge' ? 18 : 24)}
                   onChange={(e) => update({ badgeBorderRadius: parseInt(e.target.value) })}
                   className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
                 />
@@ -800,6 +819,127 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
                     className="rounded text-amber-500 focus:ring-amber-500 bg-neutral-800 border-neutral-700 ml-2 cursor-pointer"
                   />
                 </label>
+              </div>
+            )}
+          </div>
+
+          {/* Animated Badge Border Effect (On/Off + Style + Speed/Intensity/Secondary Color) */}
+          <div className="pt-2.5 border-t border-neutral-800/80 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Wand2 className={`w-4 h-4 shrink-0 ${track.badgeBorderEffectEnabled ? 'text-amber-400' : 'text-neutral-500'}`} />
+                <div className="min-w-0">
+                  <span className="text-xs font-bold text-neutral-200 block truncate">
+                    {language === 'vi' ? 'Hiệu Ứng Viền Huy Hiệu (Badge Border Effect)' : 'Badge Border Effect'}
+                  </span>
+                  <span className="text-[10px] text-neutral-400 block truncate">
+                    {language === 'vi'
+                      ? 'Glow, LED chạy, Ánh sáng ma thuật, Lửa, Khói, Điện...'
+                      : 'Glow, LED tracing, Magic light, Fire, Smoke, Electric...'}
+                  </span>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={!!track.badgeBorderEffectEnabled}
+                  onChange={(e) => update({ badgeBorderEffectEnabled: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
+
+            {track.badgeBorderEffectEnabled && (
+              <div className="space-y-2.5 p-2.5 rounded-xl bg-neutral-950/75 border border-neutral-800/90">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {BADGE_BORDER_EFFECTS.map((ef) => {
+                    const isSelected = (track.badgeBorderEffect || 'glow') === ef.id;
+                    return (
+                      <button
+                        key={ef.id}
+                        type="button"
+                        onClick={() => update({ badgeBorderEffect: ef.id, badgeBorderEffectEnabled: true })}
+                        className={`p-2 rounded-lg border text-left transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-amber-500/20 border-amber-500 text-amber-200'
+                            : 'bg-neutral-900/70 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-[11px] font-semibold truncate">
+                            {language === 'vi' ? ef.nameVi : ef.nameEn}
+                          </span>
+                          {isSelected && <CheckCircle2 className="w-3 h-3 text-amber-400 shrink-0" />}
+                        </div>
+                        <span className="text-[9px] text-neutral-500 block truncate mt-0.5">
+                          {language === 'vi' ? ef.descVi : ef.descEn}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Speed & Intensity Sliders */}
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="text-neutral-400">{language === 'vi' ? 'Tốc độ hiệu ứng' : 'Effect Speed'}</span>
+                      <span className="text-amber-400 font-mono font-bold">{(track.badgeBorderEffectSpeed ?? 1.0).toFixed(1)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.3}
+                      max={3.0}
+                      step={0.1}
+                      value={track.badgeBorderEffectSpeed ?? 1.0}
+                      onChange={(e) => update({ badgeBorderEffectSpeed: parseFloat(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="text-neutral-400">{language === 'vi' ? 'Cường độ phát sáng' : 'Effect Intensity'}</span>
+                      <span className="text-amber-400 font-mono font-bold">{Math.round((track.badgeBorderEffectIntensity ?? 1.0) * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.3}
+                      max={2.0}
+                      step={0.1}
+                      value={track.badgeBorderEffectIntensity ?? 1.0}
+                      onChange={(e) => update({ badgeBorderEffectIntensity: parseFloat(e.target.value) })}
+                      className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Secondary Color Picker (for LED Tracing, Magic Light, Electric) */}
+                {(track.badgeBorderEffect === 'led-tracing' || track.badgeBorderEffect === 'magic-light' || track.badgeBorderEffect === 'electric') && (
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-neutral-800/70">
+                    <span className="text-[11px] text-neutral-400">
+                      {language === 'vi' ? 'Màu phụ hiệu ứng' : 'Effect Accent Color'}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={track.badgeBorderEffectSecondaryColor || '#06b6d4'}
+                        onChange={(e) => update({ badgeBorderEffectSecondaryColor: e.target.value })}
+                        className="w-6 h-6 rounded border border-neutral-700 bg-transparent cursor-pointer"
+                      />
+                      {['#06b6d4', '#ec4899', '#a855f7', '#facc15', '#ffffff'].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => update({ badgeBorderEffectSecondaryColor: c })}
+                          style={{ backgroundColor: c }}
+                          className="w-4 h-4 rounded-full border border-neutral-700 hover:scale-110 transition-transform cursor-pointer"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -838,50 +978,54 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
             </div>
           )}
 
-          {/* Dedicated Rotation Speed for Rotating Badge */}
-          {track.cardStyle === 'rotating-badge' && (
+          {/* Dedicated Rotation Speed for Rotating Badge & Text Spacing for Rotating / Triangle Badge */}
+          {(track.cardStyle === 'rotating-badge' || track.cardStyle === 'triangle-badge') && (
             <div className="pt-2 border-t border-neutral-800/80 space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-neutral-300 font-semibold flex items-center gap-1.5">
-                  <RotateCw className="w-3.5 h-3.5 text-amber-400" />
-                  {language === 'vi' ? 'Tốc độ xoay Huy hiệu' : 'Badge Rotation Speed'}
-                </span>
-                <span className="text-amber-400 font-mono font-bold">{(track.rotatingBadgeSpeed ?? 1.0).toFixed(1)}x</span>
-              </div>
-              <input
-                type="range"
-                min={0.1}
-                max={3.0}
-                step={0.1}
-                value={track.rotatingBadgeSpeed ?? 1.0}
-                onChange={(e) => update({ rotatingBadgeSpeed: parseFloat(e.target.value) })}
-                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
-              />
-              <div className="flex items-center gap-1.5">
-                {[0.2, 0.5, 1.0, 1.5, 2.0].map((spd) => (
-                  <button
-                    key={spd}
-                    type="button"
-                    onClick={() => update({ rotatingBadgeSpeed: spd })}
-                    className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
-                      (track.rotatingBadgeSpeed ?? 1.0) === spd
-                        ? 'bg-amber-500 text-neutral-950 font-bold'
-                        : 'bg-neutral-800 text-neutral-400 hover:text-white'
-                    }`}
-                  >
-                    {spd.toFixed(1)}x
-                  </button>
-                ))}
-              </div>
+              {track.cardStyle === 'rotating-badge' && (
+                <>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-neutral-300 font-semibold flex items-center gap-1.5">
+                      <RotateCw className="w-3.5 h-3.5 text-amber-400" />
+                      {language === 'vi' ? 'Tốc độ xoay Huy hiệu' : 'Badge Rotation Speed'}
+                    </span>
+                    <span className="text-amber-400 font-mono font-bold">{(track.rotatingBadgeSpeed ?? 1.0).toFixed(1)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={3.0}
+                    step={0.1}
+                    value={track.rotatingBadgeSpeed ?? 1.0}
+                    onChange={(e) => update({ rotatingBadgeSpeed: parseFloat(e.target.value) })}
+                    className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    {[0.2, 0.5, 1.0, 1.5, 2.0].map((spd) => (
+                      <button
+                        key={spd}
+                        type="button"
+                        onClick={() => update({ rotatingBadgeSpeed: spd })}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
+                          (track.rotatingBadgeSpeed ?? 1.0) === spd
+                            ? 'bg-amber-500 text-neutral-950 font-bold'
+                            : 'bg-neutral-800 text-neutral-400 hover:text-white'
+                        }`}
+                      >
+                        {spd.toFixed(1)}x
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
 
-              {/* Spacing between Vinyl Badge and Track Details (subtitle, title, artist) */}
-              <div className="pt-2.5 border-t border-neutral-800/80 space-y-2">
+              {/* Spacing between Badge and Track Details (subtitle, title, artist) */}
+              <div className={track.cardStyle === 'rotating-badge' ? 'pt-2.5 border-t border-neutral-800/80 space-y-2' : 'space-y-2'}>
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-neutral-300 font-semibold flex items-center gap-1.5">
                     <MoveVertical className="w-3.5 h-3.5 text-amber-400" />
                     {language === 'vi' 
-                      ? 'Khoảng cách giữa Đĩa Vinyl và Chi tiết bài hát' 
-                      : 'Spacing between Vinyl Badge & Track Info'}
+                      ? 'Khoảng cách giữa Huy hiệu và Chi tiết bài hát' 
+                      : 'Spacing between Badge & Track Info'}
                   </span>
                   <span className="text-amber-400 font-mono font-bold">{track.vinylTextSpacing ?? 28}px</span>
                 </div>
@@ -913,18 +1057,6 @@ export const TrackTab: React.FC<TrackTabProps> = ({ track: rawTrack, onChange, l
               </div>
             </div>
           )}
-
-          {/* Badge Drag & Drop 2D Position Pad */}
-          <div className="pt-2 border-t border-neutral-800/80">
-            <Position2DPad
-              x={track.positionX !== undefined ? track.positionX : 50}
-              y={track.positionY !== undefined ? track.positionY : 28}
-              onChange={(newX, newY) => update({ positionX: newX, positionY: newY })}
-              label={language === 'vi' ? 'Kéo Thả Vị Trí Huy Hiệu (Badge Drag & Drop)' : 'Badge Drag & Drop Position'}
-              color="#f97316"
-              language={language}
-            />
-          </div>
         </div>
       )}
 

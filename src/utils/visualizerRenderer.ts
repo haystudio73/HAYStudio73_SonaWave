@@ -28,6 +28,7 @@ import {
   BackgroundSlideItem,
   LyricsInEffect,
   LyricsOutEffect,
+  BadgeBorderEffect,
 } from '../types';
 import { getActiveLyricInfo, getKaraokeDuoInfo, splitIntoTwoBalancedLines } from './lyricsParser';
 import { LYRICS_GRADIENT_THEMES } from './presets';
@@ -4726,9 +4727,33 @@ export class VisualizerRenderer {
       ctx.lineWidth = 2;
       ctx.stroke();
 
+      // Badge Border Effect on Vinyl
+      if (track.badgeBorderEffectEnabled) {
+        const bCol = track.badgeBorderColor || track.accentColor || '#ec4899';
+        this.renderBadgeBorderEffect(ctx, {
+          effect: track.badgeBorderEffect || 'glow',
+          tracePath: () => {
+            ctx.beginPath();
+            ctx.arc(0, 0, vinylRadius, 0, Math.PI * 2);
+          },
+          getPoints: (cnt) => this.sampleCirclePerimeter(0, 0, vinylRadius, cnt),
+          perimeterLength: 2 * Math.PI * vinylRadius,
+          bounds: { cx: 0, cy: 0, radius: vinylRadius },
+          borderColor: bCol,
+          secondaryColor: track.badgeBorderEffectSecondaryColor || '#06b6d4',
+          borderWidth: Math.max(2, (track.badgeBorderWidth ?? 4) * userScale),
+          speed: track.badgeBorderEffectSpeed ?? 1.0,
+          intensity: track.badgeBorderEffectIntensity ?? 1.0,
+          beatIntensity,
+          userScale,
+        });
+      }
+
       ctx.restore();
 
     } else if (track.cardStyle === 'glass-card') {
+      const bScale = track.badgeScale !== undefined ? track.badgeScale : 1.0;
+      const bOpacity = track.badgeOpacity !== undefined ? track.badgeOpacity : 1.0;
       const items = this.getTrackDetailItems(track, userScale);
       let totalTextHeight = 0;
       const lineHeights: number[] = [];
@@ -4738,14 +4763,15 @@ export class VisualizerRenderer {
         totalTextHeight += lh + (i < items.length - 1 ? 4 * userScale : 0);
       }
 
-      const cardH = Math.max(90 * cardScale, totalTextHeight + 24 * cardScale);
-      const cardW = Math.min(width * 0.85, 440) * cardScale;
-      const radius = 16 * cardScale;
+      const cardH = Math.max(90 * cardScale * bScale, totalTextHeight + 24 * cardScale);
+      const cardW = Math.min(width * 0.85, 440) * cardScale * bScale;
+      const radius = Math.min(cardH * 0.45, (track.badgeBorderRadius !== undefined ? track.badgeBorderRadius : 16) * cardScale);
 
       ctx.save();
       ctx.translate(centerX, centerY + offsetY);
       if (tiltAngle !== 0) ctx.rotate(tiltAngle);
       ctx.scale(scaleBoostX, scaleBoostY);
+      ctx.globalAlpha = bOpacity;
 
       const cardX = -cardW / 2;
       const cardY = -cardH / 2;
@@ -4754,13 +4780,16 @@ export class VisualizerRenderer {
       ctx.beginPath();
       ctx.roundRect(cardX, cardY, cardW, cardH, radius);
       ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
-      ctx.shadowColor = track.badgeBeatGlow ? (track.accentColor || 'rgba(0, 0, 0, 0.5)') : 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowColor = track.badgeBeatGlow ? (track.badgeBorderColor || track.accentColor || 'rgba(0, 0, 0, 0.5)') : 'rgba(0, 0, 0, 0.5)';
       ctx.shadowBlur = track.badgeBeatGlow ? 22 + beatIntensity * 26 : 20;
       ctx.fill();
 
       // Border
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
-      ctx.lineWidth = 1.2;
+      const isZeroBorder = track.badgeBorderWidth === 0;
+      const glassBorderCol = isZeroBorder ? 'rgba(255, 255, 255, 0.22)' : (track.badgeBorderColor || 'rgba(255, 255, 255, 0.22)');
+      const glassBorderW = isZeroBorder ? 1.2 * userScale : Math.max(1, (track.badgeBorderWidth ?? 2) * userScale * 0.5);
+      ctx.strokeStyle = glassBorderCol;
+      ctx.lineWidth = glassBorderW;
       ctx.stroke();
 
       // Cover image inside card
@@ -4769,7 +4798,7 @@ export class VisualizerRenderer {
       const imgY = cardY + 10 * cardScale;
       ctx.save();
       ctx.beginPath();
-      ctx.roundRect(imgX, imgY, imgSize, imgSize, 10 * cardScale);
+      ctx.roundRect(imgX, imgY, imgSize, imgSize, Math.max(6, radius * 0.55));
       ctx.clip();
       if (this.coverImage && this.coverImage.complete) {
         ctx.drawImage(this.coverImage, imgX, imgY, imgSize, imgSize);
@@ -4805,6 +4834,28 @@ export class VisualizerRenderer {
           }
         );
         curTextY += lh + 4 * userScale;
+      }
+
+      // Badge Border Effect on Frosted Glass Card
+      if (track.badgeBorderEffectEnabled) {
+        const rectPerim = 2 * (cardW + cardH) - (8 - 2 * Math.PI) * radius;
+        this.renderBadgeBorderEffect(ctx, {
+          effect: track.badgeBorderEffect || 'glow',
+          tracePath: () => {
+            ctx.beginPath();
+            ctx.roundRect(cardX, cardY, cardW, cardH, radius);
+          },
+          getPoints: (cnt) => this.sampleRoundedRectPerimeter(cardX, cardY, cardW, cardH, radius, cnt),
+          perimeterLength: Math.max(60, rectPerim),
+          bounds: { cx: 0, cy: 0, radius: Math.max(cardW, cardH) * 0.55 },
+          borderColor: track.badgeBorderColor || track.accentColor || '#06b6d4',
+          secondaryColor: track.badgeBorderEffectSecondaryColor || '#ec4899',
+          borderWidth: Math.max(2, (track.badgeBorderWidth ?? 4) * userScale),
+          speed: track.badgeBorderEffectSpeed ?? 1.0,
+          intensity: track.badgeBorderEffectIntensity ?? 1.0,
+          beatIntensity,
+          userScale,
+        });
       }
 
       ctx.restore();
@@ -4991,6 +5042,124 @@ export class VisualizerRenderer {
       ctx.lineWidth = 2;
       ctx.stroke();
 
+      // 9. Badge Border Effect on Rotating Vinyl Badge
+      if (track.badgeBorderEffectEnabled) {
+        this.renderBadgeBorderEffect(ctx, {
+          effect: track.badgeBorderEffect || 'glow',
+          tracePath: () => {
+            ctx.beginPath();
+            ctx.arc(0, 0, badgeR, 0, Math.PI * 2);
+          },
+          getPoints: (cnt) => this.sampleCirclePerimeter(0, 0, badgeR, cnt),
+          perimeterLength: 2 * Math.PI * badgeR,
+          bounds: { cx: 0, cy: 0, radius: badgeR },
+          borderColor: badgeBorderCol,
+          secondaryColor: track.badgeBorderEffectSecondaryColor || '#06b6d4',
+          borderWidth: badgeBorderW,
+          speed: track.badgeBorderEffectSpeed ?? 1.0,
+          intensity: track.badgeBorderEffectIntensity ?? 1.0,
+          beatIntensity,
+          userScale,
+        });
+      }
+
+      ctx.restore();
+
+    } else if (track.cardStyle === 'triangle-badge') {
+      // --- TRIANGLE BADGE (Rounded Equilateral Triangle Frame with Artwork & Border Effects) ---
+      const bScale = track.badgeScale !== undefined ? track.badgeScale : 1.0;
+      const bOpacity = track.badgeOpacity !== undefined ? track.badgeOpacity : 1.0;
+      const triR = Math.min(width, height) * 0.175 * cardScale * bScale;
+      const triCy = triR * 0.16; // Visual optical centering
+      const cornerR = Math.min(triR * 0.28, (track.badgeBorderRadius !== undefined ? track.badgeBorderRadius : 18) * userScale);
+      const badgeBorderCol = track.badgeBorderColor || track.accentColor || '#f97316';
+      const badgeBorderW = Math.max(2, (track.badgeBorderWidth !== undefined ? track.badgeBorderWidth : 5) * userScale);
+
+      ctx.save();
+      ctx.translate(centerX, centerY + offsetY);
+      if (tiltAngle !== 0) ctx.rotate(tiltAngle);
+      ctx.scale(scaleBoostX, scaleBoostY);
+      ctx.globalAlpha = bOpacity;
+
+      // 1. Ambient Shadow / Beat Glow behind Triangle
+      ctx.save();
+      this.traceRoundedTrianglePath(ctx, 0, triCy, triR, cornerR);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.shadowColor = badgeBorderCol;
+      ctx.shadowBlur = track.badgeBeatGlow ? 28 + beatIntensity * 34 : 20 + beatIntensity * 14;
+      ctx.fill();
+      ctx.restore();
+
+      // 2. Clipped Cover Artwork inside Triangle
+      ctx.save();
+      this.traceRoundedTrianglePath(ctx, 0, triCy, triR, cornerR);
+      ctx.clip();
+
+      const activeImg = (this.badgePngImage && this.badgePngImage.complete && this.badgePngImage.naturalWidth > 0)
+        ? this.badgePngImage
+        : (this.coverImage && this.coverImage.complete && this.coverImage.naturalWidth > 0
+            ? this.coverImage
+            : (this.logoImage && this.logoImage.complete ? this.logoImage : null));
+
+      const boxW = triR * 1.9;
+      const boxH = triR * 1.65;
+      const boxTop = triCy - triR;
+      if (activeImg) {
+        const imgAspect = (activeImg.naturalWidth || 1) / (activeImg.naturalHeight || 1);
+        let drawW = boxW;
+        let drawH = boxW / imgAspect;
+        if (drawH < boxH) {
+          drawH = boxH;
+          drawW = boxH * imgAspect;
+        }
+        ctx.drawImage(activeImg, -drawW / 2, boxTop + (boxH - drawH) * 0.42, drawW, drawH);
+      } else {
+        const triGrad = ctx.createLinearGradient(0, triCy - triR, 0, triCy + triR * 0.6);
+        triGrad.addColorStop(0, badgeBorderCol);
+        triGrad.addColorStop(1, '#1e1b4b');
+        ctx.fillStyle = triGrad;
+        ctx.fillRect(-triR, triCy - triR, triR * 2, triR * 2);
+      }
+
+      // Subtle glossy top-edge glass sheen
+      const sheen = ctx.createLinearGradient(0, triCy - triR, 0, triCy + triR * 0.5);
+      sheen.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
+      sheen.addColorStop(0.45, 'rgba(255, 255, 255, 0.0)');
+      sheen.addColorStop(1, 'rgba(0, 0, 0, 0.25)');
+      ctx.fillStyle = sheen;
+      ctx.fillRect(-triR, triCy - triR, triR * 2, triR * 2);
+      ctx.restore();
+
+      // 3. Base Triangle Rim Stroke
+      if (badgeBorderW > 0) {
+        ctx.save();
+        this.traceRoundedTrianglePath(ctx, 0, triCy, triR, cornerR);
+        ctx.strokeStyle = badgeBorderCol;
+        ctx.lineWidth = badgeBorderW;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 4. Optional Animated Badge Border Effect
+      if (track.badgeBorderEffectEnabled) {
+        const triSide = triR * Math.sqrt(3);
+        this.renderBadgeBorderEffect(ctx, {
+          effect: track.badgeBorderEffect || 'glow',
+          tracePath: () => this.traceRoundedTrianglePath(ctx, 0, triCy, triR, cornerR),
+          getPoints: (cnt) => this.sampleTrianglePerimeter(0, triCy, triR, cnt),
+          perimeterLength: triSide * 3,
+          bounds: { cx: 0, cy: triCy, radius: triR },
+          borderColor: badgeBorderCol,
+          secondaryColor: track.badgeBorderEffectSecondaryColor || '#06b6d4',
+          borderWidth: badgeBorderW,
+          speed: track.badgeBorderEffectSpeed ?? 1.0,
+          intensity: track.badgeBorderEffectIntensity ?? 1.0,
+          beatIntensity,
+          userScale,
+        });
+      }
+
       ctx.restore();
 
     } else if (track.cardStyle === 'logo-badge') {
@@ -5073,7 +5242,7 @@ export class VisualizerRenderer {
       const items = this.getTrackDetailItems(track, userScale);
       const boxSize = Math.min(width, height) * 0.20 * cardScale * bScale;
       const radius = Math.min(boxSize * 0.38, (track.badgeBorderRadius !== undefined ? track.badgeBorderRadius : 26) * userScale);
-      const borderW = Math.max(2, (track.badgeBorderWidth !== undefined ? track.badgeBorderWidth : 6) * userScale);
+      const borderW = Math.max(0, (track.badgeBorderWidth !== undefined ? track.badgeBorderWidth : 6) * userScale);
       const borderColor = track.badgeBorderColor || track.accentColor || '#f97316';
       const gap = (track.badgeTextGap !== undefined ? track.badgeTextGap : 24) * userScale;
 
@@ -5165,13 +5334,37 @@ export class VisualizerRenderer {
       ctx.restore();
 
       // Outer Rounded Border
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(coverX, coverY, boxSize, boxSize, radius);
-      ctx.strokeStyle = borderColor;
-      ctx.lineWidth = borderW;
-      ctx.stroke();
-      ctx.restore();
+      if (borderW > 0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(coverX, coverY, boxSize, boxSize, radius);
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderW;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Badge Border Effect on Horizontal Rounded Card
+      if (track.badgeBorderEffectEnabled) {
+        const rectPerim = 4 * boxSize - (8 - 2 * Math.PI) * radius;
+        this.renderBadgeBorderEffect(ctx, {
+          effect: track.badgeBorderEffect || 'glow',
+          tracePath: () => {
+            ctx.beginPath();
+            ctx.roundRect(coverX, coverY, boxSize, boxSize, radius);
+          },
+          getPoints: (cnt) => this.sampleRoundedRectPerimeter(coverX, coverY, boxSize, boxSize, radius, cnt),
+          perimeterLength: Math.max(60, rectPerim),
+          bounds: { cx: coverX + boxSize / 2, cy: coverY + boxSize / 2, radius: boxSize * 0.65 },
+          borderColor,
+          secondaryColor: track.badgeBorderEffectSecondaryColor || '#06b6d4',
+          borderWidth: borderW,
+          speed: track.badgeBorderEffectSpeed ?? 1.0,
+          intensity: track.badgeBorderEffectIntensity ?? 1.0,
+          beatIntensity,
+          userScale,
+        });
+      }
 
       // 2. Track Details on the Right (Left-aligned, vertically centered with the cover)
       const textX = coverX + boxSize + gap;
@@ -5209,8 +5402,8 @@ export class VisualizerRenderer {
       ctx.restore();
     }
 
-    // Render Title, Subtitle, & Artist for vinyl, circular badge, rotating badge, logo badge, or minimal tag
-    if (track.cardStyle === 'vinyl' || track.cardStyle === 'circular-badge' || track.cardStyle === 'rotating-badge' || track.cardStyle === 'logo-badge' || track.cardStyle === 'minimal-tag') {
+    // Render Title, Subtitle, & Artist for vinyl, circular badge, rotating badge, triangle badge, logo badge, or minimal tag
+    if (track.cardStyle === 'vinyl' || track.cardStyle === 'circular-badge' || track.cardStyle === 'rotating-badge' || track.cardStyle === 'triangle-badge' || track.cardStyle === 'logo-badge' || track.cardStyle === 'minimal-tag') {
       const items = this.getTrackDetailItems(track, userScale);
 
       if (items.length > 0) {
@@ -5221,9 +5414,11 @@ export class VisualizerRenderer {
               ? Math.min(width, height) * 0.18 * cardScale + 30 * userScale 
               : (track.cardStyle === 'rotating-badge'
                   ? Math.min(width, height) * 0.16 * cardScale * bScale + (track.vinylTextSpacing !== undefined ? track.vinylTextSpacing : 28) * userScale
-                  : (track.cardStyle === 'logo-badge'
-                      ? Math.min(width, height) * 0.14 * cardScale * bScale + 30 * userScale
-                      : Math.min(width, height) * 0.14 * cardScale * bScale + 26 * userScale)));
+                  : (track.cardStyle === 'triangle-badge'
+                      ? Math.min(width, height) * 0.175 * cardScale * bScale * 0.68 + (track.vinylTextSpacing !== undefined ? track.vinylTextSpacing : 28) * userScale
+                      : (track.cardStyle === 'logo-badge'
+                          ? Math.min(width, height) * 0.14 * cardScale * bScale + 30 * userScale
+                          : Math.min(width, height) * 0.14 * cardScale * bScale + 26 * userScale))));
 
         const textY = centerY + offsetBelow + (jumpStyle === 'bounce-up' ? offsetY * 0.45 : 0);
         const alignment = track.alignment || 'center';
@@ -5342,6 +5537,463 @@ export class VisualizerRenderer {
           alignment: track.alignment || 'center',
         }
       );
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Traces an equilateral rounded triangle pointing upward centered optically at (cx, cy)
+   */
+  private traceRoundedTrianglePath(
+    ctx: CanvasContext2D,
+    cx: number,
+    cy: number,
+    radius: number,
+    cornerRadius: number
+  ) {
+    const v0 = { x: cx, y: cy - radius };
+    const v1 = { x: cx + radius * Math.cos(Math.PI / 6), y: cy + radius * Math.sin(Math.PI / 6) };
+    const v2 = { x: cx - radius * Math.cos(Math.PI / 6), y: cy + radius * Math.sin(Math.PI / 6) };
+    const mid02 = { x: (v2.x + v0.x) / 2, y: (v2.y + v0.y) / 2 };
+    const r = Math.max(0, Math.min(cornerRadius, radius * 0.35));
+
+    ctx.beginPath();
+    ctx.moveTo(mid02.x, mid02.y);
+    ctx.arcTo(v0.x, v0.y, v1.x, v1.y, r);
+    ctx.arcTo(v1.x, v1.y, v2.x, v2.y, r);
+    ctx.arcTo(v2.x, v2.y, v0.x, v0.y, r);
+    ctx.closePath();
+  }
+
+  /**
+   * Samples evenly-spaced points + outward normals along a circle perimeter
+   */
+  private sampleCirclePerimeter(cx: number, cy: number, radius: number, count: number) {
+    const pts: { x: number; y: number; nx: number; ny: number }[] = [];
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 - Math.PI / 2;
+      const cos = Math.cos(a);
+      const sin = Math.sin(a);
+      pts.push({ x: cx + cos * radius, y: cy + sin * radius, nx: cos, ny: sin });
+    }
+    return pts;
+  }
+
+  /**
+   * Samples evenly-spaced points + outward normals along a rounded rectangle perimeter
+   */
+  private sampleRoundedRectPerimeter(x: number, y: number, w: number, h: number, r: number, count: number) {
+    const rad = Math.max(0, Math.min(r, w / 2, h / 2));
+    const straightW = Math.max(0, w - 2 * rad);
+    const straightH = Math.max(0, h - 2 * rad);
+    const arcLen = (Math.PI / 2) * rad;
+    const totalLen = 2 * straightW + 2 * straightH + 4 * arcLen || 1;
+    const pts: { x: number; y: number; nx: number; ny: number }[] = [];
+
+    for (let i = 0; i < count; i++) {
+      let d = (i / count) * totalLen;
+      // 1. Top edge
+      if (d <= straightW) {
+        pts.push({ x: x + rad + d, y, nx: 0, ny: -1 });
+        continue;
+      }
+      d -= straightW;
+      // 2. Top-right arc
+      if (d <= arcLen && rad > 0) {
+        const a = -Math.PI / 2 + (d / arcLen) * (Math.PI / 2);
+        pts.push({ x: x + w - rad + Math.cos(a) * rad, y: y + rad + Math.sin(a) * rad, nx: Math.cos(a), ny: Math.sin(a) });
+        continue;
+      }
+      d -= arcLen;
+      // 3. Right edge
+      if (d <= straightH) {
+        pts.push({ x: x + w, y: y + rad + d, nx: 1, ny: 0 });
+        continue;
+      }
+      d -= straightH;
+      // 4. Bottom-right arc
+      if (d <= arcLen && rad > 0) {
+        const a = (d / arcLen) * (Math.PI / 2);
+        pts.push({ x: x + w - rad + Math.cos(a) * rad, y: y + h - rad + Math.sin(a) * rad, nx: Math.cos(a), ny: Math.sin(a) });
+        continue;
+      }
+      d -= arcLen;
+      // 5. Bottom edge
+      if (d <= straightW) {
+        pts.push({ x: x + w - rad - d, y: y + h, nx: 0, ny: 1 });
+        continue;
+      }
+      d -= straightW;
+      // 6. Bottom-left arc
+      if (d <= arcLen && rad > 0) {
+        const a = Math.PI / 2 + (d / arcLen) * (Math.PI / 2);
+        pts.push({ x: x + rad + Math.cos(a) * rad, y: y + h - rad + Math.sin(a) * rad, nx: Math.cos(a), ny: Math.sin(a) });
+        continue;
+      }
+      d -= arcLen;
+      // 7. Left edge
+      if (d <= straightH) {
+        pts.push({ x, y: y + h - rad - d, nx: -1, ny: 0 });
+        continue;
+      }
+      d -= straightH;
+      // 8. Top-left arc
+      const a = Math.PI + (arcLen > 0 ? (d / arcLen) * (Math.PI / 2) : 0);
+      pts.push({ x: x + rad + Math.cos(a) * rad, y: y + rad + Math.sin(a) * rad, nx: Math.cos(a), ny: Math.sin(a) });
+    }
+    return pts;
+  }
+
+  /**
+   * Samples evenly-spaced points + outward normals along an equilateral triangle perimeter
+   */
+  private sampleTrianglePerimeter(cx: number, cy: number, radius: number, count: number) {
+    const v0 = { x: cx, y: cy - radius };
+    const v1 = { x: cx + radius * Math.cos(Math.PI / 6), y: cy + radius * Math.sin(Math.PI / 6) };
+    const v2 = { x: cx - radius * Math.cos(Math.PI / 6), y: cy + radius * Math.sin(Math.PI / 6) };
+    const verts = [v0, v1, v2];
+    const pts: { x: number; y: number; nx: number; ny: number }[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const u = (i / count) * 3;
+      const edgeIdx = Math.floor(u) % 3;
+      const frac = u - Math.floor(u);
+      const a = verts[edgeIdx];
+      const b = verts[(edgeIdx + 1) % 3];
+      const x = a.x + (b.x - a.x) * frac;
+      const y = a.y + (b.y - a.y) * frac;
+      // Outward vector from triangle center
+      const dx = x - cx;
+      const dy = y - cy;
+      const len = Math.hypot(dx, dy) || 1;
+      pts.push({ x, y, nx: dx / len, ny: dy / len });
+    }
+    return pts;
+  }
+
+  /**
+   * Unified animated Badge Border Effect Renderer
+   * Supports: Glow, LED Tracing, Magic Light, Fire, Smoke, Electric, Rainbow Aurora
+   */
+  private renderBadgeBorderEffect(
+    ctx: CanvasContext2D,
+    opts: {
+      effect: BadgeBorderEffect;
+      tracePath: () => void;
+      getPoints: (count: number) => { x: number; y: number; nx: number; ny: number }[];
+      perimeterLength: number;
+      bounds: { cx: number; cy: number; radius: number };
+      borderColor: string;
+      secondaryColor: string;
+      borderWidth: number;
+      speed: number;
+      intensity: number;
+      beatIntensity: number;
+      userScale: number;
+    }
+  ) {
+    const {
+      effect,
+      tracePath,
+      getPoints,
+      perimeterLength,
+      bounds,
+      borderColor,
+      secondaryColor,
+      borderWidth,
+      speed,
+      intensity,
+      beatIntensity,
+      userScale,
+    } = opts;
+    const t = (performance.now() / 1000) * Math.max(0.2, speed);
+    const baseW = Math.max(2, borderWidth);
+
+    ctx.save();
+
+    if (effect === 'glow') {
+      const pulse = 0.78 + 0.22 * Math.sin(t * 3.4) + beatIntensity * 0.55;
+      // Outer neon bloom
+      ctx.save();
+      tracePath();
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = baseW * (1.2 + 0.25 * intensity);
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = borderColor;
+      ctx.shadowBlur = (26 + beatIntensity * 30) * intensity * userScale;
+      ctx.globalAlpha = Math.min(1, 0.88 * pulse);
+      ctx.stroke();
+      ctx.restore();
+
+      // Inner bright core filament
+      ctx.save();
+      tracePath();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1.2, baseW * 0.3);
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = borderColor;
+      ctx.shadowBlur = 12 * intensity * userScale;
+      ctx.globalAlpha = 0.85;
+      ctx.stroke();
+      ctx.restore();
+
+    } else if (effect === 'led-tracing') {
+      const segLen = Math.max(14 * userScale, perimeterLength * 0.11);
+      const gapLen = Math.max(10 * userScale, perimeterLength * 0.08);
+      const cycle = segLen + gapLen;
+
+      // Subtle LED rail
+      ctx.save();
+      tracePath();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+      ctx.lineWidth = baseW * 0.85;
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.restore();
+
+      // Primary chasing LEDs
+      ctx.save();
+      tracePath();
+      ctx.setLineDash([segLen, gapLen]);
+      ctx.lineDashOffset = -(t * 140 * userScale) % cycle;
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = baseW * 1.1;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = borderColor;
+      ctx.shadowBlur = (16 + beatIntensity * 20) * intensity * userScale;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // Secondary high-intensity tracer head
+      const headLen = Math.max(18 * userScale, perimeterLength * 0.12);
+      const headGap = Math.max(20, perimeterLength * 0.5 - headLen);
+      ctx.save();
+      tracePath();
+      ctx.setLineDash([headLen, headGap]);
+      ctx.lineDashOffset = -(t * 210 * userScale) % (headLen + headGap);
+      ctx.strokeStyle = secondaryColor;
+      ctx.lineWidth = baseW * 1.25;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = secondaryColor;
+      ctx.shadowBlur = (22 + beatIntensity * 24) * intensity * userScale;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+    } else if (effect === 'magic-light') {
+      // Sweeping iridescent gradient around border
+      const ang = t * 1.8;
+      const gx = Math.cos(ang) * bounds.radius;
+      const gy = Math.sin(ang) * bounds.radius;
+      const magicGrad = ctx.createLinearGradient(
+        bounds.cx - gx,
+        bounds.cy - gy,
+        bounds.cx + gx,
+        bounds.cy + gy
+      );
+      magicGrad.addColorStop(0, borderColor);
+      magicGrad.addColorStop(0.35, '#ffffff');
+      magicGrad.addColorStop(0.68, secondaryColor);
+      magicGrad.addColorStop(1, borderColor);
+
+      ctx.save();
+      tracePath();
+      ctx.strokeStyle = magicGrad;
+      ctx.lineWidth = baseW * 1.15;
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = secondaryColor;
+      ctx.shadowBlur = (22 + beatIntensity * 26) * intensity * userScale;
+      ctx.stroke();
+      ctx.restore();
+
+      // Orbiting 4-point starlight sparkles along perimeter
+      const pts = getPoints(60);
+      const sparkleCount = 5;
+      const shift = Math.floor(t * 24) % pts.length;
+      for (let sIdx = 0; sIdx < sparkleCount; sIdx++) {
+        const pt = pts[(shift + sIdx * Math.floor(pts.length / sparkleCount)) % pts.length];
+        const flareR = (5 + 4 * Math.sin(t * 6 + sIdx * 1.4) + beatIntensity * 5) * intensity * userScale;
+        ctx.save();
+        ctx.translate(pt.x, pt.y);
+        ctx.rotate(t * 2 + sIdx);
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = sIdx % 2 === 0 ? borderColor : secondaryColor;
+        ctx.shadowBlur = 12 * userScale;
+        ctx.beginPath();
+        ctx.moveTo(0, -flareR);
+        ctx.quadraticCurveTo(0, 0, flareR, 0);
+        ctx.quadraticCurveTo(0, 0, 0, flareR);
+        ctx.quadraticCurveTo(0, 0, -flareR, 0);
+        ctx.quadraticCurveTo(0, 0, 0, -flareR);
+        ctx.fill();
+        ctx.restore();
+      }
+
+    } else if (effect === 'fire') {
+      const pts = getPoints(56);
+      const flameReach = (8 + 10 * intensity + beatIntensity * 14) * userScale;
+
+      // Outer crimson/orange flame tongue ring
+      ctx.save();
+      ctx.beginPath();
+      for (let i = 0; i < pts.length; i++) {
+        const pt = pts[i];
+        const flicker = 0.5 + 0.5 * Math.sin(t * 8.5 + i * 0.9) * Math.cos(t * 5.2 - i * 0.55);
+        const disp = flameReach * (0.25 + 0.75 * flicker);
+        const fx = pt.x + pt.nx * disp;
+        const fy = pt.y + pt.ny * disp - disp * 0.35;
+        if (i === 0) ctx.moveTo(fx, fy);
+        else ctx.lineTo(fx, fy);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = Math.max(3, baseW * 1.35);
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = (24 + beatIntensity * 24) * intensity * userScale;
+      ctx.globalAlpha = 0.85;
+      ctx.stroke();
+      ctx.restore();
+
+      // Inner bright yellow-gold fire core
+      ctx.save();
+      ctx.beginPath();
+      for (let i = 0; i < pts.length; i++) {
+        const pt = pts[i];
+        const flicker = 0.5 + 0.5 * Math.sin(t * 11.2 - i * 1.1);
+        const disp = flameReach * 0.48 * flicker;
+        const fx = pt.x + pt.nx * disp;
+        const fy = pt.y + pt.ny * disp - disp * 0.25;
+        if (i === 0) ctx.moveTo(fx, fy);
+        else ctx.lineTo(fx, fy);
+      }
+      ctx.closePath();
+      ctx.strokeStyle = '#fde047';
+      ctx.lineWidth = Math.max(1.5, baseW * 0.65);
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = '#fb923c';
+      ctx.shadowBlur = 12 * userScale;
+      ctx.stroke();
+      ctx.restore();
+
+      // Rising ember sparks
+      for (let e = 0; e < 14; e++) {
+        const pt = pts[(e * 4) % pts.length];
+        const life = (t * 0.85 + e * 0.19) % 1;
+        const ex = pt.x + pt.nx * (life * flameReach * 1.4) + Math.sin(t * 5 + e) * 4 * userScale;
+        const ey = pt.y + pt.ny * (life * flameReach) - life * 24 * userScale;
+        const r = (1 - life) * 2.8 * intensity * userScale;
+        if (r > 0.3) {
+          ctx.save();
+          ctx.globalAlpha = (1 - life) * 0.9;
+          ctx.fillStyle = e % 2 === 0 ? '#fde047' : '#fb7185';
+          ctx.shadowColor = '#f97316';
+          ctx.shadowBlur = 8 * userScale;
+          ctx.beginPath();
+          ctx.arc(ex, ey, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+    } else if (effect === 'smoke') {
+      const pts = getPoints(28);
+      const smokeDrift = (14 + 10 * intensity + beatIntensity * 10) * userScale;
+      for (let i = 0; i < pts.length; i++) {
+        const pt = pts[i];
+        const cycle = (t * 0.42 + i * 0.13) % 1;
+        const swirl = Math.sin(t * 1.8 + i * 0.9) * 6 * userScale;
+        const sx = pt.x + pt.nx * (cycle * smokeDrift) + swirl;
+        const sy = pt.y + pt.ny * (cycle * smokeDrift) - cycle * 16 * userScale;
+        const puffR = (7 + cycle * 14) * intensity * userScale;
+        const alpha = Math.sin(cycle * Math.PI) * 0.34;
+        if (alpha <= 0.02) continue;
+
+        ctx.save();
+        const puffGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, puffR);
+        puffGrad.addColorStop(0, `rgba(226, 232, 240, ${alpha.toFixed(3)})`);
+        puffGrad.addColorStop(0.55, `rgba(148, 163, 184, ${(alpha * 0.55).toFixed(3)})`);
+        puffGrad.addColorStop(1, 'rgba(148, 163, 184, 0)');
+        ctx.fillStyle = puffGrad;
+        ctx.beginPath();
+        ctx.arc(sx, sy, puffR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Soft mist rim glow
+      ctx.save();
+      tracePath();
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = Math.max(1.5, baseW * 0.7);
+      ctx.shadowColor = '#cbd5e1';
+      ctx.shadowBlur = 18 * intensity * userScale;
+      ctx.globalAlpha = 0.65;
+      ctx.stroke();
+      ctx.restore();
+
+    } else if (effect === 'electric') {
+      const pts = getPoints(48);
+      const jitterAmp = (4 + 6.5 * intensity + beatIntensity * 11) * userScale;
+      const phaseSeed = Math.floor(t * 22);
+
+      const traceLightning = (seedOffset: number, ampScale: number) => {
+        ctx.beginPath();
+        for (let i = 0; i < pts.length; i++) {
+          const pt = pts[i];
+          const hash = Math.sin((i + 1) * 12.9898 + (phaseSeed + seedOffset) * 78.233) * 43758.5453;
+          const rnd = (hash - Math.floor(hash)) * 2 - 1;
+          const px = pt.x + pt.nx * rnd * jitterAmp * ampScale;
+          const py = pt.y + pt.ny * rnd * jitterAmp * ampScale;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+      };
+
+      // Outer high-voltage plasma arc
+      ctx.save();
+      traceLightning(0, 1.0);
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = Math.max(2, baseW * 0.9);
+      ctx.lineJoin = 'bevel';
+      ctx.shadowColor = secondaryColor;
+      ctx.shadowBlur = (22 + beatIntensity * 26) * intensity * userScale;
+      ctx.stroke();
+      ctx.restore();
+
+      // Inner razor-sharp white-cyan core arc
+      ctx.save();
+      traceLightning(7, 0.7);
+      ctx.strokeStyle = '#e0f2fe';
+      ctx.lineWidth = Math.max(1.2, baseW * 0.35);
+      ctx.lineJoin = 'bevel';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 10 * userScale;
+      ctx.stroke();
+      ctx.restore();
+
+    } else if (effect === 'rainbow-aurora') {
+      const pts = getPoints(64);
+      ctx.save();
+      ctx.lineWidth = baseW * 1.15;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < pts.length; i++) {
+        const p1 = pts[i];
+        const p2 = pts[(i + 1) % pts.length];
+        const hue = (t * 95 + (i / pts.length) * 360) % 360;
+        const col = `hsl(${hue}, 95%, 64%)`;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = col;
+        ctx.shadowColor = col;
+        ctx.shadowBlur = (14 + beatIntensity * 18) * intensity * userScale;
+        ctx.stroke();
+      }
       ctx.restore();
     }
 

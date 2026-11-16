@@ -1375,19 +1375,36 @@ export function App() {
       setLyricsData(prev => restoreOriginalLyricsTiming(prev));
     }
     setLyricsConfig(targetLyrics);
-    setBackground(theme.background || DEFAULT_BACKGROUND);
+    const targetBg = theme.background || DEFAULT_BACKGROUND;
+    setBackground(targetBg);
+    setDefaultBackground(targetBg);
     setParticles(theme.particles || DEFAULT_PARTICLES);
     setFilmLight(theme.filmLight || DEFAULT_FILM_LIGHT);
     setColorGrading(theme.colorGrading || DEFAULT_COLOR_GRADING);
+    if (theme.masterEq) {
+      setMasterEqConfig(theme.masterEq);
+    }
     const safeTrack = theme.track ? { ...DEFAULT_TRACK, ...theme.track } : DEFAULT_TRACK;
     setTrack(safeTrack);
     if (theme.sceneTransitions) {
       setSceneTransitions(theme.sceneTransitions);
     }
+    if (theme.textBoxes) {
+      setTextBoxes(theme.textBoxes);
+    }
+    if (theme.lotties) {
+      setLotties(theme.lotties);
+      setSelectedLottieId(theme.lotties.length > 0 ? theme.lotties[0].id : null);
+    }
 
     if (rendererRef.current) {
-      if (theme.background?.url) {
-        rendererRef.current.setBackgroundImage(theme.background.url);
+      if (targetBg?.type === 'video' && targetBg.videoUrl) {
+        rendererRef.current.setBackgroundVideo(targetBg.videoUrl);
+      } else {
+        rendererRef.current.setBackgroundVideo('');
+        if (targetBg?.url) {
+          rendererRef.current.setBackgroundImage(targetBg.url);
+        }
       }
       rendererRef.current.setCoverImage(safeTrack.coverUrl || DEFAULT_TRACK.coverUrl);
     }
@@ -1395,6 +1412,12 @@ export function App() {
     if (theme.sampleAudio) {
       loadSampleTrack(theme.sampleAudio.type);
     }
+
+    setToastMessage(
+      language === 'vi'
+        ? `Đã áp dụng preset "${theme.nameVi || theme.name}"`
+        : `Applied preset "${theme.name}"`
+    );
   };
 
   // Snapshot Capture
@@ -2438,8 +2461,11 @@ export function App() {
           particles,
           filmLight,
           colorGrading,
+          masterEq: masterEqConfig,
+          sceneTransitions,
           track,
           textBoxes,
+          lotties,
         }}
       />
 

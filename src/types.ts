@@ -54,7 +54,7 @@ export interface ThreeDVisualizerSettings {
   rotateZ?: number;            // -180 to +180 deg (default 0)
 
   // Global Post-Processing Bloom Effect (Hào Quang Phát Sáng Hậu Kỳ Three.js)
-  bloomEnabled?: boolean;      // Bật/tắt hiệu ứng Bloom phát quang toàn cục (default true)
+  bloomEnabled?: boolean;      // Bật/tắt hiệu ứng Bloom phát quang toàn cục (default false)
   bloomStrength?: number;     // 0.2 to 3.5 (default 1.6)
   bloomRadius?: number;       // 0.1 to 1.5 (default 0.75)
   bloomThreshold?: number;    // 0.0 to 0.8 (default 0.15)
@@ -815,10 +815,20 @@ export type CardStyle =
   | 'glass-card' 
   | 'circular-badge' 
   | 'rotating-badge' 
+  | 'triangle-badge'
   | 'logo-badge' 
   | 'minimal-tag' 
   | 'horizontal-rounded-card' // Thẻ Bo Góc Viền Đậm 3 Dòng (Bìa bo góc bên trái, Subtitle, Title, Artist bên phải)
   | 'hidden';
+
+export type BadgeBorderEffect =
+  | 'glow'
+  | 'led-tracing'
+  | 'magic-light'
+  | 'fire'
+  | 'smoke'
+  | 'electric'
+  | 'rainbow-aurora';
 
 export type LogoPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'badge-center' | 'custom';
 
@@ -928,11 +938,16 @@ export interface TrackMetadata {
   // Layout order of the 3 elements (Default: ['subtitle', 'title', 'artist'])
   trackDetailsOrder?: TrackDetailElement[];
 
-  // Options for Horizontal Rounded Card (Badge Style)
+  // Options for Horizontal Rounded Card, Rotating Badge, Triangle Badge & Glass Card
   badgeBorderColor?: string;   // Màu viền bo góc (mặc định theo accentColor hoặc #f97316)
   badgeBorderWidth?: number;   // Độ dày viền (mặc định 6px)
   badgeBorderRadius?: number;  // Bán kính bo góc viền (mặc định 24px)
   badgeTextGap?: number;       // Khoảng cách giữa ảnh bìa và khối chữ (mặc định 24px)
+  badgeBorderEffectEnabled?: boolean; // Bật/tắt hiệu ứng viền Badge
+  badgeBorderEffect?: BadgeBorderEffect; // Kiểu hiệu ứng viền: glow, led-tracing, magic-light, fire, smoke, electric, rainbow-aurora
+  badgeBorderEffectSpeed?: number; // Tốc độ hiệu ứng viền (0.3 to 3.0, default 1.0)
+  badgeBorderEffectIntensity?: number; // Cường độ hiệu ứng viền (0.2 to 2.0, default 1.0)
+  badgeBorderEffectSecondaryColor?: string; // Màu phụ cho hiệu ứng Magic/LED/Electric
 
   rotateVinyl: boolean;
   vinylSpeed?: number;        // Tốc độ xoay đĩa than Vinyl (0.1 to 3.0, default 1.0)
@@ -1083,6 +1098,8 @@ export interface PresetTheme {
   name: string;
   nameVi: string;
   description: string;
+  descriptionEn?: string;
+  category?: string;
   thumbnail: string;
   aspectRatio: AspectRatio;
   visualizer: VisualizerConfig;

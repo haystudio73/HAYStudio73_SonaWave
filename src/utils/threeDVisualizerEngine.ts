@@ -2473,7 +2473,7 @@ class ThreeDVisualizerEngine {
     }
 
     // Render WebGL frame: with Global Post-Processing Bloom or standard renderer
-    const isBloomActive = s.bloomEnabled !== false;
+    const isBloomActive = s.bloomEnabled === true;
 
     if (isBloomActive && this.composer && this.bloomPass) {
       // Configure base Bloom parameters from settings

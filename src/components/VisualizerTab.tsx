@@ -554,7 +554,21 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
             return (
               <button
                 key={t.type}
-                onClick={() => update({ type: t.type })}
+                onClick={() => {
+                  const switchingTo3D = t.type.startsWith('3d-') && !config.type.startsWith('3d-');
+                  if (switchingTo3D && config.threeDSettings?.bloomEnabled === undefined) {
+                    onChange({
+                      ...config,
+                      type: t.type,
+                      threeDSettings: {
+                        ...(config.threeDSettings || {}),
+                        bloomEnabled: false,
+                      },
+                    });
+                  } else {
+                    update({ type: t.type });
+                  }
+                }}
                 className={`p-2.5 rounded-xl border text-left transition-all relative flex flex-col gap-1 cursor-pointer ${
                   isSelected
                     ? is3D
@@ -760,7 +774,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={three.bloomEnabled !== false}
+                    checked={three.bloomEnabled === true}
                     onChange={(e) => update3D({ bloomEnabled: e.target.checked })}
                     className="rounded text-pink-500 focus:ring-pink-500 bg-neutral-800 border-neutral-700"
                   />
@@ -774,7 +788,7 @@ export const VisualizerTab: React.FC<VisualizerTabProps> = ({
                 </span>
               </div>
 
-              {three.bloomEnabled !== false && (
+              {three.bloomEnabled === true && (
                 <div className="space-y-2.5 pl-2 pt-1 border-l-2 border-pink-500/40">
                   {/* Bloom Strength & Radius */}
                   <div className="grid grid-cols-2 gap-3">

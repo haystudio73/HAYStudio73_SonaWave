@@ -577,6 +577,7 @@ export const DEFAULT_VISUALIZER: VisualizerConfig = {
   lineThickness: 3,
   fillOpacity: 0.85,
   threeDSettings: {
+    bloomEnabled: false,
     cameraDistance: 38,
     cameraAngleX: 18,
     cameraAngleY: 0,
@@ -1724,6 +1725,11 @@ export const DEFAULT_TRACK: TrackMetadata = {
   badgeBorderWidth: 6,
   badgeBorderRadius: 26,
   badgeTextGap: 24,
+  badgeBorderEffectEnabled: false,
+  badgeBorderEffect: 'glow',
+  badgeBorderEffectSpeed: 1.0,
+  badgeBorderEffectIntensity: 1.0,
+  badgeBorderEffectSecondaryColor: '#06b6d4',
   vinylTextSpacing: 28,
   rotateVinyl: true,
   vinylSpeed: 1.0,
@@ -1765,6 +1771,8 @@ export const PRESET_THEMES: PresetTheme[] = [
     name: 'Cyberpunk Neon 9:16',
     nameVi: 'Cyberpunk Neon (TikTok/Reels)',
     description: 'Phong cách tương lai cực ngầu với sóng đối xứng phát sáng neon rực rỡ và đĩa xoay.',
+    descriptionEn: 'Futuristic neon aesthetic with mirrored glowing spectrum bars and a rotating vinyl badge.',
+    category: 'neon',
     thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=300&q=70',
     aspectRatio: '9:16',
     visualizer: {
@@ -1823,6 +1831,8 @@ export const PRESET_THEMES: PresetTheme[] = [
     name: 'Lofi Bedroom Square',
     nameVi: 'Lofi Chill Hoàng Hôn (1:1 Vuông)',
     description: 'Thư giãn, ấm áp với sóng âm mịn lượn sóng và hạt bụi trôi nhẹ.',
+    descriptionEn: 'Warm, relaxed square canvas with smooth liquid waveform and drifting lofi dust particles.',
+    category: 'lofi',
     thumbnail: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=300&q=70',
     aspectRatio: '1:1',
     visualizer: {
@@ -1880,6 +1890,8 @@ export const PRESET_THEMES: PresetTheme[] = [
     name: 'Cosmic Radial 9:16',
     nameVi: 'Vòng Tròn Vũ Trụ Radial (9:16)',
     description: 'Vòng hào quang tròn tỏa tia theo tần số âm bass cực kỳ hút mắt.',
+    descriptionEn: 'Hypnotic radial aura emitting frequency spikes synced to bass kicks and twinkling stars.',
+    category: 'cosmic',
     thumbnail: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=300&q=70',
     aspectRatio: '9:16',
     visualizer: {
@@ -1938,6 +1950,8 @@ export const PRESET_THEMES: PresetTheme[] = [
     name: 'Studio Master 16:9',
     nameVi: 'Studio Chuyên Nghiệp (16:9 YouTube)',
     description: 'Chuẩn tỉ lệ ngang YouTube với dải phổ EQ đa tầng và thẻ bài hát tinh tế.',
+    descriptionEn: 'Widescreen 16:9 YouTube layout featuring segmented LED cyber matrix EQ and frosted glass card.',
+    category: 'studio',
     thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=300&q=70',
     aspectRatio: '16:9',
     visualizer: {
@@ -1996,6 +2010,8 @@ export const PRESET_THEMES: PresetTheme[] = [
     name: 'Galaxy Nebula 9:16',
     nameVi: 'Dải Ngân Hà Galaxy Swirl',
     description: 'Hàng ngàn hạt ánh sáng xoay quanh tâm đĩa vinyl phản hồi theo dải âm thanh.',
+    descriptionEn: 'Pulsating starburst core wrapped around a spinning vinyl badge with starry nebula particles.',
+    category: 'cosmic',
     thumbnail: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=300&q=70',
     aspectRatio: '9:16',
     visualizer: {
@@ -2139,6 +2155,26 @@ export function clearAllUserPresets(): PresetTheme[] {
 }
 
 /**
+ * Export a single preset (built-in or user custom) to a downloadable JSON file
+ */
+export function exportSinglePresetJson(preset: PresetTheme) {
+  const safeName = (preset.name || preset.nameVi || 'preset')
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'preset';
+  const payload = {
+    ...preset,
+    exportedAt: Date.now(),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `SonaWave_Preset_${safeName}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Export all user presets to a downloadable JSON file
  */
 export function exportUserPresetsJson() {
@@ -2155,7 +2191,7 @@ export function exportUserPresetsJson() {
 /**
  * Import presets from a JSON string or object
  */
-export function importUserPresets(data: any): { count: number; presets: PresetTheme[] } {
+export function importUserPresets(data: any): { count: number; presets: PresetTheme[]; importedIds: string[] } {
   let list: PresetTheme[] = [];
   if (Array.isArray(data)) {
     list = data;
@@ -2163,7 +2199,7 @@ export function importUserPresets(data: any): { count: number; presets: PresetTh
     list = [data];
   }
 
-  const validPresets = list.filter((p) => p && p.name && p.visualizer);
+  const validPresets = list.filter((p) => p && (p.name || p.nameVi) && p.visualizer);
   if (validPresets.length === 0) {
     throw new Error('Không tìm thấy preset hợp lệ trong file!');
   }
@@ -2172,12 +2208,25 @@ export function importUserPresets(data: any): { count: number; presets: PresetTh
   const mergedMap = new Map<string, PresetTheme>();
   current.forEach((p) => mergedMap.set(p.id, p));
 
+  const importedIds: string[] = [];
   validPresets.forEach((p) => {
-    const presetId = p.id || `user-preset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    mergedMap.set(presetId, {
+    const rawId = p.id && !PRESET_THEMES.some((b) => b.id === p.id)
+      ? p.id
+      : `user-preset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    importedIds.push(rawId);
+    mergedMap.set(rawId, {
       ...p,
-      id: presetId,
+      id: rawId,
+      name: p.name || p.nameVi || 'Imported Preset',
+      nameVi: p.nameVi || p.name || 'Imported Preset',
+      category: p.category || 'custom',
       track: p.track ? { ...DEFAULT_TRACK, ...p.track } : DEFAULT_TRACK,
+      visualizer: p.visualizer ? { ...DEFAULT_VISUALIZER, ...p.visualizer } : DEFAULT_VISUALIZER,
+      lyrics: p.lyrics ? { ...DEFAULT_LYRICS, ...p.lyrics } : DEFAULT_LYRICS,
+      background: p.background ? { ...DEFAULT_BACKGROUND, ...p.background } : DEFAULT_BACKGROUND,
+      particles: p.particles ? { ...DEFAULT_PARTICLES, ...p.particles } : DEFAULT_PARTICLES,
+      filmLight: p.filmLight ? { ...DEFAULT_FILM_LIGHT, ...p.filmLight } : DEFAULT_FILM_LIGHT,
+      colorGrading: p.colorGrading ? { ...DEFAULT_COLOR_GRADING, ...p.colorGrading } : DEFAULT_COLOR_GRADING,
       isUserPreset: true,
       createdAt: p.createdAt || Date.now(),
     });
@@ -2190,6 +2239,6 @@ export function importUserPresets(data: any): { count: number; presets: PresetTh
     console.error('Failed to save imported presets:', e);
   }
 
-  return { count: validPresets.length, presets: finalPresets };
+  return { count: validPresets.length, presets: finalPresets, importedIds };
 }
 
