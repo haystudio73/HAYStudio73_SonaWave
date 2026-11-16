@@ -4,7 +4,7 @@ A professional audio wave video generator with synchronized lyrics, diverse visu
 
 > **🆕 Phiên bản mới nhất `v2.1.0`**: Nâng cấp **Triangle Badge** & **7 Hiệu Ứng Viền Huy Hiệu Động** (*Glow, LED Tracing, Magic Light, Fire, Smoke, Electric, Rainbow Aurora*), cửa sổ **Design Templates & Aesthetic Presets** 2 cột rộng 80% màn hình có xem trước & JSON Import/Export, **Lyrics Presets Manager** kèm khung Preview, sửa mượt **Lyrics In/Out Transitions**, tối ưu tắt **Bloom 3D** lần đầu chọn để bảo vệ GPU và **Giao diện Mobile Icon-Only** tinh gọn.
 
-Link demo: <a href="https://hay-studio73-sona-wave.vercel.app/" target="_blank">https://hay-studio73-sona-wave.vercel.app/</a>
+Link demo: https://hay-studio73-sona-wave.vercel.app/
 
 <img width="1920" height="909" alt="image" src="https://github.com/user-attachments/assets/73a33db1-221b-4d2e-a3ae-d880c6a9b387" />
 
