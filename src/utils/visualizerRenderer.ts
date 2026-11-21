@@ -29,6 +29,12 @@ import {
   LyricsInEffect,
   LyricsOutEffect,
   BadgeBorderEffect,
+  OverlayLayerItem,
+  OverlayBlendMode,
+  OverlayAnchorPoint,
+  OverlayMaskShape,
+  OverlayMaskBlendStyle,
+  MAX_OVERLAY_LAYERS,
 } from '../types';
 import { getActiveLyricInfo, getKaraokeDuoInfo, splitIntoTwoBalancedLines } from './lyricsParser';
 import { LYRICS_GRADIENT_THEMES } from './presets';
@@ -259,15 +265,25 @@ export class VisualizerRenderer {
       if (this.bgVideo && this.bgVideo.paused) {
         this.bgVideo.play().catch(() => {});
       }
-      if (currentTime !== undefined && this.bgVideo) {
+      this.overlayVideoCache.forEach((vid) => {
+        if (vid.paused && vid.readyState >= 2) {
+          vid.play().catch(() => {});
+        }
+      });
+      if (currentTime !== undefined) {
         this.syncVideoSeek(currentTime);
       }
     } else {
       if (this.bgVideo && !this.bgVideo.paused) {
         this.bgVideo.pause();
       }
-      // Pause all slide videos when paused to save resources and ensure preview stops
+      // Pause all slide & overlay videos when paused to save resources and ensure preview stops
       this.slideVideoCache.forEach((vid) => {
+        if (!vid.paused) {
+          vid.pause();
+        }
+      });
+      this.overlayVideoCache.forEach((vid) => {
         if (!vid.paused) {
           vid.pause();
         }
@@ -290,34 +306,63 @@ export class VisualizerRenderer {
    * Jumps smoothly without thrashing decoder pipeline.
    */
   public syncVideoSeek(currentTime: number) {
-    if (!this.bgVideo || !this.bgVideo.duration || !Number.isFinite(this.bgVideo.duration) || this.bgVideo.duration <= 0) return;
-    try {
-      const targetTime = currentTime % this.bgVideo.duration;
-      // Only seek if drift exceeds 0.6 seconds to avoid decoder stall
-      if (Math.abs(this.bgVideo.currentTime - targetTime) > 0.6) {
-        this.bgVideo.currentTime = targetTime;
+    if (this.bgVideo && this.bgVideo.duration && Number.isFinite(this.bgVideo.duration) && this.bgVideo.duration > 0) {
+      try {
+        const targetTime = currentTime % this.bgVideo.duration;
+        // Only seek if drift exceeds 0.6 seconds to avoid decoder stall
+        if (Math.abs(this.bgVideo.currentTime - targetTime) > 0.6) {
+          this.bgVideo.currentTime = targetTime;
+        }
+      } catch {
+        // ignore
       }
-    } catch (e) {
-      // ignore
     }
+
+    this.overlayVideoCache.forEach((vid) => {
+      if (!vid.duration || !Number.isFinite(vid.duration) || vid.duration <= 0) return;
+      try {
+        const speed = vid.playbackRate || 1.0;
+        const scaledTime = currentTime * speed;
+        const targetTime = vid.loop ? (scaledTime % vid.duration) : Math.min(vid.duration, scaledTime);
+        if (Math.abs(vid.currentTime - targetTime) > 0.6) {
+          vid.currentTime = targetTime;
+        }
+      } catch {
+        // ignore
+      }
+    });
   }
 
   /**
-   * Rewinds the background video to the beginning (or specific start offset) and starts playback.
+   * Rewinds the background video and overlay layer videos to the beginning (or specific start offset) and starts playback.
    * Called automatically when starting HD video export/rendering.
    */
   public replayBackgroundVideo(startTime: number = 0) {
-    if (!this.bgVideo) return;
-    try {
-      if (this.bgVideo.duration && Number.isFinite(this.bgVideo.duration) && this.bgVideo.duration > 0) {
-        this.bgVideo.currentTime = startTime % this.bgVideo.duration;
-      } else {
-        this.bgVideo.currentTime = 0;
+    if (this.bgVideo) {
+      try {
+        if (this.bgVideo.duration && Number.isFinite(this.bgVideo.duration) && this.bgVideo.duration > 0) {
+          this.bgVideo.currentTime = startTime % this.bgVideo.duration;
+        } else {
+          this.bgVideo.currentTime = 0;
+        }
+        this.bgVideo.play().catch(() => {});
+      } catch (e) {
+        console.warn('Unable to replay background video:', e);
       }
-      this.bgVideo.play().catch(() => {});
-    } catch (e) {
-      console.warn('Unable to replay background video:', e);
     }
+
+    this.overlayVideoCache.forEach((vid) => {
+      try {
+        if (vid.duration && Number.isFinite(vid.duration) && vid.duration > 0) {
+          vid.currentTime = vid.loop ? (startTime % vid.duration) : Math.min(vid.duration, startTime);
+        } else {
+          vid.currentTime = 0;
+        }
+        vid.play().catch(() => {});
+      } catch {
+        // ignore
+      }
+    });
   }
 
   public setCoverImage(url: string) {
@@ -368,6 +413,14 @@ export class VisualizerRenderer {
   // Slide & Scene Transitions Image & Video Cache & Smooth 60FPS Ken Burns State
   private slideImageCache: Map<string, HTMLImageElement> = new Map();
   private slideVideoCache: Map<string, HTMLVideoElement> = new Map();
+  private overlayImageCache: Map<string, HTMLImageElement> = new Map();
+  private overlayVideoCache: Map<string, HTMLVideoElement> = new Map();
+  private overlayMaskCanvas: HTMLCanvasElement | null = null;
+  private overlayMaskCtx: CanvasRenderingContext2D | null = null;
+  private overlayAlphaCanvas: HTMLCanvasElement | null = null;
+  private overlayAlphaCtx: CanvasRenderingContext2D | null = null;
+  private overlayDiamondCanvas: HTMLCanvasElement | null = null;
+  private overlayAngleCanvas: HTMLCanvasElement | null = null;
   private smoothSlideClock = 0;
   private lastSlideClockWallTime = 0;
   private lastRawAudioTime = 0;
@@ -1351,7 +1404,8 @@ export class VisualizerRenderer {
     sceneTransitions?: SceneTransitionsConfig,
     highPerformanceMode?: boolean,
     lotties: LottieItem[] = [],
-    playlistTime?: number
+    playlistTime?: number,
+    overlayLayers: OverlayLayerItem[] = []
   ) {
     if (highPerformanceMode !== undefined) {
       this.highPerformanceMode = highPerformanceMode;
@@ -1399,6 +1453,11 @@ export class VisualizerRenderer {
 
     // 1. Render Background (Image / Video / Gradient / Scene Transitions)
     this.renderBackground(sceneCtx, width, height, background, bassIntensity, beatIntensity, isPlaying, effectiveSlideTime, track, transState);
+
+    // 1.1 Render Overlay Layers (Max 6 Image/Video layers stacked directly above main Background)
+    if (overlayLayers && overlayLayers.length > 0) {
+      this.renderOverlayLayers(sceneCtx, width, height, overlayLayers, isPlaying, Math.max(0, this.smoothSlideClock));
+    }
 
     // 1.2 Render Track Card if configured 'back-all'
     renderTrackCardIfSlot('back-all');
@@ -1827,6 +1886,518 @@ export class VisualizerRenderer {
   /**
    * Background renderer (Supports Images, MP4 Videos, Gradients, Colors, Dynamic Beat & Bass Zoom)
    */
+  private ensureHiddenVideoHost() {
+    if (typeof document === 'undefined') return;
+    if (!this.hiddenVideoContainer) {
+      let host = document.getElementById('sonawave-hidden-video-host') as HTMLDivElement | null;
+      if (!host) {
+        host = document.createElement('div');
+        host.id = 'sonawave-hidden-video-host';
+        host.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0.001;pointer-events:none;overflow:hidden;z-index:-9999;';
+        document.body.appendChild(host);
+      }
+      this.hiddenVideoContainer = host;
+    }
+  }
+
+  private getOrCreateOverlayImage(url: string): HTMLImageElement | null {
+    if (!url) return null;
+    let img = this.overlayImageCache.get(url);
+    if (!img) {
+      img = new Image();
+      if (!url.startsWith('blob:') && !url.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
+      img.src = url;
+      this.overlayImageCache.set(url, img);
+    }
+    return img;
+  }
+
+  private getOrCreateOverlayVideo(url: string, loop = true, playbackSpeed = 1.0): HTMLVideoElement | null {
+    if (!url) return null;
+    let vid = this.overlayVideoCache.get(url);
+    if (!vid) {
+      vid = document.createElement('video');
+      vid.src = url;
+      vid.loop = loop;
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.setAttribute('playsinline', '');
+      vid.setAttribute('webkit-playsinline', '');
+      vid.preload = 'auto';
+      vid.autoplay = false;
+      vid.disablePictureInPicture = true;
+      vid.playbackRate = Math.max(0.25, Math.min(2.0, playbackSpeed || 1.0));
+      if (!url.startsWith('blob:') && !url.startsWith('data:')) {
+        vid.crossOrigin = 'anonymous';
+      }
+      this.ensureHiddenVideoHost();
+      if (this.hiddenVideoContainer) {
+        this.hiddenVideoContainer.appendChild(vid);
+      }
+      vid.addEventListener('canplay', () => {
+        if (this.isAudioPlaying && vid && vid.paused) {
+          vid.play().catch(() => {});
+        }
+      });
+      if (this.isAudioPlaying) {
+        vid.play().catch(() => {});
+      }
+      this.overlayVideoCache.set(url, vid);
+    } else {
+      if (vid.loop !== loop) vid.loop = loop;
+      const clampedRate = Math.max(0.25, Math.min(2.0, playbackSpeed || 1.0));
+      if (Math.abs(vid.playbackRate - clampedRate) > 0.01) {
+        vid.playbackRate = clampedRate;
+      }
+      if (this.isAudioPlaying && vid.paused && vid.readyState >= 2) {
+        vid.play().catch(() => {});
+      } else if (!this.isAudioPlaying && !vid.paused) {
+        vid.pause();
+      }
+    }
+    return vid;
+  }
+
+  private resolveOverlayBlendOp(mode: OverlayBlendMode | undefined): {
+    op: GlobalCompositeOperation;
+    filter?: string;
+  } {
+    switch (mode) {
+      case 'light':
+        return { op: 'lighten' };
+      case 'dark':
+        return { op: 'darken' };
+      case 'reverse':
+        return { op: 'difference' };
+      case 'color-burn':
+        return { op: 'color-burn' };
+      case 'overlay':
+        return { op: 'overlay' };
+      case 'vivid':
+        return { op: 'hard-light', filter: 'contrast(1.3) saturate(1.2)' };
+      case 'screen':
+        return { op: 'screen' };
+      case 'multiply':
+        return { op: 'multiply' };
+      case 'color-dodge':
+        return { op: 'color-dodge' };
+      case 'soft-light':
+        return { op: 'soft-light' };
+      case 'hard-light':
+        return { op: 'hard-light' };
+      case 'lighter':
+        return { op: 'lighter' };
+      case 'exclusion':
+        return { op: 'exclusion' };
+      case 'normal':
+      default:
+        return { op: 'source-over' };
+    }
+  }
+
+  private resolveOverlayAnchorRatios(anchor?: OverlayAnchorPoint): { ax: number; ay: number } {
+    switch (anchor) {
+      case 'top-center':
+        return { ax: 0.5, ay: 0 };
+      case 'top-right':
+        return { ax: 1, ay: 0 };
+      case 'center-left':
+        return { ax: 0, ay: 0.5 };
+      case 'center':
+        return { ax: 0.5, ay: 0.5 };
+      case 'center-right':
+        return { ax: 1, ay: 0.5 };
+      case 'bottom-left':
+        return { ax: 0, ay: 1 };
+      case 'bottom-center':
+        return { ax: 0.5, ay: 1 };
+      case 'bottom-right':
+        return { ax: 1, ay: 1 };
+      case 'top-left':
+      default:
+        return { ax: 0, ay: 0 };
+    }
+  }
+
+  private ensureOverlayMaskBuffers(width: number, height: number) {
+    if (!this.overlayMaskCanvas) {
+      this.overlayMaskCanvas = document.createElement('canvas');
+      this.overlayMaskCtx = this.overlayMaskCanvas.getContext('2d', { willReadFrequently: false });
+    }
+    if (this.overlayMaskCanvas.width !== width || this.overlayMaskCanvas.height !== height) {
+      this.overlayMaskCanvas.width = width;
+      this.overlayMaskCanvas.height = height;
+    }
+
+    if (!this.overlayAlphaCanvas) {
+      this.overlayAlphaCanvas = document.createElement('canvas');
+      this.overlayAlphaCtx = this.overlayAlphaCanvas.getContext('2d', { willReadFrequently: false });
+    }
+    if (this.overlayAlphaCanvas.width !== width || this.overlayAlphaCanvas.height !== height) {
+      this.overlayAlphaCanvas.width = width;
+      this.overlayAlphaCanvas.height = height;
+    }
+  }
+
+  private getDiamondGradientCanvas(): HTMLCanvasElement {
+    if (this.overlayDiamondCanvas) return this.overlayDiamondCanvas;
+    const size = 128;
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    const gctx = c.getContext('2d');
+    if (gctx) {
+      const img = gctx.createImageData(size, size);
+      const data = img.data;
+      const half = size / 2;
+      for (let py = 0; py < size; py++) {
+        const ny = Math.abs((py + 0.5 - half) / half);
+        for (let px = 0; px < size; px++) {
+          const nx = Math.abs((px + 0.5 - half) / half);
+          // 4-point diamond/star radial distance matching Photoshop Diamond Gradient
+          const d = 0.65 * (nx + ny) + 0.7 * Math.sqrt(nx * ny);
+          const alpha = Math.max(0, Math.min(1, 1 - d));
+          const smoothAlpha = alpha * alpha * (3 - 2 * alpha);
+          const idx = (py * size + px) * 4;
+          data[idx] = 255;
+          data[idx + 1] = 255;
+          data[idx + 2] = 255;
+          data[idx + 3] = Math.round(smoothAlpha * 255);
+        }
+      }
+      gctx.putImageData(img, 0, 0);
+    }
+    this.overlayDiamondCanvas = c;
+    return c;
+  }
+
+  private getAngleGradientCanvas(): HTMLCanvasElement {
+    if (this.overlayAngleCanvas) return this.overlayAngleCanvas;
+    const size = 128;
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    const gctx = c.getContext('2d');
+    if (gctx) {
+      const img = gctx.createImageData(size, size);
+      const data = img.data;
+      const half = size / 2;
+      for (let py = 0; py < size; py++) {
+        const dy = py + 0.5 - half;
+        for (let px = 0; px < size; px++) {
+          const dx = px + 0.5 - half;
+          let theta = Math.atan2(dy, dx); // -PI..PI
+          if (theta < 0) theta += Math.PI * 2;
+          const t = theta / (Math.PI * 2);
+          const alpha = Math.max(0, Math.min(1, 1 - t));
+          const idx = (py * size + px) * 4;
+          data[idx] = 255;
+          data[idx + 1] = 255;
+          data[idx + 2] = 255;
+          data[idx + 3] = Math.round(alpha * 255);
+        }
+      }
+      gctx.putImageData(img, 0, 0);
+    }
+    this.overlayAngleCanvas = c;
+    return c;
+  }
+
+  private drawMaskShapePath(
+    ctx: CanvasRenderingContext2D,
+    shape: OverlayMaskShape,
+    cx: number,
+    cy: number,
+    halfW: number,
+    halfH: number
+  ) {
+    ctx.beginPath();
+    if (shape === 'square') {
+      const s = Math.min(halfW, halfH);
+      ctx.rect(cx - s, cy - s, s * 2, s * 2);
+    } else if (shape === 'circle') {
+      const r = Math.min(halfW, halfH);
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    } else if (shape === 'ellipse') {
+      ctx.ellipse(cx, cy, halfW, halfH, 0, 0, Math.PI * 2);
+    } else if (shape === 'triangle') {
+      ctx.moveTo(cx, cy - halfH);
+      ctx.lineTo(cx + halfW, cy + halfH);
+      ctx.lineTo(cx - halfW, cy + halfH);
+      ctx.closePath();
+    }
+  }
+
+  private drawOverlayMaskBlendGradient(
+    ctx: CanvasRenderingContext2D,
+    style: OverlayMaskBlendStyle,
+    cx: number,
+    cy: number,
+    halfW: number,
+    halfH: number,
+    angleDeg: number,
+    width: number,
+    height: number
+  ) {
+    const rad = (angleDeg * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    if (style === 'linear') {
+      const reach = Math.hypot(halfW, halfH);
+      const grad = ctx.createLinearGradient(
+        cx - cos * reach,
+        cy - sin * reach,
+        cx + cos * reach,
+        cy + sin * reach
+      );
+      grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+    } else if (style === 'radial') {
+      const outerR = Math.max(halfW, halfH);
+      const grad = ctx.createRadialGradient(cx, cy, outerR * 0.08, cx, cy, outerR);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      grad.addColorStop(0.55, 'rgba(255, 255, 255, 0.72)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+    } else if (style === 'reflected') {
+      const reach = Math.hypot(halfW, halfH);
+      const grad = ctx.createLinearGradient(
+        cx - cos * reach,
+        cy - sin * reach,
+        cx + cos * reach,
+        cy + sin * reach
+      );
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      grad.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+      grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+    } else if (style === 'angle') {
+      const angleTex = this.getAngleGradientCanvas();
+      const diag = Math.ceil(Math.hypot(width, height) * 1.4);
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rad);
+      ctx.drawImage(angleTex, -diag / 2, -diag / 2, diag, diag);
+      ctx.restore();
+    } else if (style === 'diamond') {
+      const diamondTex = this.getDiamondGradientCanvas();
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rad);
+      ctx.drawImage(diamondTex, -halfW, -halfH, halfW * 2, halfH * 2);
+      ctx.restore();
+    }
+  }
+
+  private renderOverlayLayers(
+    ctx: CanvasContext2D,
+    width: number,
+    height: number,
+    overlayLayers: OverlayLayerItem[],
+    isPlaying: boolean,
+    animTime: number = 0
+  ) {
+    const layers = overlayLayers.slice(0, MAX_OVERLAY_LAYERS);
+    for (const layer of layers) {
+      if (!layer || !layer.enabled || !layer.url) continue;
+      const alpha = Math.max(0, Math.min(1, (layer.opacity ?? 100) / 100));
+      if (alpha <= 0.001) continue;
+
+      let source: CanvasImageSource | null = null;
+      let natW = 0;
+      let natH = 0;
+
+      if (layer.type === 'video') {
+        const vid = this.getOrCreateOverlayVideo(layer.url, layer.loop !== false, layer.playbackSpeed ?? 1.0);
+        if (!vid || vid.readyState < 2 || !vid.videoWidth || !vid.videoHeight) continue;
+        if (isPlaying && vid.paused && (!vid.ended || layer.loop !== false)) {
+          vid.play().catch(() => {});
+        }
+        source = vid;
+        natW = vid.videoWidth;
+        natH = vid.videoHeight;
+      } else {
+        const img = this.getOrCreateOverlayImage(layer.url);
+        if (!img || !img.complete || img.naturalWidth <= 0 || img.naturalHeight <= 0) continue;
+        source = img;
+        natW = img.naturalWidth;
+        natH = img.naturalHeight;
+      }
+
+      if (!source || natW <= 0 || natH <= 0) continue;
+
+      const scaleFactor = Math.max(0.05, (layer.scale ?? 100) / 100);
+      const fitMode = layer.fitMode || 'cover';
+
+      let drawW = width;
+      let drawH = height;
+      if (fitMode === 'contain') {
+        const s = Math.min(width / natW, height / natH) * scaleFactor;
+        drawW = natW * s;
+        drawH = natH * s;
+      } else if (fitMode === 'original') {
+        drawW = natW * scaleFactor;
+        drawH = natH * scaleFactor;
+      } else if (fitMode === 'stretch') {
+        drawW = width * scaleFactor;
+        drawH = height * scaleFactor;
+      } else {
+        // Default 'cover' scaled proportionally
+        const s = Math.max(width / natW, height / natH) * scaleFactor;
+        drawW = natW * s;
+        drawH = natH * s;
+      }
+
+      // Compute placement from selected Anchor Point (default top-left: ax=0, ay=0)
+      const { ax, ay } = this.resolveOverlayAnchorRatios(layer.anchorPoint);
+      const targetX = width * (ax + (layer.x ?? 0) / 100);
+      const targetY = height * (ay + (layer.y ?? 0) / 100);
+      const baseDrawX = targetX - drawW * ax;
+      const baseDrawY = targetY - drawH * ay;
+
+      const { op, filter } = this.resolveOverlayBlendOp(layer.blendMode);
+
+      const drawMediaToTarget = (targetCtx: CanvasContext2D) => {
+        if (layer.scrollEnabled) {
+          const dir = layer.scrollDirection || 'left';
+          const cycleSec = Math.max(0.5, layer.scrollDuration ?? 10);
+          const progress = (((animTime % cycleSec) + cycleSec) % cycleSec) / cycleSec;
+          const tileW = Math.max(1, Math.round(drawW));
+          const tileH = Math.max(1, Math.round(drawH));
+
+          if (dir === 'left' || dir === 'right') {
+            const shiftX = dir === 'right' ? progress * tileW : -progress * tileW;
+            const mod = (((baseDrawX + shiftX) % tileW) + tileW) % tileW;
+            let curX = mod === 0 ? 0 : mod - tileW;
+            const drawYInt = Math.round(baseDrawY);
+            while (curX < width) {
+              targetCtx.drawImage(source!, Math.round(curX), drawYInt, tileW, tileH);
+              curX += tileW;
+            }
+          } else {
+            const shiftY = dir === 'down' ? progress * tileH : -progress * tileH;
+            const mod = (((baseDrawY + shiftY) % tileH) + tileH) % tileH;
+            let curY = mod === 0 ? 0 : mod - tileH;
+            const drawXInt = Math.round(baseDrawX);
+            while (curY < height) {
+              targetCtx.drawImage(source!, drawXInt, Math.round(curY), tileW, tileH);
+              curY += tileH;
+            }
+          }
+        } else {
+          targetCtx.drawImage(source!, baseDrawX, baseDrawY, drawW, drawH);
+        }
+      };
+
+      const maskShape: OverlayMaskShape = layer.maskShape || 'none';
+      const maskBlendStyle: OverlayMaskBlendStyle = layer.maskBlendStyle || 'solid';
+      const hasMask = maskShape !== 'none' || maskBlendStyle !== 'solid';
+
+      if (hasMask) {
+        this.ensureOverlayMaskBuffers(width, height);
+        const mCanvas = this.overlayMaskCanvas;
+        const mCtx = this.overlayMaskCtx;
+        const aCanvas = this.overlayAlphaCanvas;
+        const aCtx = this.overlayAlphaCtx;
+
+        if (mCanvas && mCtx && aCanvas && aCtx) {
+          // 1. Draw layer media cleanly onto isolated mask buffer
+          mCtx.save();
+          mCtx.clearRect(0, 0, width, height);
+          mCtx.globalCompositeOperation = 'source-over';
+          mCtx.globalAlpha = 1;
+          drawMediaToTarget(mCtx);
+          mCtx.restore();
+
+          // 2. Build combined alpha mask (Shape Mask + Gradient Blend Style) onto alpha buffer
+          const maskSizeScale = Math.max(0.1, Math.min(2.0, (layer.maskSize ?? 85) / 100));
+          const maskCx = (width * (layer.maskX ?? 50)) / 100;
+          const maskCy = (height * (layer.maskY ?? 50)) / 100;
+          const halfW = (width * 0.5) * maskSizeScale;
+          const halfH = (height * 0.5) * maskSizeScale;
+          const featherPx = Math.max(0, (layer.maskFeather ?? 0) * (Math.min(width, height) / 1200));
+          const maskAngle = layer.maskAngle ?? 0;
+
+          aCtx.save();
+          aCtx.clearRect(0, 0, width, height);
+          aCtx.globalCompositeOperation = 'source-over';
+          aCtx.globalAlpha = 1;
+
+          if (maskShape !== 'none') {
+            if (featherPx > 0) {
+              aCtx.filter = `blur(${featherPx}px)`;
+            }
+            aCtx.fillStyle = '#ffffff';
+            this.drawMaskShapePath(aCtx, maskShape, maskCx, maskCy, halfW, halfH);
+            aCtx.fill();
+            if (featherPx > 0) {
+              aCtx.filter = 'none';
+            }
+          } else {
+            aCtx.fillStyle = '#ffffff';
+            aCtx.fillRect(0, 0, width, height);
+          }
+
+          if (maskBlendStyle !== 'solid') {
+            aCtx.globalCompositeOperation = 'source-in';
+            this.drawOverlayMaskBlendGradient(
+              aCtx,
+              maskBlendStyle,
+              maskCx,
+              maskCy,
+              halfW,
+              halfH,
+              maskAngle,
+              width,
+              height
+            );
+          }
+          aCtx.restore();
+
+          // 3. Apply combined alpha mask onto layer buffer (with optional invert)
+          mCtx.save();
+          mCtx.globalCompositeOperation = layer.maskInvert ? 'destination-out' : 'destination-in';
+          mCtx.drawImage(aCanvas, 0, 0);
+          mCtx.restore();
+
+          // 4. Composite masked layer onto main scene with user opacity & blendMode
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.globalCompositeOperation = op;
+          if (filter && 'filter' in ctx) {
+            (ctx as CanvasRenderingContext2D).filter = filter;
+          }
+          ctx.drawImage(mCanvas, 0, 0);
+          if (filter && 'filter' in ctx) {
+            (ctx as CanvasRenderingContext2D).filter = 'none';
+          }
+          ctx.restore();
+          continue;
+        }
+      }
+
+      // Fast path (no mask active)
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.globalCompositeOperation = op;
+      if (filter && 'filter' in ctx) {
+        (ctx as CanvasRenderingContext2D).filter = filter;
+      }
+      drawMediaToTarget(ctx);
+      if (filter && 'filter' in ctx) {
+        (ctx as CanvasRenderingContext2D).filter = 'none';
+      }
+      ctx.restore();
+    }
+  }
+
   private renderBackground(
     ctx: CanvasContext2D,
     width: number,

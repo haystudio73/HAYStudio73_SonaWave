@@ -32,6 +32,7 @@ export const vi: TranslationDictionary = {
   tabTextBoxes: 'Văn Bản',
   tabPlaylist: 'Playlist',
   tabLottie: 'LottieFiles',
+  tabOverlay: 'Overlay / Layer',
 
   // Canvas Stage & Player Bar
   noAudioUploaded: 'Chưa tải nhạc lên (Đang phát nhạc mẫu)',
@@ -253,7 +254,7 @@ export const vi: TranslationDictionary = {
   karaokeLeadTime: 'Thời Gian Chuẩn Bị Vào Câu',
   activeWordSweep: 'Quét Sáng Từng Từ Karaoke',
   flyingStarEffect: 'Ngôi Sao Vàng Bay Lấp Lánh ✨',
-  lyricsPosition: 'Vị Trí Hiển Thị',
+  lyricsPosition: 'Vị trí Y',
   lyricsMarginBottom: 'Khoảng Cách Đáy (Margin)',
   strokeWidth: 'Độ Dày Viền Chữ',
   strokeColor: 'Màu Viền Chữ',

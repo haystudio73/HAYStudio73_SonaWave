@@ -13,6 +13,7 @@ import {
   MasterEQConfig,
   SceneTransitionsConfig,
   LottieItem,
+  OverlayLayerItem,
 } from '../types';
 import {
   SavedProject,
@@ -65,6 +66,7 @@ interface ProjectsModalProps {
     masterEq?: MasterEQConfig;
     sceneTransitions?: SceneTransitionsConfig;
     lotties?: LottieItem[];
+    overlayLayers?: OverlayLayerItem[];
     audioFileName: string;
   };
   onLoadProject: (project: SavedProject) => void;
@@ -132,6 +134,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({
       masterEq: currentConfig.masterEq,
       sceneTransitions: currentConfig.sceneTransitions,
       lotties: currentConfig.lotties,
+      overlayLayers: currentConfig.overlayLayers,
       track: currentConfig.track ? { ...DEFAULT_TRACK, ...currentConfig.track } : DEFAULT_TRACK,
       textBoxes: currentConfig.textBoxes,
       audioFileName: currentConfig.audioFileName,

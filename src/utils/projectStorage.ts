@@ -14,6 +14,7 @@ import {
   MasterEQBands,
   SceneTransitionsConfig,
   LottieItem,
+  OverlayLayerItem,
 } from '../types';
 import {
   DEFAULT_VISUALIZER,
@@ -48,6 +49,7 @@ export interface SavedProject {
   masterEq?: MasterEQConfig;
   sceneTransitions?: SceneTransitionsConfig;
   lotties?: LottieItem[];
+  overlayLayers?: OverlayLayerItem[];
   audioFileName: string;
   sampleAudioType?: 'lofi' | 'synthwave' | 'acoustic' | 'edm';
 }

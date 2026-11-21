@@ -1889,13 +1889,13 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
               </span>
               <div>
                 <div className="flex justify-between text-[11px] mb-1">
-                  <span className="text-neutral-400">Vị trí dọc (Y)</span>
+                  <span className="text-neutral-400">{language === 'vi' ? 'Vị trí Y' : 'Position Y'}</span>
                   <span className="text-indigo-400 font-mono">{config.duoLine1Y ?? 78}%</span>
                 </div>
                 <input
                   type="range"
-                  min={15}
-                  max={90}
+                  min={0}
+                  max={100}
                   value={config.duoLine1Y ?? 78}
                   onChange={(e) => update({ duoLine1Y: parseInt(e.target.value) })}
                   className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
@@ -1925,13 +1925,13 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
               </span>
               <div>
                 <div className="flex justify-between text-[11px] mb-1">
-                  <span className="text-neutral-400">Vị trí dọc (Y)</span>
+                  <span className="text-neutral-400">{language === 'vi' ? 'Vị trí Y' : 'Position Y'}</span>
                   <span className="text-purple-400 font-mono">{config.duoLine2Y ?? 86}%</span>
                 </div>
                 <input
                   type="range"
-                  min={15}
-                  max={92}
+                  min={0}
+                  max={100}
                   value={config.duoLine2Y ?? 86}
                   onChange={(e) => update({ duoLine2Y: parseInt(e.target.value) })}
                   className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
@@ -2446,13 +2446,13 @@ export const LyricsTab: React.FC<LyricsTabProps> = ({
 
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-neutral-400">{t.lyricsPosition || 'Vị trí dọc (Y)'}</span>
+              <span className="text-neutral-400">{t.lyricsPosition || (language === 'vi' ? 'Vị trí Y' : 'Position Y')}</span>
               <span className="text-purple-400 font-mono">{config.positionY}%</span>
             </div>
             <input
               type="range"
-              min={15}
-              max={88}
+              min={0}
+              max={100}
               value={config.positionY}
               onChange={(e) => update({ positionY: parseInt(e.target.value) })}
               className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-500"

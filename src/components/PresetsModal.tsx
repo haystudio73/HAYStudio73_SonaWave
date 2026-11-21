@@ -13,6 +13,7 @@ import {
   TrackMetadata,
   TextBoxItem,
   LottieItem,
+  OverlayLayerItem,
   CardStyle,
   VisualizerType,
   ColorGradingLUT,
@@ -72,6 +73,7 @@ interface PresetsModalProps {
     track?: TrackMetadata;
     textBoxes?: TextBoxItem[];
     lotties?: LottieItem[];
+    overlayLayers?: OverlayLayerItem[];
   };
 }
 
@@ -846,6 +848,7 @@ export const PresetsModal: React.FC<PresetsModalProps> = ({
       track: currentConfig.track ? { ...currentConfig.track } : { ...DEFAULT_TRACK },
       textBoxes: currentConfig.textBoxes ? [...currentConfig.textBoxes] : undefined,
       lotties: currentConfig.lotties ? [...currentConfig.lotties] : undefined,
+      overlayLayers: currentConfig.overlayLayers ? [...currentConfig.overlayLayers] : undefined,
       thumbnail: derivedThumbnail,
       isUserPreset: true,
       createdAt: Date.now(),

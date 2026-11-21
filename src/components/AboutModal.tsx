@@ -11,20 +11,27 @@ import {
   Youtube,
   Globe,
   Sparkles,
+  BarChart3,
+  Eye,
+  Film,
+  Database,
 } from 'lucide-react';
+import { UsageStats, formatCompactCounter } from '../utils/usageStats';
 
 interface AboutModalProps {
   isOpen: boolean;
   onClose: () => void;
   language: Language;
+  usageStats?: UsageStats | null;
 }
 
-export const APP_VERSION = '2.1.0';
+export const APP_VERSION = '2.1.1';
 
 export const AboutModal: React.FC<AboutModalProps> = ({
   isOpen,
   onClose,
   language,
+  usageStats,
 }) => {
   const isVi = language === 'vi';
 
@@ -130,8 +137,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({
               <Code2 className="w-3.5 h-3.5 text-purple-400 shrink-0 mt-0.5" />
               <p className="text-[11px] text-neutral-400 leading-relaxed">
                 {isVi
-                  ? 'Công nghệ mã nguồn mở sử dụng: React, TypeScript, Vite, Tailwind CSS, Three.js (WebGL), Lucide Icons, Lottie Web / dotLottie, fflate & Canvas 2D Engine.'
-                  : 'Built with open-source libraries: React, TypeScript, Vite, Tailwind CSS, Three.js (WebGL), Lucide Icons, Lottie Web / dotLottie, fflate & Canvas 2D Engine.'}
+                  ? 'Công nghệ mã nguồn mở sử dụng: React, TypeScript, Vite, Tailwind CSS, Express, SQLite, Three.js (WebGL), Lucide Icons, Lottie Web / dotLottie, fflate & Canvas 2D Engine.'
+                  : 'Built with open-source libraries: React, TypeScript, Vite, Tailwind CSS, Express, SQLite, Three.js (WebGL), Lucide Icons, Lottie Web / dotLottie, fflate & Canvas 2D Engine.'}
               </p>
             </div>
           </div>
@@ -195,6 +202,75 @@ export const AboutModal: React.FC<AboutModalProps> = ({
                 <ExternalLink className="w-3.5 h-3.5 text-red-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform shrink-0" />
               </a>
             </div>
+          </div>
+
+          {/* Used Statistic Info */}
+          <div className="p-4 rounded-2xl bg-neutral-900/50 border border-neutral-800/90 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-cyan-400" />
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  {isVi ? 'Thống Kê Sử Dụng (Used Statistic Info)' : 'Used Statistic Info'}
+                </span>
+              </div>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-neutral-800 border border-neutral-700 text-[10px] font-semibold text-neutral-300 font-mono">
+                <Database className="w-3 h-3 text-cyan-400" />
+                SQLite
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="p-3 rounded-xl bg-cyan-950/25 border border-cyan-500/25 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+                  <Eye className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] text-neutral-400 block truncate">
+                    {isVi ? 'Lượt Truy Cập' : 'User Visits'}
+                  </span>
+                  <span
+                    className="text-base font-extrabold text-cyan-300 font-mono tabular-nums"
+                    title={usageStats ? usageStats.visitCount.toLocaleString() : undefined}
+                  >
+                    {usageStats ? formatCompactCounter(usageStats.visitCount) : '—'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-rose-950/25 border border-rose-500/25 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                  <Film className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[11px] text-neutral-400 block truncate">
+                    {isVi ? 'Lượt Xuất Video' : 'Video Exports'}
+                  </span>
+                  <span
+                    className="text-base font-extrabold text-rose-300 font-mono tabular-nums"
+                    title={usageStats ? usageStats.exportCount.toLocaleString() : undefined}
+                  >
+                    {usageStats ? formatCompactCounter(usageStats.exportCount) : '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {usageStats?.formatCounts && (
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-neutral-950/70 border border-neutral-800/80 text-[11px] text-neutral-400">
+                <span>{isVi ? 'Theo định dạng:' : 'By format:'}</span>
+                <div className="flex items-center gap-3 font-mono">
+                  <span title={usageStats.formatCounts.mp4.toLocaleString()}>
+                    MP4: <strong className="text-neutral-200">{formatCompactCounter(usageStats.formatCounts.mp4)}</strong>
+                  </span>
+                  <span title={usageStats.formatCounts.mov.toLocaleString()}>
+                    MOV: <strong className="text-neutral-200">{formatCompactCounter(usageStats.formatCounts.mov)}</strong>
+                  </span>
+                  <span title={usageStats.formatCounts.webm.toLocaleString()}>
+                    WEBM: <strong className="text-neutral-200">{formatCompactCounter(usageStats.formatCounts.webm)}</strong>
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

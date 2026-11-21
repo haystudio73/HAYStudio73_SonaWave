@@ -32,6 +32,7 @@ export const en: TranslationDictionary = {
   tabTextBoxes: 'Text & Titles',
   tabPlaylist: 'Playlist',
   tabLottie: 'LottieFiles',
+  tabOverlay: 'Overlay / Layer',
 
   // Canvas Stage & Player Bar
   noAudioUploaded: 'No audio uploaded (Using demo track)',
@@ -253,7 +254,7 @@ export const en: TranslationDictionary = {
   karaokeLeadTime: 'Lead-in Duration',
   activeWordSweep: 'Word-by-Word Highlight Sweep',
   flyingStarEffect: 'Flying Stars FX on Active Word',
-  lyricsPosition: 'Vertical Alignment',
+  lyricsPosition: 'Position Y',
   lyricsMarginBottom: 'Bottom Padding Offset',
   strokeWidth: 'Text Outline Width',
   strokeColor: 'Text Outline Color',

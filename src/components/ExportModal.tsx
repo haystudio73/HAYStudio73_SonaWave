@@ -19,10 +19,13 @@ import {
   Cpu,
   Zap,
   Gauge,
-  Activity
+  Activity,
+  BarChart3,
+  Eye
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { formatTime } from '../utils/lyricsParser';
+import { UsageStats, formatCompactCounter } from '../utils/usageStats';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -40,6 +43,7 @@ interface ExportModalProps {
   onDownloadExportedVideo: () => void;
   playlist?: PlaylistConfig;
   language?: Language;
+  usageStats?: UsageStats | null;
 }
 
 const VIDEO_FORMATS: {
@@ -70,6 +74,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onDownloadExportedVideo,
   playlist,
   language = 'vi',
+  usageStats,
 }) => {
   const [videoFormat, setVideoFormat] = useState<ExportVideoFormat>('mp4');
   const [exportedFormat, setExportedFormat] = useState<ExportVideoFormat>('mp4');
@@ -204,6 +209,40 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               <X className="w-4 h-4" />
             </button>
           )}
+        </div>
+
+        {/* Used Statistic Info Bar (Top of Export Modal) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-2xl bg-neutral-950/90 border border-neutral-800/90">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-neutral-300">
+            <BarChart3 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span>{language === 'vi' ? 'Thống Kê Sử Dụng' : 'Used Statistic Info'}</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/25">
+              <Eye className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <span className="text-[11px] text-neutral-300">
+                {language === 'vi' ? 'Truy cập:' : 'Visits:'}
+              </span>
+              <span
+                className="font-mono font-bold text-cyan-300 tabular-nums"
+                title={usageStats ? usageStats.visitCount.toLocaleString() : undefined}
+              >
+                {usageStats ? formatCompactCounter(usageStats.visitCount) : '—'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-500/10 border border-rose-500/25">
+              <Film className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span className="text-[11px] text-neutral-300">
+                {language === 'vi' ? 'Xuất video:' : 'Renders:'}
+              </span>
+              <span
+                className="font-mono font-bold text-rose-300 tabular-nums"
+                title={usageStats ? usageStats.exportCount.toLocaleString() : undefined}
+              >
+                {usageStats ? formatCompactCounter(usageStats.exportCount) : '—'}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* 0. Warning Confirmation Step when clicking "Bắt Đầu Xuất Video HD" */}

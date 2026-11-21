@@ -1113,6 +1113,7 @@ export interface PresetTheme {
   track: TrackMetadata;
   textBoxes?: TextBoxItem[];
   lotties?: LottieItem[];
+  overlayLayers?: OverlayLayerItem[];
   isUserPreset?: boolean;
   createdAt?: number;
   sampleAudio?: {
@@ -1263,5 +1264,86 @@ export interface LottieLibraryItem {
 }
 
 export const DEFAULT_LOTTIES: LottieItem[] = [];
+
+// ==========================================
+// OVERLAY / IMAGE & VIDEO LAYERS TYPES (MAX 6)
+// ==========================================
+export const MAX_OVERLAY_LAYERS = 6;
+
+export type OverlayMediaType = 'image' | 'video';
+
+export type OverlayBlendMode =
+  | 'normal'
+  | 'light'
+  | 'dark'
+  | 'reverse'
+  | 'color-burn'
+  | 'overlay'
+  | 'vivid'
+  | 'screen'
+  | 'multiply'
+  | 'color-dodge'
+  | 'soft-light'
+  | 'hard-light'
+  | 'lighter'
+  | 'exclusion';
+
+export type OverlayLayerFitMode = 'cover' | 'contain' | 'original' | 'stretch';
+
+export type OverlayAnchorPoint =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'center-left'
+  | 'center'
+  | 'center-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
+export type OverlayScrollDirection = 'left' | 'right' | 'up' | 'down';
+
+export type OverlayMaskShape = 'none' | 'square' | 'circle' | 'ellipse' | 'triangle';
+
+export type OverlayMaskBlendStyle =
+  | 'solid'
+  | 'linear'
+  | 'radial'
+  | 'angle'
+  | 'reflected'
+  | 'diamond';
+
+export interface OverlayLayerItem {
+  id: string;
+  name: string;
+  type: OverlayMediaType;       // 'image' | 'video'
+  url: string;                  // DataURL or ObjectURL from uploaded image/video
+  fileName?: string;            // Uploaded original filename
+  enabled: boolean;             // Visibility toggle
+  anchorPoint?: OverlayAnchorPoint; // Anchor origin point on layer & canvas (default 'top-left')
+  x: number;                    // Anchor X offset in % of canvas width (default 0)
+  y: number;                    // Anchor Y offset in % of canvas height (default 0)
+  scale: number;                // Scale % (10 - 300, default 100)
+  fitMode?: OverlayLayerFitMode;// How media fills relative to anchor (default 'cover')
+  opacity: number;              // 0 - 100 (%)
+  blendMode: OverlayBlendMode;  // Blend method: Normal, Light, Dark, Reverse, Colorburn, Overlay, Vivid, etc.
+  scrollEnabled?: boolean;      // Infinity scrolling animation On/Off (default false)
+  scrollDirection?: OverlayScrollDirection; // 'left' | 'right' | 'up' | 'down' (default 'left')
+  scrollDuration?: number;      // Timing in seconds per full scroll cycle (default 10)
+  maskShape?: OverlayMaskShape; // Simple shape mask: none, square, circle, ellipse, triangle
+  maskBlendStyle?: OverlayMaskBlendStyle; // Gradient mask blending style: solid, linear, radial, angle, reflected, diamond
+  maskSize?: number;            // Mask size % (10 - 150, default 85)
+  maskX?: number;               // Mask center X % (0 - 100, default 50)
+  maskY?: number;               // Mask center Y % (0 - 100, default 50)
+  maskFeather?: number;         // Mask edge softness / feather (0 - 100, default 0)
+  maskAngle?: number;           // Gradient / mask rotation angle in degrees (0 - 360, default 0)
+  maskInvert?: boolean;         // Invert masked region (default false)
+  loop?: boolean;               // For video layers (default true)
+  playbackSpeed?: number;       // For video layers (0.25 - 2.0, default 1.0)
+  duration?: number;            // Detected duration for video layers
+}
+
+export const DEFAULT_OVERLAY_LAYERS: OverlayLayerItem[] = [];
+
 
 

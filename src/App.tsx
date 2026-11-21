@@ -22,6 +22,8 @@ import {
   PlaylistRepeatMode,
   LottieItem,
   DEFAULT_LOTTIES,
+  OverlayLayerItem,
+  DEFAULT_OVERLAY_LAYERS,
 } from './types';
 import {
   DEFAULT_VISUALIZER,
@@ -65,6 +67,12 @@ import {
   clearAutoSave,
 } from './utils/projectStorage';
 import { Language, getSavedLanguage, saveLanguage, TRANSLATIONS } from './utils/i18n';
+import {
+  UsageStats,
+  recordAppVisit,
+  fetchUsageStats,
+  recordVideoExport,
+} from './utils/usageStats';
 import { Header } from './components/Header';
 import { CanvasStage } from './components/CanvasStage';
 import { VisualizerTab } from './components/VisualizerTab';
@@ -84,6 +92,7 @@ import { AboutModal } from './components/AboutModal';
 import { NewProjectModal, NewProjectHardwareProfile } from './components/NewProjectModal';
 import { AudioPlaylistTab } from './components/AudioPlaylistTab';
 import { LottieTab } from './components/LottieTab';
+import { OverlayLayerTab } from './components/OverlayLayerTab';
 import {
   DEFAULT_PLAYLIST_CONFIG,
   getSavedPlaylist,
@@ -198,9 +207,37 @@ export function App() {
     }
   }, [lotties]);
 
+  // Overlay / Image & Video Layers State (Max 6 layers above main Background)
+  const [overlayLayers, setOverlayLayers] = useState<OverlayLayerItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('sonawave_overlay_layers_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Filter out stale blob URLs from previous sessions
+          return parsed.filter(
+            (item: any) => item && typeof item.url === 'string' && !item.url.startsWith('blob:')
+          );
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_OVERLAY_LAYERS;
+  });
+
+  useEffect(() => {
+    try {
+      const persistable = overlayLayers.filter((l) => l.url && !l.url.startsWith('blob:'));
+      localStorage.setItem('sonawave_overlay_layers_v1', JSON.stringify(persistable));
+    } catch {
+      // ignore quota errors
+    }
+  }, [overlayLayers]);
+
   // 3. UI Navigation & Modals
   const [activeTab, setActiveTab] = useState<
-    'visualizer' | 'lyrics' | 'background' | 'bgeffects' | 'filmlight' | 'colorgrading' | 'track' | 'textboxes' | 'playlist' | 'lottie'
+    'visualizer' | 'lyrics' | 'background' | 'overlay' | 'bgeffects' | 'filmlight' | 'colorgrading' | 'track' | 'textboxes' | 'playlist' | 'lottie'
   >('visualizer');
 
   // Desktop Horizontal Tab Scrolling State & Navigation
@@ -431,6 +468,21 @@ export function App() {
   const [exportTotalSec, setExportTotalSec] = useState(30);
   const [exportedBlob, setExportedBlob] = useState<Blob | null>(null);
   const [exportFormat, setExportFormat] = useState<ExportVideoFormat>('mp4');
+  const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
+
+  useEffect(() => {
+    recordAppVisit().then((stats) => {
+      if (stats) setUsageStats(stats);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isExportModalOpen || isAboutModalOpen) {
+      fetchUsageStats().then((stats) => {
+        if (stats) setUsageStats(stats);
+      });
+    }
+  }, [isExportModalOpen, isAboutModalOpen]);
 
   // 5. Refs for High-Performance Animation Loop (Decoupled from React State Churn)
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -439,6 +491,7 @@ export function App() {
   const rendererRef = useRef<VisualizerRenderer | null>(null);
   const exporterRef = useRef<VideoExporter | null>(null);
   const isExportingRef = useRef<boolean>(false);
+  const exportCancelledRef = useRef<boolean>(false);
   const exportCleanupRef = useRef<(() => void) | null>(null);
 
   // Dedicated Offscreen & Export Canvas refs for ultra-smooth 60fps rendering without UI thread blocking
@@ -487,6 +540,9 @@ export function App() {
   const lottiesRef = useRef(lotties);
   lottiesRef.current = lotties;
 
+  const overlayLayersRef = useRef(overlayLayers);
+  overlayLayersRef.current = overlayLayers;
+
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
 
@@ -524,6 +580,7 @@ export function App() {
         colorGrading,
         masterEq: masterEqConfig,
         lotties,
+        overlayLayers: overlayLayers.filter((l) => l.url && !l.url.startsWith('blob:')),
         audioFileName,
         sampleAudioType,
       });
@@ -548,6 +605,7 @@ export function App() {
     track,
     textBoxes,
     lotties,
+    overlayLayers,
     audioFileName,
     sampleAudioType,
   ]);
@@ -589,6 +647,11 @@ export function App() {
       setTextBoxes(autoSaved.textBoxes || DEFAULT_TEXT_BOXES);
       if (autoSaved.sceneTransitions) {
         setSceneTransitions(autoSaved.sceneTransitions);
+      }
+      if (Array.isArray(autoSaved.overlayLayers)) {
+        setOverlayLayers(
+          autoSaved.overlayLayers.filter((l) => l && l.url && !l.url.startsWith('blob:'))
+        );
       }
       setAudioFileName(autoSaved.audioFileName || 'Neon_Synthwave_Demo.wav');
 
@@ -1274,6 +1337,11 @@ export function App() {
       setLotties([]);
       setSelectedLottieId(null);
     }
+    if (Array.isArray(project.overlayLayers)) {
+      setOverlayLayers(project.overlayLayers.filter((l) => l && l.url && !l.url.startsWith('blob:')));
+    } else {
+      setOverlayLayers([]);
+    }
     setAudioFileName(project.audioFileName || 'Neon_Synthwave_Demo.wav');
 
     if (rendererRef.current) {
@@ -1326,6 +1394,7 @@ export function App() {
     setPlaylist(DEFAULT_PLAYLIST_CONFIG);
     setLotties(DEFAULT_LOTTIES);
     setSelectedLottieId(null);
+    setOverlayLayers(DEFAULT_OVERLAY_LAYERS);
     setAudioFileName('Neon_Synthwave_Demo.wav');
 
     // 4. Reset visualizer canvas renderer background and cover
@@ -1343,6 +1412,7 @@ export function App() {
     try {
       localStorage.removeItem('sonawave_project_data_v1');
       localStorage.removeItem('sonawave_lotties_v1');
+      localStorage.removeItem('sonawave_overlay_layers_v1');
       clearAutoSave();
     } catch {
       // ignore
@@ -1395,6 +1465,9 @@ export function App() {
     if (theme.lotties) {
       setLotties(theme.lotties);
       setSelectedLottieId(theme.lotties.length > 0 ? theme.lotties[0].id : null);
+    }
+    if (theme.overlayLayers) {
+      setOverlayLayers(theme.overlayLayers);
     }
 
     if (rendererRef.current) {
@@ -1567,7 +1640,8 @@ export function App() {
             sceneTransitionsRef.current,
             isExportingRef.current ? false : highPerformanceRenderRef.current,
             lottiesRef.current,
-            cumulativePlaylistTime
+            cumulativePlaylistTime,
+            overlayLayersRef.current
           );
 
           // Fast blit from OffscreenCanvas to export target if exporting
@@ -1657,6 +1731,7 @@ export function App() {
 
     const targetFormat: ExportVideoFormat = settings.format || 'mp4';
     setExportFormat(targetFormat);
+    exportCancelledRef.current = false;
     setIsExporting(true);
     isExportingRef.current = true;
     setExportProgress(0);
@@ -1892,6 +1967,11 @@ export function App() {
       setExportProgress(100);
       setExportCurrentSec(totalSec);
       setExportedBlob(blob);
+      if (blob && blob.size > 0 && !exportCancelledRef.current) {
+        recordVideoExport(targetFormat, settings.resolution).then((stats) => {
+          if (stats) setUsageStats(stats);
+        });
+      }
     } catch (err) {
       console.error('Export recording failed:', err);
     } finally {
@@ -1908,6 +1988,7 @@ export function App() {
   };
 
   const handleCancelExport = () => {
+    exportCancelledRef.current = true;
     if (exporterRef.current) {
       exporterRef.current.stopRecording();
     }
@@ -2217,6 +2298,27 @@ export function App() {
                 )}
               </button>
 
+              {/* Overlay / Layer - Lớp phủ Ảnh & Video trên Background (đặt trước Background) */}
+              <button
+                data-tab="overlay"
+                onClick={() => setActiveTab('overlay')}
+                title={TRANSLATIONS[language].tabOverlay || 'Overlay / Layer'}
+                aria-label={TRANSLATIONS[language].tabOverlay || 'Overlay / Layer'}
+                className={`p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 relative ${
+                  activeTab === 'overlay'
+                    ? 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-md shadow-teal-600/20'
+                    : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'
+                }`}
+              >
+                <Layers className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-teal-300" />
+                <span className="hidden sm:inline">{TRANSLATIONS[language].tabOverlay || 'Overlay / Layer'}</span>
+                {overlayLayers.length > 0 && (
+                  <span className="hidden sm:inline text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-teal-300 text-neutral-950 ml-0.5">
+                    {overlayLayers.length}
+                  </span>
+                )}
+              </button>
+
               {/* 7. Background - Hình Nền & Hạt Bay */}
               <button
                 data-tab="background"
@@ -2388,6 +2490,15 @@ export function App() {
               />
             )}
 
+            {/* Overlay / Layer Content */}
+            {activeTab === 'overlay' && (
+              <OverlayLayerTab
+                layers={overlayLayers}
+                onChangeLayers={setOverlayLayers}
+                language={language}
+              />
+            )}
+
             {/* 7. Background Content */}
             {activeTab === 'background' && (
               <BackgroundTab
@@ -2466,6 +2577,7 @@ export function App() {
           track,
           textBoxes,
           lotties,
+          overlayLayers,
         }}
       />
 
@@ -2487,6 +2599,7 @@ export function App() {
           textBoxes,
           sceneTransitions,
           lotties,
+          overlayLayers,
           audioFileName,
         }}
         onLoadProject={handleLoadProject}
@@ -2530,6 +2643,7 @@ export function App() {
         isOpen={isAboutModalOpen}
         onClose={() => setIsAboutModalOpen(false)}
         language={language}
+        usageStats={usageStats}
       />
 
       {/* High Definition Video Export Modal */}
@@ -2552,6 +2666,7 @@ export function App() {
         onDownloadExportedVideo={handleDownloadExportedVideo}
         playlist={playlist}
         language={language}
+        usageStats={usageStats}
       />
 
       {/* New Project Confirmation Modal (Safe for Sandboxed iFrames) */}

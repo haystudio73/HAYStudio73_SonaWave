@@ -48,6 +48,7 @@ export interface TranslationDictionary {
   tabTextBoxes: string;
   tabPlaylist: string;
   tabLottie: string;
+  tabOverlay: string;
 
   // Canvas Stage & Player Bar
   noAudioUploaded: string;

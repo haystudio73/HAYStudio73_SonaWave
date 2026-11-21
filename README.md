@@ -1,8 +1,8 @@
-# 🎵 Sona Wave Pro (version 2.1.0) - Trình Tạo Video Sóng Âm & Lyrics
+# 🎵 Sona Wave Pro (version 2.1.1) - Trình Tạo Video Sóng Âm & Lyrics
 
 A professional audio wave video generator with synchronized lyrics, diverse visualizer effects, and high-quality video export capabilities optimized for TikTok, YouTube Shorts, and Instagram Reels.
 
-> **🆕 Phiên bản mới nhất `v2.1.0`**: Nâng cấp **Triangle Badge** & **7 Hiệu Ứng Viền Huy Hiệu Động** (*Glow, LED Tracing, Magic Light, Fire, Smoke, Electric, Rainbow Aurora*), cửa sổ **Design Templates & Aesthetic Presets** 2 cột rộng 80% màn hình có xem trước & JSON Import/Export, **Lyrics Presets Manager** kèm khung Preview, sửa mượt **Lyrics In/Out Transitions**, tối ưu tắt **Bloom 3D** lần đầu chọn để bảo vệ GPU và **Giao diện Mobile Icon-Only** tinh gọn.
+> **🆕 Phiên bản mới nhất `v2.1.1`**: Bổ sung **Tab Overlay / Layer** (tối đa **6 lớp Ảnh/Video** xếp chồng trên Background với **9 điểm neo Anchor Point**, **Blend Modes**, **Infinity Scrolling 4 hướng**, **Simple Mask** hình vuông/tròn/elip/tam giác & **5 kiểu Mask Blending Gradient**), nâng cấp **Lyrics Vị trí Y (`0%–100%`)**, và tích hợp **Thống Kê Sử Dụng (Used Statistic Info)** đếm lượt truy cập & lượt xuất video lưu trữ trên **SQLite** với định dạng rút gọn số lớn (`> 10.000`).
 
 Link demo: https://hay-studio73-sona-wave.vercel.app/
 
@@ -63,9 +63,29 @@ bun install && bun run build
 - **10-Band Studio Master Graphic EQ**: Hardware-grade 10-band audio equalizer with real-time spectrum and custom sound presets.
 - **Multi-Track Audio Playlist**: Continuous background playback, track queue management, and individual song metadata.
 - **Customizable Backgrounds**: High-resolution curated library, custom image (JPG/PNG), dynamic video (MP4), gradients, and 11 multi-layer particle systems.
+- **Multi-Layer Overlay Studio (Ảnh & Video)**: Up to 6 independent image/video overlay layers stacked over the main background with 9-point anchor alignment, opacity, pro blend modes, 4-direction infinity scrolling, simple geometric masks, and gradient mask blending.
+- **SQLite Usage Statistics (`Used Statistic Info`)**: Built-in Express + SQLite persistent tracker for user visits and video exports (MP4/MOV/WebM) with smart compact formatting (`K`/`M`/`B` above 10,000).
 - **Professional Multi-Format Video Export**: High-quality **MP4**, **MOV (QuickTime)**, and **WebM** output (9:16, 1:1, 16:9, 4:5) up to 4K / 60FPS optimized for TikTok, YouTube Shorts, Instagram Reels, CapCut, and pro NLE editors.
 
-### 🆕 What's New in Version 2.1.0 / Thay Đổi Trong Phiên Bản Mới (v2.1.0)
+### 🆕 What's New in Version 2.1.1 / Thay Đổi Trong Phiên Bản Mới (v2.1.1)
+- **Tab Overlay / Layer (Tối Đa 6 Lớp Ảnh & Video Chuyên Nghiệp)**:
+  - Bổ sung tab **Overlay / Layer** nằm ngay trước tab **Background**, cho phép xếp chồng tối đa **6 lớp layer** độc lập ngay phía trên nền Background chính.
+  - Mỗi layer hỗ trợ tải lên **Ảnh (`PNG/JPG/WebP`)** hoặc **Video (`MP4/WebM`)**, có nút **Mở rộng / Thu gọn (Expand / Close)** riêng từng layer và mở/đóng nhanh toàn bộ.
+  - **Vị trí & Điểm neo (9-Point Anchor Point)**: Tùy chọn điểm neo 3×3 (mặc định góc trên trái `top-left` tại `0,0` đến `bottom-right`) cùng thanh trượt tọa độ `X/Y` và phóng to/thu nhỏ kích thước.
+  - **Độ mờ Opacity (`0%–100%`) & Chế độ hòa trộn (Blend Modes)**: Hỗ trợ đa dạng chế độ hòa trộn chuyên sâu (*Normal, Light, Dark, Reverse, Colorburn, Overlay, Vivid, Screen, Multiply...*).
+  - **Hiệu ứng Cuộn Vô Cực (`Infinity Scrolling Animation`)**: Bật/tắt độc lập cho từng layer với **4 hướng cuộn** (*Trái, Phải, Lên, Xuống*) và tùy chỉnh tốc độ chu kỳ (`1.0s–60.0s`).
+  - **Simple Mask & Mask Blending Style (Mặt Nạ Hình Học & Gradient)**:
+    - **Simple Mask Shapes**: `None`, `Square` (Vuông), `Circle` (Tròn), `Ellipse` (Elip), và `Triangle` (Tam giác).
+    - **Mask Blending Styles**: `Solid` cùng **5 kiểu hòa trộn gradient kinh điển** (`Linear`, `Radial`, `Angle`, `Reflected`, `Diamond`).
+    - Tinh chỉnh trực quan: **Mask Size (`10%–150%`)**, **Edge Feather (`0–100px`)**, **Tâm Mask `X/Y` (`0%–100%`)**, **Góc Gradient (`0°–360°`)**, **Đảo ngược Mask (`Invert Mask`)** và **Reset Mask**.
+- **Lyrics — Nâng Cấp Thanh Trượt `Vị trí Y` (`0%–100%`)**:
+  - Đổi tên nhãn *Vị Trí Hiển Thị* thành **Vị trí Y (`Position Y`)** với dải giá trị đầy đủ từ **`0%` đến `100%`**, giúp đặt lời bài hát linh hoạt ở bất kỳ cao độ nào trên khung hình.
+- **Used Statistic Info (Thống Kê Lượt Truy Cập & Xuất Video Lưu SQLite)**:
+  - Tích hợp backend **Express + SQLite (`better-sqlite3`, WAL mode)** tự động đếm và lưu bền vững **số lượt truy cập** và **số lần xuất video** (kèm thống kê riêng cho `MP4`, `MOV`, `WEBM`).
+  - Hiển thị trực tiếp tại **ô phía trên cửa sổ Xuất Video (`Export Modal`)** và ngay **bên dưới mục Thông Tin Tác Giả trong cửa sổ Thông Tin Ứng Dụng (`About Modal` - `v2.1.1`)**.
+  - Tự động **viết tắt gọn các số đếm `> 10.000`** theo chuẩn (`K`, `M`, `B` — ví dụ `10.5K`, `1.2M`) kèm tooltip hiển thị giá trị đầy đủ khi rê chuột.
+
+### 🕒 Previous Release Highlights (v2.1.0)
 - **Track Info — Triangle Badge & 7 Animated Badge Border Effects**:
   - Bổ sung kiểu huy hiệu mới **Triangle Badge (`triangle-badge`)** với thanh chỉnh độ bo góc tam giác (`0–48px`) và khoảng cách chi tiết bài hát.
   - Đặt **Huy hiệu Tròn Xoay 360° (`rotating-badge` - Rotating Vinyl Badge 360°)** làm kiểu thẻ bìa mặc định mới.
@@ -82,7 +102,7 @@ bun install && bun run build
   - Khi người dùng chuyển sang không gian **Visualizer 3D** lần đầu tiên, tính năng **Global Post-Processing Bloom (Hào Quang Phát Sáng)** được tự động tắt (`false`) để đảm bảo khung hình 3D sắc nét, mượt mà trên mọi thiết bị và có thể bật lại bất cứ lúc nào.
 - **Giao Diện Mobile Responsive Tinh Gọn (Icon-Only Buttons)**:
   - Khi mở ứng dụng trên thiết bị di động (**Mobile**), các nút trên thanh công cụ và tab điều hướng tự động **ẩn nhãn chữ (`text label`), chỉ hiển thị Icon** tối ưu không gian thao tác, vẫn giữ đầy đủ nhãn chữ trên Tablet & Desktop.
-- **About & Open-Source License Dialog (`?`)** — Nút **About (`?`)** đặt ngay cạnh nút Cài Đặt (Settings) trên thanh công cụ trên cùng, hiển thị phiên bản ứng dụng (`v2.1.0`), thông tin giấy phép mã nguồn mở (MIT License) và liên kết trực tiếp tới kênh **Facebook** & **YouTube** của tác giả **HAY Studio73**.
+- **About & Open-Source License Dialog (`?`)** — Nút **About (`?`)** đặt ngay cạnh nút Cài Đặt (Settings) trên thanh công cụ trên cùng, hiển thị phiên bản ứng dụng (`v2.1.1`), thông tin giấy phép mã nguồn mở (MIT License), liên kết trực tiếp tới kênh **Facebook** & **YouTube** của tác giả **HAY Studio73** và thẻ **Used Statistic Info (SQLite)**.
 
 ### New & Enhanced Features
 - **Direct Canvas Drag & Drop & Track Info 2D Position Controls** — Tương tác kéo thả trực tiếp ngay trên khung hình xem trước:
@@ -646,8 +666,9 @@ Bảo vệ tuyệt đối công sức sáng tạo của người dùng và tối
 - **Lucide React**: Beautiful icon library
 - **Motion**: Advanced animation library
 
-### Backend & AI
-- **Express.js**: Web server framework
+### Backend, Database & AI
+- **Express.js**: Web server framework & REST API (`/api/stats`)
+- **SQLite (`better-sqlite3`)**: Persistent local database (WAL mode) storing user visit & video export counters
 - **Google Gemini API 2.4**: AI-powered features
 - **Canvas Confetti**: Celebratory animations
 
@@ -830,6 +851,7 @@ For issues, questions, or feature requests:
 - [x] Multi-project management, JSON backup, and local AutoSave recovery
 - [x] Safe in-app confirmation dialogs, About (`?`) license/author modal & Bilingual EN/VI UI
 - [x] **v2.1.0**: Triangle Badge, 7 Animated Badge Border Effects, 2-Column 80% Presets Studio with JSON Import/Export, Lyrics Presets Live Preview & Fixed In/Out Transitions, 3D First-Select Bloom Off & Mobile Icon-Only UI
+- [x] **v2.1.1**: Multi-Layer Overlay Studio (max 6 Image/Video layers, 9-point Anchor, Blend Modes, 4-direction Infinity Scrolling, Simple Mask & 5 Gradient Mask Blending Styles), Lyrics Position Y (0–100%), and SQLite Used Statistic Info with compact counter formatting (`> 10,000`)
 - [ ] Cloud storage export integration (Google Drive / S3)
 - [ ] Server-side batch processing CLI 
 
